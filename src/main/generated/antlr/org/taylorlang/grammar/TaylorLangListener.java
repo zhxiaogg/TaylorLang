@@ -100,6 +100,7 @@ public interface TaylorLangListener extends ParseTreeListener {
 	 */
 	void exitProductType(TaylorLangParser.ProductTypeContext ctx);
 	/**
+<<<<<<< HEAD
 	 * Enter a parse tree produced by {@link TaylorLangParser#positionedProductType}.
 	 * @param ctx the parse tree
 	 */
@@ -149,6 +150,27 @@ public interface TaylorLangListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitPositionedFieldList(TaylorLangParser.PositionedFieldListContext ctx);
+=======
+	 * Enter a parse tree produced by {@link TaylorLangParser#fieldList}.
+	 * @param ctx the parse tree
+	 */
+	void enterFieldList(TaylorLangParser.FieldListContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link TaylorLangParser#fieldList}.
+	 * @param ctx the parse tree
+	 */
+	void exitFieldList(TaylorLangParser.FieldListContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link TaylorLangParser#field}.
+	 * @param ctx the parse tree
+	 */
+	void enterField(TaylorLangParser.FieldContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link TaylorLangParser#field}.
+	 * @param ctx the parse tree
+	 */
+	void exitField(TaylorLangParser.FieldContext ctx);
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	/**
 	 * Enter a parse tree produced by {@link TaylorLangParser#valDecl}.
 	 * @param ctx the parse tree
@@ -230,6 +252,7 @@ public interface TaylorLangListener extends ParseTreeListener {
 	 */
 	void exitPrimary(TaylorLangParser.PrimaryContext ctx);
 	/**
+<<<<<<< HEAD
 	 * Enter a parse tree produced by {@link TaylorLangParser#blockExpr}.
 	 * @param ctx the parse tree
 	 */
@@ -250,6 +273,8 @@ public interface TaylorLangListener extends ParseTreeListener {
 	 */
 	void exitBlockContent(TaylorLangParser.BlockContentContext ctx);
 	/**
+=======
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	 * Enter a parse tree produced by {@link TaylorLangParser#literal}.
 	 * @param ctx the parse tree
 	 */
@@ -260,6 +285,39 @@ public interface TaylorLangListener extends ParseTreeListener {
 	 */
 	void exitLiteral(TaylorLangParser.LiteralContext ctx);
 	/**
+<<<<<<< HEAD
+=======
+	 * Enter a parse tree produced by {@link TaylorLangParser#listLiteral}.
+	 * @param ctx the parse tree
+	 */
+	void enterListLiteral(TaylorLangParser.ListLiteralContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link TaylorLangParser#listLiteral}.
+	 * @param ctx the parse tree
+	 */
+	void exitListLiteral(TaylorLangParser.ListLiteralContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link TaylorLangParser#mapLiteral}.
+	 * @param ctx the parse tree
+	 */
+	void enterMapLiteral(TaylorLangParser.MapLiteralContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link TaylorLangParser#mapLiteral}.
+	 * @param ctx the parse tree
+	 */
+	void exitMapLiteral(TaylorLangParser.MapLiteralContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link TaylorLangParser#mapEntry}.
+	 * @param ctx the parse tree
+	 */
+	void enterMapEntry(TaylorLangParser.MapEntryContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link TaylorLangParser#mapEntry}.
+	 * @param ctx the parse tree
+	 */
+	void exitMapEntry(TaylorLangParser.MapEntryContext ctx);
+	/**
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	 * Enter a parse tree produced by {@link TaylorLangParser#tupleLiteral}.
 	 * @param ctx the parse tree
 	 */
@@ -290,6 +348,7 @@ public interface TaylorLangListener extends ParseTreeListener {
 	 */
 	void exitArgList(TaylorLangParser.ArgListContext ctx);
 	/**
+<<<<<<< HEAD
 	 * Enter a parse tree produced by {@link TaylorLangParser#ifExpr}.
 	 * @param ctx the parse tree
 	 */
@@ -310,6 +369,8 @@ public interface TaylorLangListener extends ParseTreeListener {
 	 */
 	void exitForExpr(TaylorLangParser.ForExprContext ctx);
 	/**
+=======
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	 * Enter a parse tree produced by {@link TaylorLangParser#matchExpr}.
 	 * @param ctx the parse tree
 	 */

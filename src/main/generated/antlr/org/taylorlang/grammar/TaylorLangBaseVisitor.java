@@ -83,13 +83,18 @@ public class TaylorLangBaseVisitor<T> extends AbstractParseTreeVisitor<T> implem
 	 * <p>The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
+<<<<<<< HEAD
 	@Override public T visitPositionedProductType(TaylorLangParser.PositionedProductTypeContext ctx) { return visitChildren(ctx); }
+=======
+	@Override public T visitFieldList(TaylorLangParser.FieldListContext ctx) { return visitChildren(ctx); }
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
+<<<<<<< HEAD
 	@Override public T visitNamedProductType(TaylorLangParser.NamedProductTypeContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
@@ -112,6 +117,9 @@ public class TaylorLangBaseVisitor<T> extends AbstractParseTreeVisitor<T> implem
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
 	@Override public T visitPositionedFieldList(TaylorLangParser.PositionedFieldListContext ctx) { return visitChildren(ctx); }
+=======
+	@Override public T visitField(TaylorLangParser.FieldContext ctx) { return visitChildren(ctx); }
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	/**
 	 * {@inheritDoc}
 	 *
@@ -174,6 +182,7 @@ public class TaylorLangBaseVisitor<T> extends AbstractParseTreeVisitor<T> implem
 	 * <p>The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
+<<<<<<< HEAD
 	@Override public T visitBlockExpr(TaylorLangParser.BlockExprContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
@@ -188,6 +197,8 @@ public class TaylorLangBaseVisitor<T> extends AbstractParseTreeVisitor<T> implem
 	 * <p>The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
+=======
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	@Override public T visitLiteral(TaylorLangParser.LiteralContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
@@ -195,6 +206,30 @@ public class TaylorLangBaseVisitor<T> extends AbstractParseTreeVisitor<T> implem
 	 * <p>The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
+<<<<<<< HEAD
+=======
+	@Override public T visitListLiteral(TaylorLangParser.ListLiteralContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitMapLiteral(TaylorLangParser.MapLiteralContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitMapEntry(TaylorLangParser.MapEntryContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	@Override public T visitTupleLiteral(TaylorLangParser.TupleLiteralContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
@@ -216,6 +251,7 @@ public class TaylorLangBaseVisitor<T> extends AbstractParseTreeVisitor<T> implem
 	 * <p>The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
+<<<<<<< HEAD
 	@Override public T visitIfExpr(TaylorLangParser.IfExprContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
@@ -230,6 +266,8 @@ public class TaylorLangBaseVisitor<T> extends AbstractParseTreeVisitor<T> implem
 	 * <p>The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
+=======
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	@Override public T visitMatchExpr(TaylorLangParser.MatchExprContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}

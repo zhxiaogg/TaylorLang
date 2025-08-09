@@ -41,6 +41,7 @@ T__39=40
 T__40=41
 T__41=42
 T__42=43
+<<<<<<< HEAD
 T__43=44
 T__44=45
 T__45=46
@@ -53,6 +54,16 @@ IDENTIFIER=52
 LineComment=53
 BlockComment=54
 WS=55
+=======
+IDENTIFIER=44
+IntLiteral=45
+FloatLiteral=46
+StringLiteral=47
+BooleanLiteral=48
+LineComment=49
+BlockComment=50
+WS=51
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 'fn'=1
 '('=2
 ')'=3
@@ -91,6 +102,7 @@ WS=55
 '&&'=36
 '||'=37
 '?:'=38
+<<<<<<< HEAD
 ';'=39
 'null'=40
 'if'=41
@@ -100,3 +112,10 @@ WS=55
 'match'=45
 'case'=46
 '_'=47
+=======
+'null'=39
+'match'=40
+'case'=41
+'_'=42
+'if'=43
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)

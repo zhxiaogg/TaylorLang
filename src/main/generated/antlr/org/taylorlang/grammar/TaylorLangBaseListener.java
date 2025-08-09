@@ -127,24 +127,37 @@ public class TaylorLangBaseListener implements TaylorLangListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+<<<<<<< HEAD
 	@Override public void enterPositionedProductType(TaylorLangParser.PositionedProductTypeContext ctx) { }
+=======
+	@Override public void enterFieldList(TaylorLangParser.FieldListContext ctx) { }
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+<<<<<<< HEAD
 	@Override public void exitPositionedProductType(TaylorLangParser.PositionedProductTypeContext ctx) { }
+=======
+	@Override public void exitFieldList(TaylorLangParser.FieldListContext ctx) { }
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+<<<<<<< HEAD
 	@Override public void enterNamedProductType(TaylorLangParser.NamedProductTypeContext ctx) { }
+=======
+	@Override public void enterField(TaylorLangParser.FieldContext ctx) { }
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+<<<<<<< HEAD
 	@Override public void exitNamedProductType(TaylorLangParser.NamedProductTypeContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -182,6 +195,9 @@ public class TaylorLangBaseListener implements TaylorLangListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitPositionedFieldList(TaylorLangParser.PositionedFieldListContext ctx) { }
+=======
+	@Override public void exitField(TaylorLangParser.FieldContext ctx) { }
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	/**
 	 * {@inheritDoc}
 	 *
@@ -283,6 +299,7 @@ public class TaylorLangBaseListener implements TaylorLangListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+<<<<<<< HEAD
 	@Override public void enterBlockExpr(TaylorLangParser.BlockExprContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -307,6 +324,8 @@ public class TaylorLangBaseListener implements TaylorLangListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+=======
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	@Override public void enterLiteral(TaylorLangParser.LiteralContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -319,6 +338,45 @@ public class TaylorLangBaseListener implements TaylorLangListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+<<<<<<< HEAD
+=======
+	@Override public void enterListLiteral(TaylorLangParser.ListLiteralContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitListLiteral(TaylorLangParser.ListLiteralContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterMapLiteral(TaylorLangParser.MapLiteralContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitMapLiteral(TaylorLangParser.MapLiteralContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterMapEntry(TaylorLangParser.MapEntryContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitMapEntry(TaylorLangParser.MapEntryContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	@Override public void enterTupleLiteral(TaylorLangParser.TupleLiteralContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -355,6 +413,7 @@ public class TaylorLangBaseListener implements TaylorLangListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+<<<<<<< HEAD
 	@Override public void enterIfExpr(TaylorLangParser.IfExprContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -379,6 +438,8 @@ public class TaylorLangBaseListener implements TaylorLangListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+=======
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	@Override public void enterMatchExpr(TaylorLangParser.MatchExprContext ctx) { }
 	/**
 	 * {@inheritDoc}

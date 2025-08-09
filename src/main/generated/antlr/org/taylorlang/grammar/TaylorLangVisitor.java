@@ -67,6 +67,7 @@ public interface TaylorLangVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitProductType(TaylorLangParser.ProductTypeContext ctx);
 	/**
+<<<<<<< HEAD
 	 * Visit a parse tree produced by {@link TaylorLangParser#positionedProductType}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -96,6 +97,19 @@ public interface TaylorLangVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitPositionedFieldList(TaylorLangParser.PositionedFieldListContext ctx);
+=======
+	 * Visit a parse tree produced by {@link TaylorLangParser#fieldList}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitFieldList(TaylorLangParser.FieldListContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link TaylorLangParser#field}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitField(TaylorLangParser.FieldContext ctx);
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	/**
 	 * Visit a parse tree produced by {@link TaylorLangParser#valDecl}.
 	 * @param ctx the parse tree
@@ -145,6 +159,7 @@ public interface TaylorLangVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitPrimary(TaylorLangParser.PrimaryContext ctx);
 	/**
+<<<<<<< HEAD
 	 * Visit a parse tree produced by {@link TaylorLangParser#blockExpr}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -157,12 +172,35 @@ public interface TaylorLangVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitBlockContent(TaylorLangParser.BlockContentContext ctx);
 	/**
+=======
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	 * Visit a parse tree produced by {@link TaylorLangParser#literal}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	T visitLiteral(TaylorLangParser.LiteralContext ctx);
 	/**
+<<<<<<< HEAD
+=======
+	 * Visit a parse tree produced by {@link TaylorLangParser#listLiteral}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitListLiteral(TaylorLangParser.ListLiteralContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link TaylorLangParser#mapLiteral}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitMapLiteral(TaylorLangParser.MapLiteralContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link TaylorLangParser#mapEntry}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitMapEntry(TaylorLangParser.MapEntryContext ctx);
+	/**
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	 * Visit a parse tree produced by {@link TaylorLangParser#tupleLiteral}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -181,6 +219,7 @@ public interface TaylorLangVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitArgList(TaylorLangParser.ArgListContext ctx);
 	/**
+<<<<<<< HEAD
 	 * Visit a parse tree produced by {@link TaylorLangParser#ifExpr}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -193,6 +232,8 @@ public interface TaylorLangVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitForExpr(TaylorLangParser.ForExprContext ctx);
 	/**
+=======
+>>>>>>> 703e8f0 (Implement TaylorLang compiler foundation with Kotlin)
 	 * Visit a parse tree produced by {@link TaylorLangParser#matchExpr}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

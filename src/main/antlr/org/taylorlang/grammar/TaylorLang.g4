@@ -1,0 +1,152 @@
+grammar TaylorLang;
+
+@header {
+package org.taylorlang.grammar;
+}
+
+// Entry point
+program: statement* EOF;
+
+// Statements
+statement
+    : functionDecl
+    | typeDecl
+    | valDecl
+    | expression
+    ;
+
+// Function declarations: fn add(x: Int, y: Int): Int => x + y
+functionDecl
+    : 'fn' IDENTIFIER typeParams? '(' paramList? ')' (':' type)? '=>' functionBody
+    ;
+
+functionBody
+    : expression
+    | '{' statement* '}'
+    ;
+
+paramList: param (',' param)*;
+param: IDENTIFIER (':' type)?;
+
+// Type declarations: type Result<T,E> = Ok(T) | Error(E)
+typeDecl
+    : 'type' IDENTIFIER typeParams? '=' unionType
+    ;
+
+unionType: productType ('|' productType)*;
+productType: IDENTIFIER ('(' fieldList ')')?;
+
+fieldList: field (',' field)*;
+field: IDENTIFIER ':' type;
+
+// Variable declarations: val x = 42
+valDecl: 'val' IDENTIFIER (':' type)? '=' expression;
+
+// Type parameters: <T, E>
+typeParams: '<' typeParam (',' typeParam)* '>';
+typeParam: IDENTIFIER;
+
+// Types
+type
+    : primitiveType
+    | IDENTIFIER                           // Named type
+    | IDENTIFIER '<' typeArgs '>'          // Generic type
+    | type '?'                            // Nullable type
+    | '(' type (',' type)* ')'            // Tuple type
+    ;
+
+typeArgs: type (',' type)*;
+
+primitiveType
+    : 'Int'
+    | 'Long' 
+    | 'Float'
+    | 'Double'
+    | 'Boolean'
+    | 'String'
+    | 'Unit'
+    ;
+
+// Expressions
+expression
+    : primary
+    | expression '.' IDENTIFIER           // Property access
+    | expression '(' argList? ')'         // Function call
+    | expression '[' expression ']'       // Index access
+    | '-' expression                      // Unary minus
+    | '!' expression                      // Logical not
+    | expression ('*' | '/' | '%') expression  // Multiplicative
+    | expression ('+' | '-') expression   // Additive
+    | expression ('<' | '<=' | '>' | '>=' | '==' | '!=') expression  // Relational
+    | expression '&&' expression          // Logical and
+    | expression '||' expression          // Logical or
+    | expression '?:' expression          // Null coalescing
+    | matchExpr                           // Pattern matching
+    | lambdaExpr                          // Lambda expression
+    ;
+
+// Primary expressions
+primary
+    : IDENTIFIER                          // Variable reference
+    | literal                             // Literals
+    | '(' expression ')'                  // Parentheses
+    | constructorCall                     // Type constructor
+    ;
+
+// Literals
+literal
+    : IntLiteral
+    | FloatLiteral
+    | StringLiteral
+    | BooleanLiteral
+    | listLiteral
+    | mapLiteral
+    | tupleLiteral
+    | 'null'
+    ;
+
+listLiteral: '[' (expression (',' expression)*)? ']';
+mapLiteral: '{' (mapEntry (',' mapEntry)*)? '}';
+mapEntry: expression ':' expression;
+tupleLiteral: '(' expression (',' expression)+ ')';
+
+// Constructor calls: Ok(value)
+constructorCall: IDENTIFIER '(' argList? ')';
+
+// Function arguments
+argList: expression (',' expression)*;
+
+// Pattern matching: match expr { case pattern => expr }
+matchExpr: 'match' expression '{' matchCase+ '}';
+matchCase: 'case' pattern '=>' expression;
+
+pattern
+    : '_'                                 // Wildcard
+    | IDENTIFIER                          // Variable binding
+    | literal                            // Literal pattern
+    | constructorPattern                 // Constructor pattern
+    | pattern 'if' expression           // Guard pattern
+    ;
+
+constructorPattern: IDENTIFIER '(' (pattern (',' pattern)*)? ')';
+
+// Lambda expressions: x => x * 2, (x, y) => x + y
+lambdaExpr
+    : IDENTIFIER '=>' expression
+    | '(' (IDENTIFIER (',' IDENTIFIER)*)? ')' '=>' expression
+    ;
+
+// Lexer rules
+IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;
+
+IntLiteral: [0-9]+;
+FloatLiteral: [0-9]+ '.' [0-9]+;
+StringLiteral: '"' (~["\r\n] | '\\' .)* '"';
+BooleanLiteral: 'true' | 'false';
+
+// Comments
+LineComment: '//' ~[\r\n]* -> skip;
+BlockComment: '/*' .*? '*/' -> skip;
+
+// Whitespace
+WS: [ \t\r\n]+ -> skip;
