@@ -1,74 +1,53 @@
 # Algebraic Data Types
 
-## Simple Sum Types
+## Union Types (Sum Types)
+
+Union types represent values that can be one of several variants:
 
 ```kotlin
-type Status {
-  Pending,
-  InProgress,
-  Completed,
-  Failed
-}
+// Simple union types
+type Status = Pending | InProgress | Completed | Failed
+
+// Union types with associated data
+type Result<T, E> = Ok(T) | Error(E)
+
+type HttpResponse = 
+  | Success(status: Int, body: String)
+  | Redirect(url: String)
+  | ClientError(code: Int, message: String)
+  | ServerError(code: Int, details: String)
 ```
 
-## Sum Types with Associated Data
+## Complex Union Types with Named Fields
 
 ```kotlin
-type Result<T, E> {
-  Ok(T),
-  Error(E)
-}
+type Shape = 
+  | Circle(radius: Double)
+  | Rectangle(width: Double, height: Double)
+  | Triangle(a: Double, b: Double, c: Double)
 
-type Option<T> {
-  Some(T),
-  None
-}
-
-type HttpResponse {
-  Success(status: Int, body: String),
-  Redirect(url: String),
-  ClientError(code: Int, message: String),
-  ServerError(code: Int, details: String)
-}
+type UserAction =
+  | Login(username: String, timestamp: Long)
+  | Logout(timestamp: Long)
+  | UpdateProfile(field: String, newValue: String, timestamp: Long)
 ```
 
-## Complex Sum Types with Named Fields
+## Recursive Union Types
 
 ```kotlin
-type Shape {
-  Circle(radius: Double),
-  Rectangle(width: Double, height: Double),
-  Triangle(a: Double, b: Double, c: Double)
-}
+type List<T> = Nil | Cons(head: T, tail: List<T>)
 
-type UserAction {
-  Login(username: String, timestamp: Long),
-  Logout(timestamp: Long),
-  UpdateProfile(field: String, newValue: String, timestamp: Long)
-}
-```
+type BinaryTree<T> = 
+  | Empty
+  | Node(value: T, left: BinaryTree<T>, right: BinaryTree<T>)
 
-## Recursive ADTs
-
-```kotlin
-type List<T> {
-  Nil,
-  Cons(head: T, tail: List<T>)
-}
-
-type BinaryTree<T> {
-  Empty,
-  Node(value: T, left: BinaryTree<T>, right: BinaryTree<T>)
-}
-
-type Json {
-  Null,
-  Bool(Boolean),
-  Number(Double),
-  String(String),
-  Array(List<Json>),
-  Object(Map<String, Json>)
-}
+type Json =
+  | Null
+  | Bool(Boolean)
+  | Number(Double)
+  | String(String)
+  | Array(List<Json>)
+  | Object(Map<String, Json>)
 ```
 
 ## Product Types
@@ -94,10 +73,11 @@ type Pair<A, B>(first: A, second: B)
 type Box<T>(value: T)
 ```
 
-## ADT Design Principles
+## Type Design Principles
 
-- Use sum types for OR relationships (one of many variants)
-- Use product types for AND relationships (combination of fields)
-- Leverage generics for reusable ADTs
+- Use union types for OR relationships (one of many variants)
+- Use product types for AND relationships (combination of fields) 
+- Use type aliases for better readability and maintainability
+- Leverage generics for reusable types
 - Make invalid states unrepresentable through type design
-- Prefer consistent syntax with parentheses for parameters
+- Prefer explicit union syntax with `|` for clarity

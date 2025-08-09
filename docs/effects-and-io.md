@@ -1,66 +1,104 @@
 # Effects and I/O
 
-## IO Type
+## Async/Await System
 
-```typescript
-// IO operations are explicitly typed
-fn main(): IO<Unit> => {
-  println("Enter your name:")
-  val name <- readLine()
-  println("Hello, ${name}!")
-}
+TaylorLang uses `async/await` to unify asynchronous operations and I/O effects. This approach consolidates async and I/O concepts under a single, consistent model.
 
-fn readFile(path: String): IO<Result<String, IOError>> => {
-  // File reading implementation
-}
-```
+### Why Async for I/O?
 
-## Async Operations
+While underlying filesystem and database operations might not be inherently async, using `async/await` provides:
+- **Unified mental model**: All side effects use the same pattern
+- **Composable operations**: Easy chaining and error handling
+- **Non-blocking execution**: Better resource utilization
+- **Consistent syntax**: Same patterns for network, file, and database operations
 
-```typescript
-// Async functions return Future<T>
-async fn fetchUser(id: String): Future<User> => {
-  val response <- http.get("/users/${id}")
+## Async Functions
+
+```kotlin
+// Async functions use await for calling other async operations
+async fn fetchUser(id: String): User => {
+  val response = await http.get("/users/${id}")
   response.json().as<User>()
 }
 
-async fn processUsers(ids: List<String>): Future<List<User>> => {
-  val futures = ids.map(id => fetchUser(id))
-  Future.all(futures)
+async fn processUsers(ids: List<String>): List<User> => {
+  val users = []
+  for (id in ids) {
+    val user = await fetchUser(id)
+    users.append(user)
+  }
+  users
 }
 ```
 
-## Effect Composition
+## I/O Operations
 
 ```kotlin
-fn processFile(path: String): IO<Result<String, String>> => {
-  readFile(path).flatMap { result =>
-    match result {
-      case Ok(content) => IO.pure(Ok(content.toUpperCase()))
-      case Error(err) => IO.pure(Error("Failed to read: ${err}"))
-    }
-  }
+// File operations using async/await
+async fn readFile(path: String): String => {
+  await filesystem.readText(path)
+}
+
+async fn processFile(path: String): String => {
+  val content = await readFile(path)
+  content.toUpperCase()
+}
+
+// Database operations
+async fn findUser(id: String): User? => {
+  await database.query("SELECT * FROM users WHERE id = ?", id)
 }
 ```
 
 ## Resource Management
 
-```typescript
-fn withDatabase<T>(operation: (Database) => IO<T>): IO<T> => {
-  val db <- Database.connect()
+```kotlin
+// Resource management with async/await
+async fn withDatabase<T>(operation: (Database) => T): T => {
+  val db = await Database.connect()
   try {
-    operation(db)
+    await operation(db)
   } finally {
-    db.close()
+    await db.close()
+  }
+}
+
+// Usage
+async fn getUserData(id: String): UserData => {
+  withDatabase { db =>
+    val user = await db.findUser(id)
+    val profile = await db.findProfile(user.id)
+    UserData(user, profile)
   }
 }
 ```
 
-## Effect System Best Practices
+## Async/Await Best Practices
 
-- Use explicit effect types to track side effects
-- Compose effects using monadic operations
-- Handle errors explicitly through Result types
-- Manage resources safely with proper cleanup
-- Prefer async operations for I/O bound tasks
-- Keep pure and effectful code separate
+- Use `async` functions for any operation that performs I/O
+- Always `await` async function calls
+- Handle errors using `try/catch` or `Result<T, E>` types
+- Manage resources with proper cleanup in `finally` blocks
+- Keep pure computation separate from async operations
+- Use `async/await` consistently for all side effects
+
+## Sequential vs Concurrent Operations
+
+```kotlin
+// Sequential execution
+async fn processSequentially(ids: List<String>): List<User> => {
+  val users = []
+  for (id in ids) {
+    val user = await fetchUser(id)  // Wait for each one
+    users.append(user)
+  }
+  users
+}
+
+// Concurrent execution
+async fn processConcurrently(ids: List<String>): List<User> => {
+  val userPromises = ids.map(id => fetchUser(id))  // Start all
+  val users = await Promise.all(userPromises)      // Wait for all
+  users
+}
+```

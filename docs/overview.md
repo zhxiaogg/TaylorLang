@@ -17,17 +17,17 @@ A minimal, pure functional, and practical language for the JVM that emphasizes:
 
 ### Core Features
 - [Control Flow](./control-flow.md) - Conditionals, match expressions, and iteration
-- [Algebraic Data Types](./algebraic-data-types.md) - Sum types, product types, and ADTs
+- [Algebraic Data Types](./algebraic-data-types.md) - Union types, product types, and type aliases
 - [Pattern Matching](./pattern-matching.md) - Destructuring and exhaustive matching
 - [Collections](./collections.md) - Lists, maps, sets, and tuples
 
 ### Advanced Topics
 - [String Handling](./string-handling.md) - String literals, interpolation, and operations
 - [Annotations](./annotations.md) - Metadata system for types, functions, and fields
-- [Interfaces and Traits](./interfaces-and-traits.md) - Contract definition and implementation
-- [Null Safety](./null-safety.md) - Option types and safe nullable handling
+- [Interfaces](./interfaces.md) - Contract definition and implementation with impl blocks
+- [Types and Nullability](./types-and-nullability.md) - Union types, nullable types, and Result error handling
 - [Modules and Imports](./modules-and-imports.md) - Package system with visibility control
-- [Effects and I/O](./effects-and-io.md) - Effect system for managing side effects
+- [Effects and I/O](./effects-and-io.md) - Async/await system for side effects
 
 ### Examples and Guides
 - [Complete Examples](./examples.md) - Real-world usage examples and patterns
@@ -42,9 +42,12 @@ A minimal, pure functional, and practical language for the JVM that emphasizes:
 
 ## Key Language Features
 
-- **Unified Type System**: Use `type` for both sum types (enums) and product types (records)
+- **Union Type System**: Use `type A = B | C` for sum types and `type A(...)` for product types
+- **Null Safety**: Explicit nullable types with `?` syntax and safe navigation
 - **Pattern Matching**: Exhaustive `match` expressions for safe control flow
+- **Interface System**: Rust-like interfaces with `impl` blocks and static/instance methods
+- **Error Handling**: `Result<T, E>` types with `try` syntax for error propagation
+- **Async/Await**: Unified model for I/O operations and asynchronous code
 - **Package-based Modules**: Java-like package system with `pub` visibility control
 - **Annotation Support**: Rich metadata system with `@Annotation` syntax
 - **Immutability by Default**: `val` for immutable, `var` for mutable variables
-- **Functional Programming**: Higher-order functions, lambdas, and functional collections
