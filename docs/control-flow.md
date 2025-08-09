@@ -25,23 +25,17 @@ val grade = match score {
 
 ### Traditional Iteration with Effects
 ```kotlin
-fn printNumbers(numbers: List<Int>): IO<Unit> => {
+async fn printNumbers(numbers: List<Int>) => Unit {
   for (num in numbers) {
     println(num)
   }
 }
 ```
 
-### Functional Iteration (Preferred)
+### Functional Iteration
 ```kotlin
-// Functional iteration (preferred)
+// Functional iteration
 numbers.forEach(println)
 numbers.map(x => x * 2).filter(x => x > 10)
 ```
 
-## Control Flow Best Practices
-
-- Prefer expressions over statements when possible
-- Use pattern matching for complex conditional logic
-- Favor functional iteration methods over traditional loops
-- Leverage comprehensions for data transformation

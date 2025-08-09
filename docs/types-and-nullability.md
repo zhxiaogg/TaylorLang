@@ -12,13 +12,42 @@ Union types represent values that can be one of several types:
 // Union type syntax
 type User = SystemUser | Customer | Guest
 
-type Result<T, E> = Ok(T) | Error(E)
+// Standard library types (provided by stdlib)
+// type Result<T, E> = Ok(T) | Error(E)  // This is defined in stdlib
 
 type HttpResponse = 
   | Success(status: Int, body: String)
   | Redirect(url: String) 
   | ClientError(code: Int, message: String)
   | ServerError(code: Int, details: String)
+
+// Recursive union types
+type List<T> = Nil | Cons(head: T, tail: List<T>)
+
+type BinaryTree<T> = 
+  | Empty
+  | Node(value: T, left: BinaryTree<T>, right: BinaryTree<T>)
+```
+
+## Product Types
+
+Product types combine multiple values into a single type:
+
+```kotlin
+// Simple product types
+type Person(name: String, age: Int, email: String)
+type Point(x: Double, y: Double)
+
+// With default values
+type Config(
+  host: String = "localhost",
+  port: Int = 8080,
+  ssl: Boolean = false
+)
+
+// Generic product types
+type Pair<A, B>(first: A, second: B)
+type Box<T>(value: T)
 ```
 
 ## Type Aliases
@@ -108,7 +137,8 @@ match (user1, user2) {
 ### Result Type Definition
 
 ```kotlin
-type Result<T, E> = Ok(T) | Error(E)
+// Standard library type (provided by stdlib)
+// type Result<T, E> = Ok(T) | Error(E)  // This is defined in stdlib
 
 type DatabaseError = 
   | ConnectionFailed(message: String)
@@ -153,19 +183,19 @@ fn findUserWithLogging(id: String): Result<User?, DatabaseError> => {
 3. **Automatic propagation**: Errors bubble up automatically unless caught
 
 ```kotlin
-// ✅ Valid - function returns Result
+// Valid - function returns Result
 fn processUser(id: String): Result<String, DatabaseError> => {
   val user = try database.findUser(id)
   Ok(user?.name ?: "Anonymous")
 }
 
-// ❌ Compile error - function doesn't return Result
+// Compile error - function doesn't return Result
 fn processUser(id: String): String => {
   val user = try database.findUser(id)  // ERROR: No Result in return type
   user?.name ?: "Anonymous"
 }
 
-// ✅ Valid - explicit unwrap with error handling
+// Valid - explicit unwrap with error handling
 fn processUser(id: String): String => {
   match database.findUser(id) {
     case Ok(user) => user?.name ?: "Anonymous"
@@ -211,56 +241,3 @@ fn handleUserResult(result: UserResult) => match result {
 }
 ```
 
-## Best Practices
-
-### Prefer Explicit Nullability
-
-```kotlin
-// ✅ Good: Explicit nullable type
-fn findUser(id: String): User? 
-
-// ❌ Avoid: Hidden nullability
-fn findUser(id: String): User  // May actually return null
-```
-
-### Use Safe Navigation
-
-```kotlin
-// ✅ Good: Safe navigation chain
-val email = user?.profile?.contactInfo?.email
-
-// ❌ Avoid: Multiple null checks
-val email = if (user != null && user.profile != null && user.profile.contactInfo != null) {
-  user.profile.contactInfo.email
-} else {
-  null
-}
-```
-
-### Handle All Cases
-
-```kotlin
-// ✅ Good: Exhaustive matching
-match optionalValue {
-  case value: T => processValue(value)
-  case null => handleMissing()
-}
-
-// ❌ Avoid: Incomplete handling
-if (optionalValue != null) {
-  processValue(optionalValue)
-}
-// Missing null case handling
-```
-
-### Use Result Types for Errors
-
-```kotlin
-// ✅ Good: Explicit error handling
-fn parseUser(json: String): Result<User, ParseError>
-
-// ❌ Avoid: Exception-based errors in pure functions
-fn parseUser(json: String): User  // May throw exceptions
-```
-
-The type system ensures null safety and error handling through explicit types and exhaustive pattern matching, preventing runtime null pointer errors and unhandled exceptions.

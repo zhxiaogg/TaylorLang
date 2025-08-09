@@ -46,10 +46,3 @@ val split = "a,b,c".split(",")          // ["a", "b", "c"]
 val joined = ["a", "b", "c"].join(", ") // "a, b, c"
 ```
 
-## String Processing Best Practices
-
-- Use string interpolation for readable formatting
-- Leverage immutable string operations
-- Consider performance implications of string concatenation
-- Use multi-line strings for better readability of long text
-- Apply functional operations to string collections

@@ -3,16 +3,16 @@
 ## Web Service
 
 ```kotlin
-import { Server, Route } from "web/server"
-import { json, notFound, ok, badRequest } from "web/response"
-import { User, UserService } from "./services"
+import web.server.{Server, Route}
+import web.response.{json, notFound, ok, badRequest}
+import services.{User, UserService}
 
 type CreateUserRequest(name: String, email: String)
 
 // Interface definition
 interface UserServiceContract {
   async fn createUser(name: String, email: String): Result<User, String>
-  fn findUser(id: String): Option<User>
+  fn findUser(id: String): User?
 }
 
 // Type definition
@@ -27,13 +27,13 @@ impl UserService {
 
 // Interface implementation
 impl UserServiceContract for UserService {
-  async fn createUser(self, name: String, email: String): Result<User, String> => {
+  async fn createUser(name: String, email: String): Result<User, String> => {
     val user = User(id = generateId(), name = name, email = email)
     Ok(user)
   }
   
-  fn findUser(self, id: String): Option<User> => 
-    self.users.get(id)
+  fn findUser(id: String): User? => 
+    this.users.get(id)
 }
 
 val userService = UserService.new()
@@ -42,8 +42,8 @@ val routes = [
   Route.get("/users/{id}") { req =>
     val userId = req.params["id"]
     userService.findUser(userId) match {
-      case Some(user) => ok(json(user))
-      case None => notFound("User not found")
+      case user: User => ok(json(user))
+      case null => notFound("User not found")
     }
   },
   
@@ -56,7 +56,7 @@ val routes = [
   }
 ]
 
-fn main(): IO<Unit> => {
+async fn main() => {
   val server = Server(port = 8080, routes = routes)
   println("Server starting on port 8080...")
   server.start()
@@ -66,28 +66,32 @@ fn main(): IO<Unit> => {
 ## JSON Parser
 
 ```kotlin
-type Json {
-  Null,
-  Bool(Boolean),
-  Number(Double),
-  String(String),
-  Array(List<Json>),
-  Object(Map<String, Json>)
-}
+type Json = 
+  | Null
+  | Bool(Boolean)
+  | Number(Double)
+  | String(String)
+  | Array(List<Json>)
+  | Object(Map<String, Json>)
 
 fn parseJson(input: String): Result<Json, ParseError> => {
   // Implementation details...
 }
 
-fn getValue(json: Json, path: List<String>): Option<Json> => match (json, path) {
-  case (value, []) => Some(value)
+fn getValue(json: Json, path: List<String>): Json? => match (json, path) {
+  case (value, []) => value
   case (Object(map), [key, ...rest]) => 
-    map.get(key).flatMap(nextJson => getValue(nextJson, rest))
+    map.get(key) match {
+      case nextJson: Json => getValue(nextJson, rest)
+      case null => null
+    }
   case (Array(items), [indexStr, ...rest]) => 
-    parseNumber(indexStr).toOption()
-      .filter(index => index >= 0 && index < items.length)
-      .flatMap(index => getValue(items[index], rest))
-  case _ => None
+    parseNumber(indexStr) match {
+      case index: Int if index >= 0 && index < items.length =>
+        getValue(items[index], rest)
+      case _ => null
+    }
+  case _ => null
 }
 ```
 
@@ -112,7 +116,7 @@ fn topCategories(sales: List<Sale>, n: Int): List<String> => {
     .map((category, _) => category)
 }
 
-fn processReport(sales: List<Sale>): IO<Unit> => {
+async fn processReport(sales: List<Sale>) => {
   val totalRevenue = sales.map(sale => sale.amount).sum()
   val topThree = topCategories(sales, 3)
   
@@ -129,11 +133,10 @@ fn processReport(sales: List<Sale>): IO<Unit> => {
 type UserId(value: String)
 type Email(value: String)
 
-type UserStatus {
-  Active,
-  Inactive,
-  Suspended(reason: String, until: Date)
-}
+type UserStatus = 
+  | Active
+  | Inactive
+  | Suspended(reason: String, until: Date)
 
 type User(
   id: UserId,
@@ -150,10 +153,10 @@ fn activateUser(user: User): Result<User, String> => match user.status {
   case _ => Ok(user.copy(status = Active))
 }
 
-fn sendEmailTo(user: User, subject: String, body: String): IO<Result<Unit, EmailError>> => {
+async fn sendEmailTo(user: User, subject: String, body: String): Result<Unit, EmailError> => {
   match user.status {
-    case Active => Email.send(user.email, subject, body)
-    case _ => IO.pure(Error(UserNotActive))
+    case Active => await Email.send(user.email, subject, body)
+    case _ => Error(UserNotActive)
   }
 }
 ```

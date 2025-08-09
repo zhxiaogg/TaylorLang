@@ -16,18 +16,18 @@ While underlying filesystem and database operations might not be inherently asyn
 
 ```kotlin
 // Async functions use await for calling other async operations
-async fn fetchUser(id: String): User => {
-  val response = await http.get("/users/${id}")
-  response.json().as<User>()
+async fn fetchData(url: String): String => {
+  val response = await http.get(url)
+  response.text()
 }
 
-async fn processUsers(ids: List<String>): List<User> => {
-  val users = []
-  for (id in ids) {
-    val user = await fetchUser(id)
-    users.append(user)
+async fn processData(urls: List<String>): List<String> => {
+  val results = []
+  for (url in urls) {
+    val data = await fetchData(url)
+    results.append(data)
   }
-  users
+  results
 }
 ```
 
@@ -45,16 +45,16 @@ async fn processFile(path: String): String => {
 }
 
 // Database operations
-async fn findUser(id: String): User? => {
-  await database.query("SELECT * FROM users WHERE id = ?", id)
+async fn queryData(id: String): String? => {
+  await database.query("SELECT data FROM items WHERE id = ?", id)
 }
 ```
 
 ## Resource Management
 
 ```kotlin
-// Resource management with async/await
-async fn withDatabase<T>(operation: (Database) => T): T => {
+// Traditional resource management with async/await
+async fn withDatabase<T>(operation: (Database) => T): Result<T, IOError> => {
   val db = await Database.connect()
   try {
     await operation(db)
@@ -62,6 +62,16 @@ async fn withDatabase<T>(operation: (Database) => T): T => {
     await db.close()
   }
 }
+
+// Java-style try-with-resources
+async fn withDatabase<T>(operation: (Database) => T): Result<T, IOError> => {
+  try (val db = await Database.connect()) {
+    await operation(db)
+  }
+}
+```
+
+The try-with-resources syntax automatically closes resources that implement the `Closable` interface. The `Database.connect()` and `db.close()` operations return `Result<>` types for error handling.
 
 // Usage
 async fn getUserData(id: String): UserData => {
@@ -73,14 +83,6 @@ async fn getUserData(id: String): UserData => {
 }
 ```
 
-## Async/Await Best Practices
-
-- Use `async` functions for any operation that performs I/O
-- Always `await` async function calls
-- Handle errors using `try/catch` or `Result<T, E>` types
-- Manage resources with proper cleanup in `finally` blocks
-- Keep pure computation separate from async operations
-- Use `async/await` consistently for all side effects
 
 ## Sequential vs Concurrent Operations
 

@@ -104,10 +104,3 @@ type Person(
 // fn Person.fromJson(json: String): Person
 ```
 
-## Best Practices
-
-- Use descriptive annotation names that convey their purpose
-- Provide sensible default values for annotation parameters
-- Limit annotation scope using `appliesTo` constraints
-- Document annotation behavior and processing rules
-- Prefer compile-time processing over runtime reflection when possible

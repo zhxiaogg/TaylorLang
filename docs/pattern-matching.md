@@ -102,11 +102,3 @@ fn statusMessage(status: Status) => match status {
 }
 ```
 
-## Pattern Matching Best Practices
-
-- Always handle all cases for exhaustiveness
-- Use guards for complex conditions
-- Prefer specific patterns before general ones
-- Use type patterns for safe casting and deconstruction
-- Leverage partial matching with `...` for cleaner code
-- Keep patterns readable and focused

@@ -85,12 +85,3 @@ fn privateFunction() => "hidden"     // Package-private
 pub fn publicFunction() => "visible"  // Public
 ```
 
-## Package Best Practices
-
-- Organize related functionality into logical packages
-- Use descriptive package names that reflect their purpose
-- Mark only necessary items as `pub`
-- Prefer specific imports over wildcard imports
-- Use aliases to avoid naming conflicts
-- Keep package dependencies minimal and clear
-- Follow consistent naming conventions for packages

@@ -14,7 +14,7 @@ val empty: List<String> = []
 val doubled = numbers.map(x => x * 2)
 val evens = numbers.filter(x => x % 2 == 0)
 val sum = numbers.reduce((a, b) => a + b)
-val first = numbers.head()           // Option<Int>
+val first = numbers.head()           // Int?
 val tail = numbers.tail()            // List<Int>
 ```
 
@@ -37,7 +37,7 @@ val scores: Map<String, Int> = {
 
 ### Map Operations
 ```kotlin
-val alice_score = scores.get("Alice")    // Option<Int>
+val alice_score = scores.get("Alice")    // Int?
 val updated = scores.put("David", 88)    // Map<String, Int>
 val keys = scores.keys()                 // List<String>
 val values = scores.values()             // List<Int>
@@ -65,15 +65,8 @@ val nested = ((1, 2), (3, 4))
 val x = point._1
 val y = point._2
 
-// Destructuring (preferred)
+// Destructuring
 val (x, y) = point
 val (name, age, email) = person
 ```
 
-## Collection Best Practices
-
-- Use immutable collections by default
-- Prefer functional operations (map, filter, reduce) over loops
-- Choose the right collection type for your use case
-- Leverage destructuring for cleaner code
-- Use comprehensions for data transformation
