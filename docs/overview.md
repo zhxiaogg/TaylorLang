@@ -25,6 +25,10 @@ A minimal, pure functional, and practical language for the JVM with immutability
 ### Examples and Guides
 - [Complete Examples](./examples.md) - Real-world usage examples and patterns
 
+### Development and Planning
+- [Feature Gaps](./feature-gaps.md) - Missing features and implementation roadmap
+- [Implementation Plan](./implementation-plan.md) - Detailed plan for building TaylorLang iteratively
+
 ## Getting Started
 
 1. Start with [Basic Syntax](./basic-syntax.md) for fundamental language constructs
