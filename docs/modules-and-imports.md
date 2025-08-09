@@ -38,6 +38,7 @@ pub type Shape {
 
 ```kotlin
 // Import specific items from package
+import math.geometry.PI
 import math.geometry.{PI, area, Point}
 import std.list.{map, filter, reduce}
 
@@ -46,11 +47,7 @@ import std.json as JSON
 import std.http
 
 // Import all public items from package
-import math.geometry.*
-
-// Import from relative packages
-import models.{User, UserService}
-import utils.validation.validate
+import math.geometry.* as Geometry
 ```
 
 ## Package Usage

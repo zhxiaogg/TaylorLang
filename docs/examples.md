@@ -9,23 +9,34 @@ import { User, UserService } from "./services"
 
 type CreateUserRequest(name: String, email: String)
 
-// Service definition
-type UserService {
+// Interface definition
+interface UserServiceContract {
+  async fn createUser(name: String, email: String): Result<User, String>
+  fn findUser(id: String): Option<User>
+}
+
+// Type definition
+type UserService(
   users: Map<String, User>
+)
+
+// Implementation
+impl UserService {
+  fn new(): UserService => UserService(users = {})
 }
 
-fn UserService(): UserService => UserService(users = {})
-
-fn UserService.findUser(self, id: String): Option<User> => 
-  self.users.get(id)
-
-fn UserService.createUser(self, name: String, email: String): Result<User, String> => {
-  val user = User(id = generateId(), name = name, email = email)
-  val updated = self.users.put(user.id, user)
-  Ok(user)
+// Interface implementation
+impl UserServiceContract for UserService {
+  async fn createUser(self, name: String, email: String): Result<User, String> => {
+    val user = User(id = generateId(), name = name, email = email)
+    Ok(user)
+  }
+  
+  fn findUser(self, id: String): Option<User> => 
+    self.users.get(id)
 }
 
-val userService = UserService()
+val userService = UserService.new()
 
 val routes = [
   Route.get("/users/{id}") { req =>

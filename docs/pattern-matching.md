@@ -51,15 +51,41 @@ fn processListPattern<T>(list: List<T>) => match list {
 }
 ```
 
-## Variable Binding
+## Advanced Pattern Matching
 
-```rust
-fn analyzeList<T>(list: List<T>) => match list {
-  case [] => "Empty"
-  case [x] as singleton => "Single item list: ${singleton}"
-  case [first, ...rest] as fullList if rest.length > 5 => 
-    "Long list starting with ${first}, total length: ${fullList.length}"
-  case items => "Regular list with ${items.length} items"
+### Partial Field Matching
+```kotlin
+// Match only subset of fields using ...
+fn handleResponse(response: HttpResponse) => match response {
+  case Success(body, ...) => println("Success with body: ${body}")
+  case ClientError(code, ...) => println("Client error: ${code}")
+  case _ => println("Other response")
+}
+```
+
+### Type Pattern Matching
+```kotlin
+type HttpResponseBody {
+  SimpleTextBody(textBody: String),
+  JsonBody(data: Map<String, Any>),
+  BinaryBody(bytes: Array<Byte>)
+}
+
+fn processResponse(response: HttpResponse) => match response {
+  // Type matching
+  case Success(body: SimpleTextBody, ...) => println("Text response")
+  
+  // Type matching with alias
+  case Success(body: SimpleTextBody as textBody, ...) => 
+    println("Text: ${textBody.textBody}")
+  
+  // Type deconstruction
+  case Success(body: SimpleTextBody(textBody), ...) => 
+    println("Direct text access: ${textBody}")
+  
+  // Combined type deconstruction
+  case Success(status, SimpleTextBody(textBody)) => 
+    println("Status ${status}: ${textBody}")
 }
 ```
 
@@ -81,5 +107,6 @@ fn statusMessage(status: Status) => match status {
 - Always handle all cases for exhaustiveness
 - Use guards for complex conditions
 - Prefer specific patterns before general ones
-- Use variable binding to capture and reuse matched values
+- Use type patterns for safe casting and deconstruction
+- Leverage partial matching with `...` for cleaner code
 - Keep patterns readable and focused

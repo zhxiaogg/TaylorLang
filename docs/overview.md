@@ -24,6 +24,8 @@ A minimal, pure functional, and practical language for the JVM that emphasizes:
 ### Advanced Topics
 - [String Handling](./string-handling.md) - String literals, interpolation, and operations
 - [Annotations](./annotations.md) - Metadata system for types, functions, and fields
+- [Interfaces and Traits](./interfaces-and-traits.md) - Contract definition and implementation
+- [Null Safety](./null-safety.md) - Option types and safe nullable handling
 - [Modules and Imports](./modules-and-imports.md) - Package system with visibility control
 - [Effects and I/O](./effects-and-io.md) - Effect system for managing side effects
 
