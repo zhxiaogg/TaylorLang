@@ -9,29 +9,19 @@ val result = if (score > 90) "A"
             else if (score > 80) "B" 
             else if (score > 70) "C"
             else "F"
-
-// Ternary-style
-val status = isValid ? "active" : "inactive"
 ```
 
-### When Expressions
+### Match Expressions
 ```kotlin
-val grade = score when {
-  >= 90 => "A"
-  >= 80 => "B"
-  >= 70 => "C"
-  else => "F"
+val grade = match score {
+  case x if x >= 90 => "A"
+  case x if x >= 80 => "B"
+  case x if x >= 70 => "C"
+  case _ => "F"
 }
 ```
 
 ## Loops and Iteration
-
-### For Comprehensions
-```kotlin
-// For comprehensions
-val doubled = [for x in numbers => x * 2]
-val evens = [for x in numbers if x % 2 == 0 => x]
-```
 
 ### Traditional Iteration with Effects
 ```kotlin

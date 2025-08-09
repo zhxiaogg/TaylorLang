@@ -1,13 +1,22 @@
 # Modules and Imports
 
-## Module Definition
+## Package Structure and Visibility
 
-```javascript
+TaylorLang uses a package-based module system similar to Java. Code is organized into packages using folder structures, and visibility is controlled using access modifiers.
+
+### Package Declaration
+
+```kotlin
 // file: math/geometry.lang
+package math.geometry
 
-export val PI = 3.14159
+// Private by default - accessible within package
+val PRECISION = 0.0001
 
-export fn area(shape: Shape): Double => match shape {
+// Public - accessible from other packages
+pub val PI = 3.14159
+
+pub fn area(shape: Shape): Double => match shape {
   case Circle(radius) => PI * radius * radius
   case Rectangle(width, height) => width * height
   case Triangle(a, b, c) => {
@@ -16,9 +25,9 @@ export fn area(shape: Shape): Double => match shape {
   }
 }
 
-export data class Point(x: Double, y: Double)
+pub type Point(x: Double, y: Double)
 
-export enum Shape {
+pub type Shape {
   Circle(radius: Double),
   Rectangle(width: Double, height: Double),
   Triangle(a: Double, b: Double, c: Double)
@@ -27,24 +36,24 @@ export enum Shape {
 
 ## Import Statements
 
-```javascript
-// Import specific items
-import { PI, area, Point } from "math/geometry"
-import { map, filter, reduce } from "std/list"
+```kotlin
+// Import specific items from package
+import math.geometry.{PI, area, Point}
+import std.list.{map, filter, reduce}
 
-// Import with alias
-import json from "std/json" as JSON
-import http from "std/http"
+// Import entire package with alias
+import std.json as JSON
+import std.http
 
-// Import everything
-import * from "math/geometry" as Geometry
+// Import all public items from package
+import math.geometry.*
 
-// Relative imports
-import { User, UserService } from "./models"
-import { validate } from "../utils/validation"
+// Import from relative packages
+import models.{User, UserService}
+import utils.validation.validate
 ```
 
-## Module Usage
+## Package Usage
 
 ```kotlin
 // Using imported items
@@ -53,15 +62,38 @@ val circleArea = area(circle)
 
 val point = Point(10.0, 20.0)
 
+// Using aliased package
 val jsonString = JSON.stringify(data)
 val response = http.get("/api/users")
 ```
 
-## Module Best Practices
+## Visibility Rules
 
-- Organize related functionality into modules
-- Use descriptive module names that reflect their purpose
-- Export only what needs to be public
+### Default (Package-Private)
+- Items without visibility modifiers are accessible within the same package
+- Cannot be accessed from other packages
+
+### Public (`pub`)
+- Items marked with `pub` are accessible from other packages
+- Must be explicitly imported to be used
+
+```kotlin
+// math/internal.lang
+package math.internal
+
+val privateConstant = 42        // Only accessible within math.internal
+pub val publicConstant = 3.14   // Accessible from other packages
+
+fn privateFunction() => "hidden"     // Package-private
+pub fn publicFunction() => "visible"  // Public
+```
+
+## Package Best Practices
+
+- Organize related functionality into logical packages
+- Use descriptive package names that reflect their purpose
+- Mark only necessary items as `pub`
 - Prefer specific imports over wildcard imports
 - Use aliases to avoid naming conflicts
-- Keep module dependencies minimal and clear
+- Keep package dependencies minimal and clear
+- Follow consistent naming conventions for packages

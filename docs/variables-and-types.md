@@ -52,7 +52,7 @@ val [head, ...tail] = numbers
 
 ### Records
 ```kotlin
-data class Person(name: String, age: Int, email: String)
+type Person(name: String, age: Int, email: String)
 val person = Person("Alice", 30, "alice@example.com")
 val (name, age, email) = person.destructure()
 ```

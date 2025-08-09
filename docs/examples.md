@@ -2,12 +2,28 @@
 
 ## Web Service
 
-```typescript
+```kotlin
 import { Server, Route } from "web/server"
-import { json, notFound, ok } from "web/response"
+import { json, notFound, ok, badRequest } from "web/response"
 import { User, UserService } from "./services"
 
-data class CreateUserRequest(name: String, email: String)
+type CreateUserRequest(name: String, email: String)
+
+// Service definition
+type UserService {
+  users: Map<String, User>
+}
+
+fn UserService(): UserService => UserService(users = {})
+
+fn UserService.findUser(self, id: String): Option<User> => 
+  self.users.get(id)
+
+fn UserService.createUser(self, name: String, email: String): Result<User, String> => {
+  val user = User(id = generateId(), name = name, email = email)
+  val updated = self.users.put(user.id, user)
+  Ok(user)
+}
 
 val userService = UserService()
 
@@ -39,7 +55,7 @@ fn main(): IO<Unit> => {
 ## JSON Parser
 
 ```kotlin
-enum Json {
+type Json {
   Null,
   Bool(Boolean),
   Number(Double),
@@ -67,7 +83,7 @@ fn getValue(json: Json, path: List<String>): Option<Json> => match (json, path) 
 ## Functional Data Processing
 
 ```haskell
-data class Sale(id: String, amount: Double, category: String, date: String)
+type Sale(id: String, amount: Double, category: String, date: String)
 
 fn analyzesSales(sales: List<Sale>): Map<String, Double> => {
   sales
@@ -99,16 +115,16 @@ fn processReport(sales: List<Sale>): IO<Unit> => {
 
 ```kotlin
 // User management domain
-data class UserId(value: String)
-data class Email(value: String)
+type UserId(value: String)
+type Email(value: String)
 
-enum UserStatus {
+type UserStatus {
   Active,
   Inactive,
   Suspended(reason: String, until: Date)
 }
 
-data class User(
+type User(
   id: UserId,
   name: String,
   email: Email,

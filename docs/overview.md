@@ -16,16 +16,16 @@ A minimal, pure functional, and practical language for the JVM that emphasizes:
 - [Functions](./functions.md) - Function definitions, lambdas, and higher-order functions
 
 ### Core Features
-- [Control Flow](./control-flow.md) - Conditionals, loops, and iteration
-- [Algebraic Data Types](./algebraic-data-types.md) - Enums, data classes, and ADTs
+- [Control Flow](./control-flow.md) - Conditionals, match expressions, and iteration
+- [Algebraic Data Types](./algebraic-data-types.md) - Sum types, product types, and ADTs
 - [Pattern Matching](./pattern-matching.md) - Destructuring and exhaustive matching
 - [Collections](./collections.md) - Lists, maps, sets, and tuples
 
 ### Advanced Topics
 - [String Handling](./string-handling.md) - String literals, interpolation, and operations
-- [Modules and Imports](./modules-and-imports.md) - Module system and dependency management
+- [Annotations](./annotations.md) - Metadata system for types, functions, and fields
+- [Modules and Imports](./modules-and-imports.md) - Package system with visibility control
 - [Effects and I/O](./effects-and-io.md) - Effect system for managing side effects
-- [Java Interoperability](./java-interop.md) - Seamless integration with Java ecosystem
 
 ### Examples and Guides
 - [Complete Examples](./examples.md) - Real-world usage examples and patterns
@@ -35,4 +35,14 @@ A minimal, pure functional, and practical language for the JVM that emphasizes:
 1. Start with [Language Overview](./language-overview.md) to understand the core concepts
 2. Review [Basic Syntax](./basic-syntax.md) for fundamental constructs
 3. Explore [Variables and Types](./variables-and-types.md) and [Functions](./functions.md) for core programming constructs
-4. Check [Complete Examples](./examples.md) for practical usage patterns
+4. Learn [Algebraic Data Types](./algebraic-data-types.md) and [Pattern Matching](./pattern-matching.md) for powerful type modeling
+5. Check [Complete Examples](./examples.md) for practical usage patterns
+
+## Key Language Features
+
+- **Unified Type System**: Use `type` for both sum types (enums) and product types (records)
+- **Pattern Matching**: Exhaustive `match` expressions for safe control flow
+- **Package-based Modules**: Java-like package system with `pub` visibility control
+- **Annotation Support**: Rich metadata system with `@Annotation` syntax
+- **Immutability by Default**: `val` for immutable, `var` for mutable variables
+- **Functional Programming**: Higher-order functions, lambdas, and functional collections

@@ -1,9 +1,9 @@
 # Algebraic Data Types
 
-## Simple Enums
+## Simple Sum Types
 
 ```kotlin
-enum Status {
+type Status {
   Pending,
   InProgress,
   Completed,
@@ -11,20 +11,20 @@ enum Status {
 }
 ```
 
-## Enums with Associated Data
+## Sum Types with Associated Data
 
-```rust
-enum Result<T, E> {
+```kotlin
+type Result<T, E> {
   Ok(T),
   Error(E)
 }
 
-enum Option<T> {
+type Option<T> {
   Some(T),
   None
 }
 
-enum HttpResponse {
+type HttpResponse {
   Success(status: Int, body: String),
   Redirect(url: String),
   ClientError(code: Int, message: String),
@@ -32,36 +32,36 @@ enum HttpResponse {
 }
 ```
 
-## Complex ADTs with Named Fields
+## Complex Sum Types with Named Fields
 
 ```kotlin
-enum Shape {
+type Shape {
   Circle(radius: Double),
   Rectangle(width: Double, height: Double),
   Triangle(a: Double, b: Double, c: Double)
 }
 
-enum UserAction {
-  Login { username: String, timestamp: Long },
-  Logout { timestamp: Long },
-  UpdateProfile { field: String, newValue: String, timestamp: Long }
+type UserAction {
+  Login(username: String, timestamp: Long),
+  Logout(timestamp: Long),
+  UpdateProfile(field: String, newValue: String, timestamp: Long)
 }
 ```
 
 ## Recursive ADTs
 
-```haskell
-enum List<T> {
+```kotlin
+type List<T> {
   Nil,
   Cons(head: T, tail: List<T>)
 }
 
-enum BinaryTree<T> {
+type BinaryTree<T> {
   Empty,
   Node(value: T, left: BinaryTree<T>, right: BinaryTree<T>)
 }
 
-enum Json {
+type Json {
   Null,
   Bool(Boolean),
   Number(Double),
@@ -71,32 +71,33 @@ enum Json {
 }
 ```
 
-## Data Classes
+## Product Types
 
-### Simple Data Classes
+### Simple Product Types
 ```kotlin
-data class Person(name: String, age: Int, email: String)
-data class Point(x: Double, y: Double)
+type Person(name: String, age: Int, email: String)
+type Point(x: Double, y: Double)
 ```
 
 ### With Default Values
 ```kotlin
-data class Config(
+type Config(
   host: String = "localhost",
   port: Int = 8080,
   ssl: Boolean = false
 )
 ```
 
-### Generic Data Classes
+### Generic Product Types
 ```kotlin
-data class Pair<A, B>(first: A, second: B)
-data class Box<T>(value: T)
+type Pair<A, B>(first: A, second: B)
+type Box<T>(value: T)
 ```
 
 ## ADT Design Principles
 
-- Use enums for sum types (OR relationships)
-- Use data classes for product types (AND relationships)
+- Use sum types for OR relationships (one of many variants)
+- Use product types for AND relationships (combination of fields)
 - Leverage generics for reusable ADTs
 - Make invalid states unrepresentable through type design
+- Prefer consistent syntax with parentheses for parameters
