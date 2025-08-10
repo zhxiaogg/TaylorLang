@@ -4,6 +4,31 @@
 
 ### Critical Fixes - TypeChecker Refactoring
 
+#### Task: Fix 4 ConstraintCollectorTest Regressions
+**Status**: ✅ COMPLETED (2025-08-10)  
+**Assignee**: kotlin-java-engineer  
+**Component**: Type System - Constraint Collection
+**Effort**: Small (30 minutes)  
+**Priority**: CRITICAL
+
+**Description**: Fix regression introduced by optimization that skipped constraint generation for known numeric types.
+
+**Root Cause**: 
+- Optimization using `if (!isNumericType(type))` skipped constraints for INT literals
+- Tests expect constraints to always be generated for consistency
+- Created unpredictable behavior: INT+INT (0 constraints) vs x+INT (1 constraint)
+
+**Acceptance Criteria**:
+- ✅ Remove optimization that skips constraint generation
+- ✅ Always generate subtype constraints for arithmetic operations
+- ✅ Always generate subtype constraints for comparison operations
+- ✅ All 4 failing ConstraintCollectorTest cases pass
+- ✅ Original 8 test fixes remain working
+
+**Result**: Successfully removed optimization, all 39 ConstraintCollectorTest cases now passing.
+
+---
+
 #### Task: Fix Numeric Type Comparison Bug
 **Status**: ✅ COMPLETED (2025-08-10)  
 **Assignee**: kotlin-java-engineer  
@@ -232,7 +257,7 @@ fun isNumeric(type: Type): Boolean {
 ---
 
 #### Task: Integrate Type Inference with TypeChecker
-**Status**: 🚀 IN PROGRESS  
+**Status**: ✅ COMPLETED (2025-08-10)  
 **Assignee**: kotlin-java-engineer  
 **Component**: Type System - Inference  
 **Effort**: Medium (2-3 days)  
@@ -666,6 +691,13 @@ fun isNumeric(type: Type): Boolean {
 ---
 
 ## Completed Tasks
+
+### Sprint 3 (TypeChecker Refactoring & Test Fixes)
+
+- ✅ **Fix Numeric Type Comparison Bug** (2025-08-10): Fixed structural equality issues in BuiltinTypes causing arithmetic operation failures
+- ✅ **Split ExpressionTypeChecker** (2025-08-10): Refactored 881-line file into 4 compliant components under 500 lines each
+- ✅ **Fix Error Aggregation Consistency** (2025-08-10): Standardized error collection across all type checking visitors
+- ✅ **Fix ConstraintCollectorTest Regressions** (2025-08-10): Resolved 4 test failures by removing premature optimization
 
 ### Sprint 2 (Type System Enhancement)
 
