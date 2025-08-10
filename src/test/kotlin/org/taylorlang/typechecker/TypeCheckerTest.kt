@@ -4,6 +4,7 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.beInstanceOf
+import io.kotest.assertions.fail
 import org.taylorlang.ast.*
 import org.taylorlang.parser.TaylorLangParser
 import kotlinx.collections.immutable.persistentListOf
@@ -229,6 +230,137 @@ class TypeCheckerTest : StringSpec({
     // =============================================================================
     // Union Type and Pattern Matching Tests (TODO: Implement advanced type features)
     // =============================================================================
+
+    "should infer generic type parameters from constructor arguments" {
+        // Test cases that demonstrate the generic type inference bug
+        val testCases = listOf(
+            // Basic generic constructor with Int argument
+            Triple(
+                """
+                type Option<T> = Some(T) | None
+                val x = Some(42)
+                """.trimIndent(),
+                "x",
+                "Option<Int>"
+            ),
+            // Generic constructor with String argument  
+            Triple(
+                """
+                type Option<T> = Some(T) | None
+                val y = Some("hello")
+                """.trimIndent(),
+                "y", 
+                "Option<String>"
+            ),
+            // Zero-argument constructor (should work without inference)
+            Triple(
+                """
+                type Option<T> = Some(T) | None
+                val z = None
+                """.trimIndent(),
+                "z",
+                "Option<T>" // This might remain generic without inference context
+            ),
+            // Multi-parameter generic type
+            Triple(
+                """
+                type Result<T,E> = Ok(T) | Error(E)
+                val w = Ok(42)
+                """.trimIndent(),
+                "w",
+                "Result<Int, ?>" // E should remain unresolved without inference context
+            )
+        )
+        
+        testCases.forEach { (source, variableName, expectedTypeString) ->
+            println("=== Testing: $source ===")
+            
+            // Parse the source code
+            val program = parser.parse(source)
+                .getOrElse { error ->
+                    println("Parse error: $error")
+                    fail("Failed to parse source: $source")
+                }
+            
+            println("Parsed program: $program")
+            
+            // Type check the program
+            val result = typeChecker.typeCheck(program)
+            
+            result.fold(
+                onSuccess = { typedProgram ->
+                    println("Type checking succeeded")
+                    println("Typed statements: ${typedProgram.statements}")
+                    
+                    // Find the variable declaration we're testing
+                    val varDecl = typedProgram.statements
+                        .filterIsInstance<TypedStatement.VariableDeclaration>()
+                        .find { it.declaration.name == variableName }
+                    
+                    if (varDecl != null) {
+                        val actualType = varDecl.inferredType
+                        println("Variable '$variableName' has inferred type: $actualType")
+                        
+                        // For this test, we'll verify the type structure rather than exact string match
+                        // since type representation might vary
+                        when (expectedTypeString) {
+                            "Option<Int>" -> {
+                                actualType should beInstanceOf<Type.UnionType>()
+                                val unionType = actualType as Type.UnionType
+                                unionType.name shouldBe "Option"
+                                unionType.typeArguments.size shouldBe 1
+                                unionType.typeArguments[0] shouldBe BuiltinTypes.INT
+                            }
+                            "Option<String>" -> {
+                                actualType should beInstanceOf<Type.UnionType>()
+                                val unionType = actualType as Type.UnionType
+                                unionType.name shouldBe "Option"
+                                unionType.typeArguments.size shouldBe 1
+                                unionType.typeArguments[0] shouldBe BuiltinTypes.STRING
+                            }
+                            else -> {
+                                // For other cases, just verify it's a union type for now
+                                actualType should beInstanceOf<Type.UnionType>()
+                                println("Type verification for '$expectedTypeString' not fully implemented yet")
+                            }
+                        }
+                    } else {
+                        fail("Could not find variable declaration for '$variableName' in typed program")
+                    }
+                },
+                onFailure = { error ->
+                    println("Type checking failed with error: $error")
+                    println("Error details: ${error.stackTraceToString()}")
+                    
+                    // Print detailed debugging information
+                    when (error) {
+                        is TypeError.MultipleErrors -> {
+                            println("Multiple errors encountered:")
+                            error.errors.forEachIndexed { index, err ->
+                                println("  Error $index: $err")
+                            }
+                        }
+                        is TypeError.UnresolvedSymbol -> {
+                            println("Unresolved symbol: ${error.symbol}")
+                        }
+                        is TypeError.TypeMismatch -> {
+                            println("Type mismatch - Expected: ${error.expected}, Actual: ${error.actual}")
+                        }
+                        is TypeError.ArityMismatch -> {
+                            println("Arity mismatch - Expected: ${error.expected}, Actual: ${error.actual}")
+                        }
+                        else -> {
+                            println("Other error type: ${error::class.simpleName}")
+                        }
+                    }
+                    
+                    fail("Type checking should have succeeded for: $source")
+                }
+            )
+            
+            println("=== End test case ===\n")
+        }
+    }
 
     "should type check union type declarations" {
         val source = "type Option<T> = Some(T) | None"

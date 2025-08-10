@@ -1,6 +1,7 @@
 package org.taylorlang.typechecker
 
 import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toPersistentMap
@@ -449,11 +450,11 @@ class TypeChecker {
             ))
         }
         
-        // Type check each argument against corresponding parameter type
+        // Type check each argument to get their types for inference
         val typedArguments = mutableListOf<TypedExpression>()
+        val argumentTypes = mutableListOf<Type>()
         for (i in call.arguments.indices) {
             val argument = call.arguments[i]
-            val expectedType = functionSignature.parameterTypes[i]
             
             val argResult = typeCheckExpression(argument, context)
             if (argResult.isFailure) {
@@ -467,14 +468,46 @@ class TypeChecker {
             
             val typedArg = argResult.getOrThrow()
             typedArguments.add(typedArg)
+            argumentTypes.add(typedArg.type)
+        }
+        
+        // If this is a generic function, infer type arguments and substitute parameter types
+        val (actualParameterTypes, actualReturnType) = if (functionSignature.typeParameters.isNotEmpty()) {
+            val inferredTypeArgs = inferTypeArguments(
+                functionSignature.parameterTypes.toPersistentList(),
+                argumentTypes,
+                functionSignature.typeParameters
+            )
             
-            // Check if argument type is compatible with parameter type
-            if (!typesCompatible(typedArg.type, expectedType)) {
-                errors.add(TypeError.TypeMismatch(
-                    expected = expectedType,
-                    actual = typedArg.type,
-                    location = argument.sourceLocation
-                ))
+            val substitutedParamTypes = functionSignature.parameterTypes.map { paramType ->
+                substituteTypeParameters(paramType, functionSignature.typeParameters, inferredTypeArgs)
+            }
+            
+            val substitutedReturnType = substituteTypeParameters(
+                functionSignature.returnType, 
+                functionSignature.typeParameters, 
+                inferredTypeArgs
+            )
+            
+            Pair(substitutedParamTypes, substitutedReturnType)
+        } else {
+            Pair(functionSignature.parameterTypes, functionSignature.returnType)
+        }
+        
+        // Type check each argument against the (possibly substituted) parameter type
+        for (i in call.arguments.indices) {
+            if (i < typedArguments.size && i < actualParameterTypes.size) {
+                val typedArg = typedArguments[i]
+                val expectedType = actualParameterTypes[i]
+                
+                // Check if argument type is compatible with parameter type
+                if (!typesCompatible(typedArg.type, expectedType)) {
+                    errors.add(TypeError.TypeMismatch(
+                        expected = expectedType,
+                        actual = typedArg.type,
+                        location = call.arguments[i].sourceLocation
+                    ))
+                }
             }
         }
         
@@ -483,7 +516,7 @@ class TypeChecker {
             val typedCall = call.copy(
                 arguments = typedArguments.map { it.expression }.toPersistentList()
             )
-            Result.success(TypedExpression(typedCall, functionSignature.returnType))
+            Result.success(TypedExpression(typedCall, actualReturnType))
         } else {
             val error = if (errors.size == 1) {
                 errors.first()
@@ -510,7 +543,7 @@ class TypeChecker {
                         // Find the union type name from the context
                         val unionTypeName = context.types.entries.find { it.value == typeDef }?.key
                         if (unionTypeName != null) {
-                            // Type check constructor arguments
+                            // Type check constructor arguments first to get argument types
                             val expectedTypes = matchingVariant.fields
                             if (call.arguments.size != expectedTypes.size) {
                                 return Result.failure(TypeError.ArityMismatch(
@@ -520,29 +553,47 @@ class TypeChecker {
                                 ))
                             }
                             
-                            // Check each argument type
+                            // Type check arguments to get their types for inference
+                            val typedArguments = mutableListOf<Type>()
                             for (i in call.arguments.indices) {
                                 val argResult = typeCheckExpression(call.arguments[i], context)
                                 if (argResult.isFailure) {
                                     return argResult
                                 }
-                                val argType = argResult.getOrThrow().type
-                                if (!typesCompatible(argType, expectedTypes[i])) {
+                                typedArguments.add(argResult.getOrThrow().type)
+                            }
+                            
+                            // Infer type arguments from constructor call if generic
+                            val typeArguments = if (typeDef.typeParameters.isNotEmpty()) {
+                                inferTypeArguments(
+                                    matchingVariant.fields.toPersistentList(),
+                                    typedArguments,
+                                    typeDef.typeParameters
+                                )
+                            } else {
+                                persistentListOf<Type>()
+                            }
+                            
+                            // Now perform type checking with substituted parameter types
+                            for (i in call.arguments.indices) {
+                                val expectedType = if (typeDef.typeParameters.isNotEmpty()) {
+                                    substituteTypeParameters(
+                                        expectedTypes[i], 
+                                        typeDef.typeParameters, 
+                                        typeArguments
+                                    )
+                                } else {
+                                    expectedTypes[i]
+                                }
+                                
+                                val argType = typedArguments[i]
+                                if (!typesCompatible(argType, expectedType)) {
                                     return Result.failure(TypeError.TypeMismatch(
-                                        expected = expectedTypes[i],
+                                        expected = expectedType,
                                         actual = argType,
                                         location = call.arguments[i].sourceLocation
                                     ))
                                 }
-                            }
-                            
-                            // Return the union type with generic parameters if any
-                            val typeArguments = if (typeDef.typeParameters.isNotEmpty()) {
-                                // For now, we'll use Unit for unspecified type parameters
-                                // In a full implementation, we'd perform type inference
-                                typeDef.typeParameters.map { BuiltinTypes.UNIT }.toPersistentList()
-                            } else {
-                                persistentListOf()
                             }
                             
                             Type.UnionType(unionTypeName, typeArguments)
@@ -753,6 +804,141 @@ class TypeChecker {
     }
     
     // Helper functions
+    
+    /**
+     * Infers type arguments for generic type parameters based on constructor arguments.
+     * Uses basic inference by matching parameter types with argument types.
+     */
+    private fun inferTypeArguments(
+        parameterTypes: PersistentList<Type>,
+        argumentTypes: List<Type>,
+        typeParameters: List<String>
+    ): PersistentList<Type> {
+        val typeParameterMap = mutableMapOf<String, Type>()
+        
+        // For each parameter-argument pair, try to infer type parameter mappings
+        for (i in parameterTypes.indices) {
+            if (i < argumentTypes.size) {
+                val paramType = parameterTypes[i]
+                val argType = argumentTypes[i]
+                inferTypeParameterMapping(paramType, argType, typeParameterMap)
+            }
+        }
+        
+        // Build the type argument list in the same order as type parameters
+        return typeParameters.map { typeParam: String ->
+            typeParameterMap[typeParam] ?: BuiltinTypes.UNIT // Default to Unit if not inferred
+        }.toPersistentList()
+    }
+    
+    /**
+     * Recursively infers type parameter mappings from parameter type to argument type.
+     */
+    private fun inferTypeParameterMapping(
+        paramType: Type,
+        argType: Type,
+        typeParameterMap: MutableMap<String, Type>
+    ) {
+        when (paramType) {
+            is Type.NamedType -> {
+                // If paramType is a type parameter (T, U, etc.), map it to argType
+                if (paramType.name.length == 1 && paramType.name[0].isUpperCase()) {
+                    typeParameterMap[paramType.name] = argType
+                }
+            }
+            is Type.GenericType -> {
+                // Handle generic types with nested type parameters
+                if (argType is Type.GenericType && paramType.name == argType.name) {
+                    for (i in paramType.arguments.indices) {
+                        if (i < argType.arguments.size) {
+                            inferTypeParameterMapping(
+                                paramType.arguments[i],
+                                argType.arguments[i],
+                                typeParameterMap
+                            )
+                        }
+                    }
+                }
+            }
+            is Type.UnionType -> {
+                // Handle union types with nested type parameters
+                if (argType is Type.UnionType && paramType.name == argType.name) {
+                    for (i in paramType.typeArguments.indices) {
+                        if (i < argType.typeArguments.size) {
+                            inferTypeParameterMapping(
+                                paramType.typeArguments[i],
+                                argType.typeArguments[i],
+                                typeParameterMap
+                            )
+                        }
+                    }
+                }
+            }
+            // For other types, no inference needed
+            else -> { /* No-op */ }
+        }
+    }
+    
+    /**
+     * Substitutes type parameters in a type with concrete type arguments.
+     */
+    private fun substituteTypeParameters(
+        type: Type,
+        typeParameters: List<String>,
+        typeArguments: List<Type>
+    ): Type {
+        val substitutionMap = typeParameters.zip(typeArguments).toMap()
+        return substituteType(type, substitutionMap)
+    }
+    
+    /**
+     * Recursively substitutes type parameters in a type using the substitution map.
+     */
+    private fun substituteType(type: Type, substitutionMap: Map<String, Type>): Type {
+        return when (type) {
+            is Type.NamedType -> {
+                // Replace type parameter with concrete type if found in substitution map
+                substitutionMap[type.name] ?: type
+            }
+            is Type.GenericType -> {
+                // Recursively substitute type arguments
+                Type.GenericType(
+                    name = type.name,
+                    arguments = type.arguments.map { substituteType(it, substitutionMap) }.toPersistentList(),
+                    sourceLocation = type.sourceLocation
+                )
+            }
+            is Type.UnionType -> {
+                // Recursively substitute type arguments
+                Type.UnionType(
+                    name = type.name,
+                    typeArguments = type.typeArguments.map { substituteType(it, substitutionMap) }.toPersistentList(),
+                    sourceLocation = type.sourceLocation
+                )
+            }
+            is Type.NullableType -> {
+                Type.NullableType(
+                    baseType = substituteType(type.baseType, substitutionMap),
+                    sourceLocation = type.sourceLocation
+                )
+            }
+            is Type.TupleType -> {
+                Type.TupleType(
+                    elementTypes = type.elementTypes.map { substituteType(it, substitutionMap) }.toPersistentList(),
+                    sourceLocation = type.sourceLocation
+                )
+            }
+            is Type.FunctionType -> {
+                Type.FunctionType(
+                    parameterTypes = type.parameterTypes.map { substituteType(it, substitutionMap) }.toPersistentList(),
+                    returnType = substituteType(type.returnType, substitutionMap),
+                    sourceLocation = type.sourceLocation
+                )
+            }
+            // For primitive types, return as-is
+            is Type.PrimitiveType -> type
+        }
+    }
     
     private fun createBuiltinContext(): TypeContext {
         return TypeContext(
