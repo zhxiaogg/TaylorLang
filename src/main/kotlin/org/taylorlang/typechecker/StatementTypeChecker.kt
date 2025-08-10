@@ -83,6 +83,49 @@ class StatementTypeChecker(
         }
     }
     
+    override fun visitExpression(node: Expression): Result<TypedStatement> {
+        // Expressions as statements should be wrapped in ExpressionStatement
+        return visitExpressionStatement(node)
+    }
+    
+    // Override all expression visit methods to delegate to visitExpressionStatement
+    // This ensures that any expression used as a statement gets properly wrapped
+    override fun visitFunctionCall(node: FunctionCall): Result<TypedStatement> {
+        return visitExpressionStatement(node)
+    }
+    
+    override fun visitBinaryOp(node: BinaryOp): Result<TypedStatement> {
+        return visitExpressionStatement(node)
+    }
+    
+    override fun visitUnaryOp(node: UnaryOp): Result<TypedStatement> {
+        return visitExpressionStatement(node)
+    }
+    
+    override fun visitIdentifier(node: Identifier): Result<TypedStatement> {
+        return visitExpressionStatement(node)
+    }
+    
+    override fun visitLiteral(node: Literal): Result<TypedStatement> {
+        return visitExpressionStatement(node)
+    }
+    
+    override fun visitConstructorCall(node: ConstructorCall): Result<TypedStatement> {
+        return visitExpressionStatement(node)
+    }
+    
+    override fun visitIfExpression(node: IfExpression): Result<TypedStatement> {
+        return visitExpressionStatement(node)
+    }
+    
+    override fun visitMatchExpression(node: MatchExpression): Result<TypedStatement> {
+        return visitExpressionStatement(node)
+    }
+    
+    override fun visitBlockExpression(node: BlockExpression): Result<TypedStatement> {
+        return visitExpressionStatement(node)
+    }
+    
     /**
      * Visit an expression as a statement.
      * This creates an expression statement wrapper.

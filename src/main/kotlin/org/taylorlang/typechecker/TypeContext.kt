@@ -215,8 +215,20 @@ data class TypeContext(
                 TypeDefinition.UnionTypeDef(emptyList(), emptyList()) 
             }
             
+            // Add builtin functions
+            // Note: For now, we'll model println as polymorphic accepting any single argument
+            // In a real implementation, we'd want proper function overloading support
+            val builtinFunctions = mapOf(
+                "println" to FunctionSignature(
+                    typeParameters = listOf("T"), // Generic type parameter
+                    parameterTypes = listOf(Type.NamedType("T")),
+                    returnType = BuiltinTypes.UNIT
+                )
+            )
+            
             return TypeContext(
-                types = primitiveTypeDefs.toPersistentMap()
+                types = primitiveTypeDefs.toPersistentMap(),
+                functions = builtinFunctions.toPersistentMap()
             )
         }
         
