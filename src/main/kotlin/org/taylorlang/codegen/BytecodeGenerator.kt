@@ -157,8 +157,21 @@ class BytecodeGenerator {
             when (statement) {
                 is TypedStatement.ExpressionStatement -> {
                     generateExpression(statement.expression)
-                    // Pop result if it's not void
-                    if (getJvmType(statement.expression.type) != "V") {
+                    // Pop result if it's not void - need to check if expression returns a value
+                    val shouldPop = when (statement.expression.expression) {
+                        is FunctionCall -> {
+                            val call = statement.expression.expression as FunctionCall
+                            // println returns void, so no need to pop
+                            if (call.target is Identifier && call.target.name == "println") {
+                                false
+                            } else {
+                                getJvmType(statement.expression.type) != "V"
+                            }
+                        }
+                        else -> getJvmType(statement.expression.type) != "V"
+                    }
+                    
+                    if (shouldPop) {
                         methodVisitor!!.visitInsn(POP)
                     }
                 }
@@ -295,45 +308,48 @@ class BytecodeGenerator {
      * Generate code for binary operations
      */
     private fun generateBinaryOperation(binaryOp: BinaryOp, resultType: Type) {
-        // Generate left operand (assuming TypedExpression wrapper)
+        // Determine the operand type by inspecting the operands
+        val operandType = determineOperandType(binaryOp, resultType)
+        
+        // Generate left operand
         when (val left = binaryOp.left) {
             is Literal.IntLiteral -> methodVisitor!!.visitLdcInsn(left.value)
             is Literal.FloatLiteral -> methodVisitor!!.visitLdcInsn(left.value)
-            else -> generateExpression(TypedExpression(left, resultType))
+            else -> generateExpression(TypedExpression(left, operandType))
         }
         
         // Generate right operand
         when (val right = binaryOp.right) {
             is Literal.IntLiteral -> methodVisitor!!.visitLdcInsn(right.value)
             is Literal.FloatLiteral -> methodVisitor!!.visitLdcInsn(right.value)
-            else -> generateExpression(TypedExpression(right, resultType))
+            else -> generateExpression(TypedExpression(right, operandType))
         }
         
-        // Generate operation
+        // Generate operation based on operand type
         when (binaryOp.operator) {
             BinaryOperator.PLUS -> {
-                if (isIntegerType(resultType)) {
+                if (isIntegerType(operandType)) {
                     methodVisitor!!.visitInsn(IADD)
                 } else {
                     methodVisitor!!.visitInsn(DADD)
                 }
             }
             BinaryOperator.MINUS -> {
-                if (isIntegerType(resultType)) {
+                if (isIntegerType(operandType)) {
                     methodVisitor!!.visitInsn(ISUB)
                 } else {
                     methodVisitor!!.visitInsn(DSUB)
                 }
             }
             BinaryOperator.MULTIPLY -> {
-                if (isIntegerType(resultType)) {
+                if (isIntegerType(operandType)) {
                     methodVisitor!!.visitInsn(IMUL)
                 } else {
                     methodVisitor!!.visitInsn(DMUL)
                 }
             }
             BinaryOperator.DIVIDE -> {
-                if (isIntegerType(resultType)) {
+                if (isIntegerType(operandType)) {
                     methodVisitor!!.visitInsn(IDIV)
                 } else {
                     methodVisitor!!.visitInsn(DDIV)
@@ -343,6 +359,32 @@ class BytecodeGenerator {
                 // Unsupported operation - just add for now
                 methodVisitor!!.visitInsn(IADD)
             }
+        }
+    }
+    
+    /**
+     * Determine the operand type for binary operations
+     */
+    private fun determineOperandType(binaryOp: BinaryOp, resultType: Type): Type {
+        // For arithmetic operations with integer literals, always use int
+        return when {
+            // If either operand is a float/double literal, use double
+            binaryOp.left is Literal.FloatLiteral || binaryOp.right is Literal.FloatLiteral -> BuiltinTypes.DOUBLE
+            // For integer literals and nested binary operations with integers, use int
+            isIntegerExpression(binaryOp.left) && isIntegerExpression(binaryOp.right) -> BuiltinTypes.INT
+            // Default to int for arithmetic operations
+            else -> BuiltinTypes.INT
+        }
+    }
+    
+    /**
+     * Check if an expression evaluates to an integer
+     */
+    private fun isIntegerExpression(expr: Expression): Boolean {
+        return when (expr) {
+            is Literal.IntLiteral -> true
+            is BinaryOp -> isIntegerExpression(expr.left) && isIntegerExpression(expr.right)
+            else -> false
         }
     }
     
@@ -381,19 +423,43 @@ class BytecodeGenerator {
             // Handle println specially
             methodVisitor!!.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;")
             
-            // Generate arguments
-            if (call.arguments.isNotEmpty()) {
+            // Generate arguments and determine the correct method signature
+            val methodDescriptor = if (call.arguments.isNotEmpty()) {
                 val arg = call.arguments[0]
-                generateExpression(TypedExpression(arg, BuiltinTypes.STRING))
+                
+                // Infer the argument type - we need to determine this properly
+                val argType = when (arg) {
+                    is Literal.IntLiteral -> BuiltinTypes.INT
+                    is Literal.FloatLiteral -> BuiltinTypes.DOUBLE
+                    is Literal.BooleanLiteral -> BuiltinTypes.BOOLEAN
+                    is Literal.StringLiteral -> BuiltinTypes.STRING
+                    is BinaryOp -> {
+                        // For binary operations, determine the result type
+                        if (isIntegerExpression(arg)) BuiltinTypes.INT else BuiltinTypes.DOUBLE
+                    }
+                    else -> BuiltinTypes.INT // Default to int for expressions
+                }
+                
+                generateExpression(TypedExpression(arg, argType))
+                
+                // Map to appropriate PrintStream.println overload
+                when (argType) {
+                    BuiltinTypes.INT -> "(I)V"
+                    BuiltinTypes.DOUBLE -> "(D)V"
+                    BuiltinTypes.BOOLEAN -> "(Z)V"
+                    BuiltinTypes.STRING -> "(Ljava/lang/String;)V"
+                    else -> "(Ljava/lang/Object;)V"
+                }
             } else {
                 methodVisitor!!.visitLdcInsn("")
+                "(Ljava/lang/String;)V"
             }
             
             methodVisitor!!.visitMethodInsn(
                 INVOKEVIRTUAL,
                 "java/io/PrintStream",
                 "println",
-                "(Ljava/lang/String;)V",
+                methodDescriptor,
                 false
             )
         } else {
