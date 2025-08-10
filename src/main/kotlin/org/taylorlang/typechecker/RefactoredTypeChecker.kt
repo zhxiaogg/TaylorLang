@@ -250,6 +250,7 @@ class RefactoredTypeChecker(
         return strategy.typeCheckExpressionWithExpected(expression, expectedType, context)
     }
     
+    
     // =============================================================================
     // Companion Object - Factory Methods
     // =============================================================================

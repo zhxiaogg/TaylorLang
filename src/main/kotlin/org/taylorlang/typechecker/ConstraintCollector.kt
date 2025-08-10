@@ -982,14 +982,9 @@ class ConstraintCollector {
                 // We generate explicit numeric type constraints for operands
                 val constraints = mutableListOf<Constraint>()
                 
-                // For INT literals, we can directly promote without constraints
-                // For other types, we add constraints that they must be numeric
-                if (!isNumericType(leftType)) {
-                    constraints.add(Constraint.Subtype(leftType, BuiltinTypes.DOUBLE, location))
-                }
-                if (!isNumericType(rightType)) {
-                    constraints.add(Constraint.Subtype(rightType, BuiltinTypes.DOUBLE, location))
-                }
+                // Always generate subtype constraints for consistent behavior
+                constraints.add(Constraint.Subtype(leftType, BuiltinTypes.DOUBLE, location))
+                constraints.add(Constraint.Subtype(rightType, BuiltinTypes.DOUBLE, location))
                 
                 val resultType = BuiltinTypes.DOUBLE // All arithmetic results are DOUBLE
                 Pair(resultType, ConstraintSet.fromCollection(constraints))
@@ -1000,12 +995,9 @@ class ConstraintCollector {
                 // Comparison operations: require numeric types, result is Boolean
                 val constraints = mutableListOf<Constraint>()
                 
-                if (!isNumericType(leftType)) {
-                    constraints.add(Constraint.Subtype(leftType, BuiltinTypes.DOUBLE, location))
-                }
-                if (!isNumericType(rightType)) {
-                    constraints.add(Constraint.Subtype(rightType, BuiltinTypes.DOUBLE, location))
-                }
+                // Always generate subtype constraints for consistent behavior
+                constraints.add(Constraint.Subtype(leftType, BuiltinTypes.DOUBLE, location))
+                constraints.add(Constraint.Subtype(rightType, BuiltinTypes.DOUBLE, location))
                 
                 Pair(BuiltinTypes.BOOLEAN, ConstraintSet.fromCollection(constraints))
             }
