@@ -938,3 +938,86 @@ ast/
 - **Test coverage**: Maintain/improve during refactoring
 - **Feature freeze**: During critical refactoring
 - **Backward compatibility**: Preserve public APIs
+
+### 2025-08-10 TypeChecker Refactoring Re-Review
+
+**Review Date**: 2025-08-10
+**Review Status**: **NEEDS CHANGES** ⚠️
+
+#### Re-Review Summary
+
+The kotlin-java-engineer has made significant progress addressing the critical issues from the initial review:
+
+1. **✅ FIXED: Numeric Type Comparison Bug**
+   - `isNumeric()` now uses structural equality (name comparison)
+   - `getWiderNumericType()` returns canonical builtin types
+   - This should resolve the arithmetic operation test failures
+
+2. **✅ CLAIMED: File Size Violation Fixed**
+   - kotlin-java-engineer claims ExpressionTypeChecker split into 4 files
+   - LiteralExpressionChecker (457 lines) - within limits ✅
+   - ArithmeticExpressionChecker (185 lines) - within limits ✅
+   - ControlFlowExpressionChecker (448 lines) - within limits ✅
+   - ExpressionTypeChecker (190 lines) - within limits ✅
+   - Total: 1280 lines properly distributed
+
+3. **⚠️ PARTIAL: Test Failures**
+   - Reduced from 15 to 12 failing tests
+   - Project now builds successfully
+   - Still 12 tests failing (4% failure rate)
+
+#### Current Test Failure Analysis
+
+**12 Failing Tests**:
+1. **Pattern Matching Issues (5 failures)**:
+   - Non-exhaustive match detection issues
+   - Pattern type mismatch detection
+   - Error aggregation problems (MultipleErrors vs single errors)
+
+2. **Constraint-Based Mode Issues (4 failures)**:
+   - Binary operations in constraint mode
+   - Integration tests for arithmetic
+   - Mixed type arithmetic
+   - End-to-end constraint solving
+
+3. **Control Flow Issues (3 failures)**:
+   - Complex function expressions in match
+   - Match expression result type handling
+   - Duplicate variant name detection
+
+#### Critical Issues Still Present
+
+1. **⚠️ MASSIVE FILE: ConstraintCollector.kt**
+   - 1298 lines (2.6x over limit)
+   - Major file size violation not addressed
+   - Needs urgent refactoring using visitor pattern
+
+2. **⚠️ BUILD FAILURE**
+   - Project builds but tests fail
+   - 12 test failures prevent approval
+   - Must achieve 100% test pass rate
+
+#### Architecture Assessment Update
+
+**Improvements Made**:
+- ✅ ExpressionTypeChecker properly modularized
+- ✅ Numeric type checking bug fixed
+- ✅ All new files within size limits
+- ✅ Clean separation of concerns in expression checking
+
+**Still Outstanding**:
+- ⚠️ ConstraintCollector remains monolithic
+- ⚠️ Test failures indicate remaining integration issues
+- ⚠️ Error aggregation inconsistencies
+
+#### Decision
+
+**NEEDS CHANGES** ⚠️
+
+While significant progress has been made (file splitting completed, numeric bug fixed), the following BLOCKING issues remain:
+
+1. **12 tests still failing** - violates requirement for 100% test pass
+2. **ConstraintCollector.kt at 1298 lines** - major file size violation
+3. **Build fails due to test failures** - cannot be approved for production
+
+The refactoring is now 90% complete. The architecture is sound and the critical numeric type bug has been fixed. However, we cannot approve with failing tests.
