@@ -2,6 +2,111 @@
 
 ## Current Sprint (Active Development)
 
+### Critical Fixes - TypeChecker Refactoring
+
+#### Task: Fix Numeric Type Comparison Bug
+**Status**: 🔴 CRITICAL - BLOCKING  
+**Assignee**: kotlin-java-engineer  
+**Component**: Type System  
+**Effort**: Small (1 hour)  
+**Priority**: IMMEDIATE
+
+**Description**: Fix the type comparison bug in BuiltinTypes that causes arithmetic operations to fail.
+
+**Root Cause**: 
+- `isNumeric()` uses object identity (`contains`) instead of structural equality
+- Types with different source locations are incorrectly considered different
+- Causes 5+ test failures for binary operations
+
+**Acceptance Criteria**:
+- ✅ Fix `isNumeric()` to use structural equality
+- ✅ Fix `getWiderNumericType()` to use structural equality  
+- ✅ Fix all similar type comparison methods
+- ✅ All arithmetic operation tests pass
+- ✅ No regression in other tests
+
+**Implementation**:
+```kotlin
+// Change from:
+fun isNumeric(type: Type): Boolean {
+    return numericTypes.contains(type)  // BAD: uses object identity
+}
+
+// To:
+fun isNumeric(type: Type): Boolean {
+    return numericTypes.any { it.structurallyEquals(type) }  // GOOD: structural equality
+}
+```
+
+---
+
+#### Task: Split ExpressionTypeChecker Into Smaller Components
+**Status**: 🔴 CRITICAL - BLOCKING  
+**Assignee**: kotlin-java-engineer  
+**Component**: Type System  
+**Effort**: Medium (4 hours)  
+**Priority**: IMMEDIATE
+
+**Description**: Split the 881-line ExpressionTypeChecker.kt into smaller focused components to comply with 500-line limit.
+
+**Current Violation**:
+- ExpressionTypeChecker.kt: 881 lines (381 lines over limit)
+- Violates code review guidelines
+
+**Proposed Split**:
+1. **LiteralTypeChecker.kt** (~150 lines)
+   - Handle all literal type inference
+   - Integer, float, string, boolean literals
+   
+2. **OperatorTypeChecker.kt** (~200 lines)
+   - Binary operators (arithmetic, comparison, logical)
+   - Unary operators
+   - Type promotion logic
+   
+3. **ControlFlowTypeChecker.kt** (~200 lines)  
+   - If expressions
+   - Match expressions
+   - Block expressions
+   
+4. **CallTypeChecker.kt** (~200 lines)
+   - Function calls
+   - Constructor calls
+   - Property access
+   
+5. **ExpressionTypeChecker.kt** (~130 lines)
+   - Coordinator/facade
+   - Delegates to specialized checkers
+
+**Acceptance Criteria**:
+- ✅ No file exceeds 500 lines
+- ✅ Each file has single responsibility
+- ✅ All tests continue to pass
+- ✅ Clean delegation pattern
+
+---
+
+#### Task: Fix Error Aggregation Consistency
+**Status**: 🟡 HIGH PRIORITY  
+**Assignee**: kotlin-java-engineer  
+**Component**: Type System  
+**Effort**: Small (2 hours)  
+**Priority**: HIGH
+
+**Description**: Standardize error aggregation strategy across all type checking visitors.
+
+**Issues**:
+- 4 tests expect MultipleErrors but receive single errors
+- Inconsistent error collection across visitors
+- Test expectations don't match implementation
+
+**Acceptance Criteria**:
+- ✅ Define clear rules for when to use MultipleErrors
+- ✅ Apply rules consistently across all visitors
+- ✅ Fix failing tests related to error aggregation
+- ✅ Document error aggregation strategy
+
+---
+
 ### High Priority
 
 #### Task: Complete Union Type Implementation
