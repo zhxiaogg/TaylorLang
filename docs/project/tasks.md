@@ -87,13 +87,14 @@
 ---
 
 #### Task: Implement Unification Algorithm
-**Status**: Planned  
-**Assignee**: Unassigned  
+**Status**: 🚀 IN PROGRESS  
+**Assignee**: kotlin-java-engineer  
 **Component**: Type System - Inference  
 **Effort**: Medium (2-3 days)  
-**Dependencies**: Constraint Collection
+**Dependencies**: ✅ Constraint Collection (COMPLETED)
+**Design Doc**: [Unification Algorithm Design](../designs/unification-algorithm.md)
 
-**Description**: Implement the unification algorithm to solve collected type constraints.
+**Description**: Implement the unification algorithm to solve collected type constraints and produce type substitutions.
 
 **Acceptance Criteria**:
 - Basic unification for equality constraints

@@ -4,7 +4,7 @@ This directory contains technical design documents for TaylorLang components.
 
 ## Design Documents
 
-<!-- New design documents will be linked here by @agent-tech-lead-architect -->
+- [Unification Algorithm](./unification-algorithm.md) - Type constraint solving and substitution generation for type inference
 
 ## Guidelines
 
