@@ -5,7 +5,7 @@
 ### Critical Fixes - TypeChecker Refactoring
 
 #### Task: Fix Numeric Type Comparison Bug
-**Status**: 🔴 CRITICAL - BLOCKING  
+**Status**: ✅ COMPLETED (2025-08-10)  
 **Assignee**: kotlin-java-engineer  
 **Component**: Type System  
 **Effort**: Small (1 hour)  
@@ -41,7 +41,7 @@ fun isNumeric(type: Type): Boolean {
 ---
 
 #### Task: Split ExpressionTypeChecker Into Smaller Components
-**Status**: 🔴 CRITICAL - BLOCKING  
+**Status**: ✅ COMPLETED (2025-08-10)  
 **Assignee**: kotlin-java-engineer  
 **Component**: Type System  
 **Effort**: Medium (4 hours)  
@@ -86,7 +86,7 @@ fun isNumeric(type: Type): Boolean {
 ---
 
 #### Task: Fix Error Aggregation Consistency
-**Status**: 🟡 HIGH PRIORITY  
+**Status**: ✅ COMPLETED (2025-08-10)  
 **Assignee**: kotlin-java-engineer  
 **Component**: Type System  
 **Effort**: Small (2 hours)  
@@ -260,6 +260,48 @@ fun isNumeric(type: Type): Boolean {
 - Fallback to explicit checking when inference fails
 - Preserve backwards compatibility
 - Add debug mode to show constraint solving steps
+
+---
+
+### Follow-Up Tasks - TypeChecker Refactoring
+
+#### Task: Fix Remaining Constraint-Based Mode Test Failures
+**Status**: 🟠 MEDIUM PRIORITY  
+**Assignee**: TBD  
+**Component**: Type System - Inference  
+**Effort**: Small (1-2 days)  
+**Priority**: MEDIUM
+
+**Description**: Fix 6 remaining test failures in constraint-based type checking mode.
+
+**Issues to Fix**:
+- Binary operations not working in constraint mode (2 tests)
+- Unification integration test failures for arithmetic (4 tests)
+- Root cause appears to be numeric type promotion in constraint collector
+
+**Acceptance Criteria**:
+- All ConstraintBasedTypeCheckerTest tests pass
+- All UnificationIntegrationTest tests pass
+- No regression in other tests
+
+---
+
+#### Task: Fix Pattern Matching Edge Cases
+**Status**: 🟠 MEDIUM PRIORITY  
+**Assignee**: TBD  
+**Component**: Type System  
+**Effort**: Small (1 day)  
+**Priority**: MEDIUM
+
+**Description**: Fix 2 remaining pattern matching test failures.
+
+**Issues to Fix**:
+- Simple match expression type checking
+- Constructor pattern arity validation
+
+**Acceptance Criteria**:
+- Both TypeCheckerTest pattern matching tests pass
+- No regression in other pattern matching tests
 
 ---
 

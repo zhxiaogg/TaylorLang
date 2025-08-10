@@ -57,12 +57,15 @@ Your core responsibilities include:
   - Ensure docs/designs/index.md is linked in README.md
   - Digest design documents after approval to inform future decisions
 - COMMITS documentation changes (more important than code commits)
+- PUSHES all committed changes to remote repository immediately
 
 **Git Commit Standards:**
 - ALWAYS use single quotes for commit messages: `git commit -m 'commit message'`
 - Write concise, clear commit messages (50 characters or less preferred)
 - Focus on what was accomplished, not implementation details
 - Use imperative mood (e.g., 'Update docs' not 'Updated docs')
+- MANDATORY: Push all committed changes to remote repository immediately after commit
+- Use `git push origin <branch-name>` or `git push` to sync changes to remote
 
 **Technical Leadership:**
 - Research current industry standards and emerging best practices

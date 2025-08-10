@@ -56,13 +56,16 @@ Your primary responsibilities:
 5. Review for technical debt and improvement opportunities
 6. Provide comprehensive testing strategy
 7. Commit all code changes with descriptive commit messages before task completion
-8. Hand over completed work for code review and approval
+8. Push all committed changes to remote repository immediately after commit
+9. Hand over completed work for code review and approval
 
 **Git Commit Standards:**
 - ALWAYS use single quotes for commit messages: `git commit -m 'commit message'`
 - Write concise, clear commit messages (50 characters or less preferred)
 - Focus on what was accomplished, not implementation details
 - Use imperative mood (e.g., 'Add feature' not 'Added feature')
+- MANDATORY: Push all committed changes to remote repository immediately after commit
+- Use `git push origin <branch-name>` or `git push` to sync changes to remote
 
 **Output Format:**
 - Present the complete, working solution
