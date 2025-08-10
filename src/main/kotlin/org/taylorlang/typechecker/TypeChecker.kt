@@ -1,6 +1,7 @@
 package org.taylorlang.typechecker
 
 import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toPersistentMap
@@ -159,7 +160,13 @@ class TypeChecker {
                     val signature = createFunctionSignature(statement, ctx)
                         .fold(
                             onSuccess = { it },
-                            onFailure = { errors.addAll(listOf(TypeError.InvalidOperation(it.message ?: "Unknown error", emptyList(), null))); null }
+                            onFailure = { error ->
+                                errors.addAll(listOf(when (error) {
+                                    is TypeError -> error
+                                    else -> TypeError.InvalidOperation(error.message ?: "Unknown error", emptyList(), null)
+                                }))
+                                null
+                            }
                         )
                     if (signature != null) {
                         ctx.withFunction(statement.name, signature)
@@ -175,8 +182,11 @@ class TypeChecker {
         val typedStatements = program.statements.mapNotNull { statement ->
             typeCheckStatement(statement, contextWithDeclarations).fold(
                 onSuccess = { it },
-                onFailure = { 
-                    errors.add(TypeError.InvalidOperation(it.message ?: "Unknown error", emptyList(), null))
+                onFailure = { error ->
+                    errors.add(when (error) {
+                        is TypeError -> error
+                        else -> TypeError.InvalidOperation(error.message ?: "Unknown error", emptyList(), null)
+                    })
                     null 
                 }
             )
@@ -215,30 +225,55 @@ class TypeChecker {
     ): Result<TypedStatement> {
         val errors = mutableListOf<TypeError>()
         
-        // Create context with function parameters
+        // Resolve parameter types and create context with function parameters
         val paramContext = function.parameters.fold(context) { ctx, param ->
             val paramType = param.type ?: run {
-                errors.add(TypeError.TypeMismatch(
-                    expected = Type.PrimitiveType("Any"), // Placeholder
-                    actual = Type.PrimitiveType("Unknown"),
-                    location = param.sourceLocation
+                errors.add(TypeError.UndefinedType(
+                    "Missing type annotation for parameter '${param.name}'",
+                    param.sourceLocation
                 ))
                 BuiltinTypes.UNIT
             }
             ctx.withVariable(param.name, paramType)
         }
         
+        // Get the declared return type
+        val declaredReturnType = function.returnType ?: BuiltinTypes.UNIT
+        
         // Type check function body
         val typedBody = when (function.body) {
             is FunctionBody.ExpressionBody -> {
                 typeCheckExpression(function.body.expression, paramContext)
                     .fold(
-                        onSuccess = { TypedFunctionBody.Expression(it) },
-                        onFailure = { errors.add(TypeError.InvalidOperation(it.message ?: "Unknown error", emptyList(), null)); null }
+                        onSuccess = { typedExpr ->
+                            // Validate return type matches function body type
+                            if (!typesCompatible(typedExpr.type, declaredReturnType)) {
+                                errors.add(TypeError.TypeMismatch(
+                                    expected = declaredReturnType,
+                                    actual = typedExpr.type,
+                                    location = function.body.expression.sourceLocation
+                                ))
+                            }
+                            TypedFunctionBody.Expression(typedExpr)
+                        },
+                        onFailure = { error ->
+                            errors.add(when (error) {
+                                is TypeError -> error
+                                else -> TypeError.InvalidOperation(error.message ?: "Unknown error", emptyList(), null)
+                            })
+                            null 
+                        }
                     )
             }
             is FunctionBody.BlockBody -> {
-                // For now, treat block bodies as Unit-returning
+                // For block bodies, validate the return type is Unit unless explicitly declared
+                if (declaredReturnType != BuiltinTypes.UNIT) {
+                    errors.add(TypeError.TypeMismatch(
+                        expected = declaredReturnType,
+                        actual = BuiltinTypes.UNIT,
+                        location = function.sourceLocation
+                    ))
+                }
                 TypedFunctionBody.Block(emptyList())
             }
         }
@@ -249,7 +284,12 @@ class TypeChecker {
                 typedBody
             ))
         } else {
-            Result.failure(RuntimeException(errors.joinToString("\n") { it.toString() }))
+            val error = if (errors.size == 1) {
+                errors.first()
+            } else {
+                TypeError.MultipleErrors(errors)
+            }
+            Result.failure(error)
         }
     }
     
@@ -300,6 +340,8 @@ class TypeChecker {
             is ConstructorCall -> typeCheckConstructorCall(expression, context)
             
             is Literal.TupleLiteral -> typeCheckTupleLiteral(expression, context)
+            is BlockExpression -> typeCheckBlockExpression(expression, context)
+            is IfExpression -> typeCheckIfExpression(expression, context)
             
             else -> Result.failure(RuntimeException("Type checking not implemented for ${expression::class.simpleName}"))
         }
@@ -380,9 +422,109 @@ class TypeChecker {
         call: FunctionCall,
         context: TypeContext
     ): Result<TypedExpression> {
-        // For now, assume all function calls return Unit
-        // TODO: Implement proper function signature lookup and checking
-        return Result.success(TypedExpression(call, BuiltinTypes.UNIT))
+        // Extract function name from target (assuming it's an Identifier)
+        val functionName = when (call.target) {
+            is Identifier -> call.target.name
+            else -> return Result.failure(TypeError.InvalidOperation(
+                "Complex function expressions not yet supported",
+                emptyList(),
+                call.target.sourceLocation
+            ))
+        }
+        
+        // Look up the function signature
+        val functionSignature = context.lookupFunction(functionName)
+            ?: return Result.failure(TypeError.UnresolvedSymbol(
+                functionName, 
+                call.sourceLocation
+            ))
+        
+        val errors = mutableListOf<TypeError>()
+        
+        // Check arity (parameter count)
+        if (call.arguments.size != functionSignature.parameterTypes.size) {
+            return Result.failure(TypeError.ArityMismatch(
+                expected = functionSignature.parameterTypes.size,
+                actual = call.arguments.size,
+                location = call.sourceLocation
+            ))
+        }
+        
+        // Type check each argument to get their types for inference
+        val typedArguments = mutableListOf<TypedExpression>()
+        val argumentTypes = mutableListOf<Type>()
+        for (i in call.arguments.indices) {
+            val argument = call.arguments[i]
+            
+            val argResult = typeCheckExpression(argument, context)
+            if (argResult.isFailure) {
+                val error = argResult.exceptionOrNull()
+                errors.add(when (error) {
+                    is TypeError -> error
+                    else -> TypeError.InvalidOperation(error?.message ?: "Unknown error", emptyList(), argument.sourceLocation)
+                })
+                continue
+            }
+            
+            val typedArg = argResult.getOrThrow()
+            typedArguments.add(typedArg)
+            argumentTypes.add(typedArg.type)
+        }
+        
+        // If this is a generic function, infer type arguments and substitute parameter types
+        val (actualParameterTypes, actualReturnType) = if (functionSignature.typeParameters.isNotEmpty()) {
+            val inferredTypeArgs = inferTypeArguments(
+                functionSignature.parameterTypes.toPersistentList(),
+                argumentTypes,
+                functionSignature.typeParameters
+            )
+            
+            val substitutedParamTypes = functionSignature.parameterTypes.map { paramType ->
+                substituteTypeParameters(paramType, functionSignature.typeParameters, inferredTypeArgs)
+            }
+            
+            val substitutedReturnType = substituteTypeParameters(
+                functionSignature.returnType, 
+                functionSignature.typeParameters, 
+                inferredTypeArgs
+            )
+            
+            Pair(substitutedParamTypes, substitutedReturnType)
+        } else {
+            Pair(functionSignature.parameterTypes, functionSignature.returnType)
+        }
+        
+        // Type check each argument against the (possibly substituted) parameter type
+        for (i in call.arguments.indices) {
+            if (i < typedArguments.size && i < actualParameterTypes.size) {
+                val typedArg = typedArguments[i]
+                val expectedType = actualParameterTypes[i]
+                
+                // Check if argument type is compatible with parameter type
+                if (!typesCompatible(typedArg.type, expectedType)) {
+                    errors.add(TypeError.TypeMismatch(
+                        expected = expectedType,
+                        actual = typedArg.type,
+                        location = call.arguments[i].sourceLocation
+                    ))
+                }
+            }
+        }
+        
+        return if (errors.isEmpty()) {
+            // Create typed function call with typed arguments
+            val typedCall = call.copy(
+                arguments = typedArguments.map { it.expression }.toPersistentList()
+            )
+            Result.success(TypedExpression(typedCall, actualReturnType))
+        } else {
+            val error = if (errors.size == 1) {
+                errors.first()
+            } else {
+                TypeError.MultipleErrors(errors)
+            }
+            Result.failure(error)
+        }
     }
     
     private fun typeCheckConstructorCall(
@@ -401,7 +543,7 @@ class TypeChecker {
                         // Find the union type name from the context
                         val unionTypeName = context.types.entries.find { it.value == typeDef }?.key
                         if (unionTypeName != null) {
-                            // Type check constructor arguments
+                            // Type check constructor arguments first to get argument types
                             val expectedTypes = matchingVariant.fields
                             if (call.arguments.size != expectedTypes.size) {
                                 return Result.failure(TypeError.ArityMismatch(
@@ -411,29 +553,47 @@ class TypeChecker {
                                 ))
                             }
                             
-                            // Check each argument type
+                            // Type check arguments to get their types for inference
+                            val typedArguments = mutableListOf<Type>()
                             for (i in call.arguments.indices) {
                                 val argResult = typeCheckExpression(call.arguments[i], context)
                                 if (argResult.isFailure) {
                                     return argResult
                                 }
-                                val argType = argResult.getOrThrow().type
-                                if (!typesCompatible(argType, expectedTypes[i])) {
+                                typedArguments.add(argResult.getOrThrow().type)
+                            }
+                            
+                            // Infer type arguments from constructor call if generic
+                            val typeArguments = if (typeDef.typeParameters.isNotEmpty()) {
+                                inferTypeArguments(
+                                    matchingVariant.fields.toPersistentList(),
+                                    typedArguments,
+                                    typeDef.typeParameters
+                                )
+                            } else {
+                                persistentListOf<Type>()
+                            }
+                            
+                            // Now perform type checking with substituted parameter types
+                            for (i in call.arguments.indices) {
+                                val expectedType = if (typeDef.typeParameters.isNotEmpty()) {
+                                    substituteTypeParameters(
+                                        expectedTypes[i], 
+                                        typeDef.typeParameters, 
+                                        typeArguments
+                                    )
+                                } else {
+                                    expectedTypes[i]
+                                }
+                                
+                                val argType = typedArguments[i]
+                                if (!typesCompatible(argType, expectedType)) {
                                     return Result.failure(TypeError.TypeMismatch(
-                                        expected = expectedTypes[i],
+                                        expected = expectedType,
                                         actual = argType,
                                         location = call.arguments[i].sourceLocation
                                     ))
                                 }
-                            }
-                            
-                            // Return the union type with generic parameters if any
-                            val typeArguments = if (typeDef.typeParameters.isNotEmpty()) {
-                                // For now, we'll use Unit for unspecified type parameters
-                                // In a full implementation, we'd perform type inference
-                                typeDef.typeParameters.map { BuiltinTypes.UNIT }.toPersistentList()
-                            } else {
-                                persistentListOf()
                             }
                             
                             Type.UnionType(unionTypeName, typeArguments)
@@ -477,7 +637,308 @@ class TypeChecker {
         return Result.success(TypedExpression(tupleLiteral, tupleType))
     }
     
+    private fun typeCheckBlockExpression(
+        blockExpression: BlockExpression,
+        context: TypeContext
+    ): Result<TypedExpression> {
+        // Create a new scope for the block
+        var blockContext = context
+        val errors = mutableListOf<TypeError>()
+        val typedStatements = mutableListOf<TypedStatement>()
+        
+        // Type check each statement in the block and update context
+        for (statement in blockExpression.statements) {
+            val stmtResult = typeCheckStatement(statement, blockContext)
+            stmtResult.fold(
+                onSuccess = { typedStmt ->
+                    typedStatements.add(typedStmt)
+                    
+                    // Update context with new variable bindings from val declarations
+                    if (typedStmt is TypedStatement.VariableDeclaration) {
+                        blockContext = blockContext.withVariable(
+                            typedStmt.declaration.name,
+                            typedStmt.inferredType
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    errors.add(when (error) {
+                        is TypeError -> error
+                        else -> TypeError.InvalidOperation(
+                            error.message ?: "Unknown error", 
+                            emptyList(), 
+                            statement.sourceLocation
+                        )
+                    })
+                }
+            )
+        }
+        
+        // If there are errors in statements, return them
+        if (errors.isNotEmpty()) {
+            return Result.failure(
+                if (errors.size == 1) errors.first()
+                else TypeError.MultipleErrors(errors)
+            )
+        }
+        
+        // Determine the type of the block based on the final expression
+        val blockType = if (blockExpression.expression != null) {
+            // Block has a final expression - type is the type of that expression
+            typeCheckExpression(blockExpression.expression, blockContext)
+                .fold(
+                    onSuccess = { it.type },
+                    onFailure = { error ->
+                        return Result.failure(when (error) {
+                            is TypeError -> error
+                            else -> TypeError.InvalidOperation(
+                                error.message ?: "Unknown error",
+                                emptyList(),
+                                blockExpression.expression.sourceLocation
+                            )
+                        })
+                    }
+                )
+        } else {
+            // Block has no final expression - type is Unit
+            BuiltinTypes.UNIT
+        }
+        
+        return Result.success(TypedExpression(blockExpression, blockType))
+    }
+    
+    private fun typeCheckIfExpression(
+        ifExpression: IfExpression,
+        context: TypeContext
+    ): Result<TypedExpression> {
+        val errors = mutableListOf<TypeError>()
+        
+        // Type check the condition - must be Boolean
+        val conditionResult = typeCheckExpression(ifExpression.condition, context)
+        val conditionType = conditionResult.fold(
+            onSuccess = { typedExpr ->
+                if (!typesCompatible(typedExpr.type, BuiltinTypes.BOOLEAN)) {
+                    errors.add(TypeError.TypeMismatch(
+                        expected = BuiltinTypes.BOOLEAN,
+                        actual = typedExpr.type,
+                        location = ifExpression.condition.sourceLocation
+                    ))
+                }
+                typedExpr.type
+            },
+            onFailure = { error ->
+                errors.add(when (error) {
+                    is TypeError -> error
+                    else -> TypeError.InvalidOperation(
+                        error.message ?: "Unknown error",
+                        emptyList(),
+                        ifExpression.condition.sourceLocation
+                    )
+                })
+                BuiltinTypes.BOOLEAN // Default to avoid further cascading errors
+            }
+        )
+        
+        // Type check the then branch
+        val thenResult = typeCheckExpression(ifExpression.thenExpression, context)
+        val thenType = thenResult.fold(
+            onSuccess = { it.type },
+            onFailure = { error ->
+                errors.add(when (error) {
+                    is TypeError -> error
+                    else -> TypeError.InvalidOperation(
+                        error.message ?: "Unknown error",
+                        emptyList(),
+                        ifExpression.thenExpression.sourceLocation
+                    )
+                })
+                BuiltinTypes.UNIT // Default to avoid further cascading errors
+            }
+        )
+        
+        // Type check the else branch if present
+        val elseType = if (ifExpression.elseExpression != null) {
+            val elseResult = typeCheckExpression(ifExpression.elseExpression, context)
+            elseResult.fold(
+                onSuccess = { it.type },
+                onFailure = { error ->
+                    errors.add(when (error) {
+                        is TypeError -> error
+                        else -> TypeError.InvalidOperation(
+                            error.message ?: "Unknown error",
+                            emptyList(),
+                            ifExpression.elseExpression.sourceLocation
+                        )
+                    })
+                    BuiltinTypes.UNIT // Default to avoid further cascading errors
+                }
+            )
+        } else {
+            null // No else branch
+        }
+        
+        // Return errors if any occurred during type checking
+        if (errors.isNotEmpty()) {
+            return Result.failure(
+                if (errors.size == 1) errors.first()
+                else TypeError.MultipleErrors(errors)
+            )
+        }
+        
+        // Determine the unified type of the if expression
+        val unifiedType = if (elseType == null) {
+            // No else branch - result is nullable version of then type
+            Type.NullableType(thenType)
+        } else {
+            // Both branches present - unify their types
+            unifyTypes(thenType, elseType) ?: run {
+                return Result.failure(TypeError.TypeMismatch(
+                    expected = thenType,
+                    actual = elseType,
+                    location = ifExpression.elseExpression?.sourceLocation
+                ))
+            }
+        }
+        
+        return Result.success(TypedExpression(ifExpression, unifiedType))
+    }
+    
     // Helper functions
+    
+    /**
+     * Infers type arguments for generic type parameters based on constructor arguments.
+     * Uses basic inference by matching parameter types with argument types.
+     */
+    private fun inferTypeArguments(
+        parameterTypes: PersistentList<Type>,
+        argumentTypes: List<Type>,
+        typeParameters: List<String>
+    ): PersistentList<Type> {
+        val typeParameterMap = mutableMapOf<String, Type>()
+        
+        // For each parameter-argument pair, try to infer type parameter mappings
+        for (i in parameterTypes.indices) {
+            if (i < argumentTypes.size) {
+                val paramType = parameterTypes[i]
+                val argType = argumentTypes[i]
+                inferTypeParameterMapping(paramType, argType, typeParameterMap)
+            }
+        }
+        
+        // Build the type argument list in the same order as type parameters
+        return typeParameters.map { typeParam: String ->
+            typeParameterMap[typeParam] ?: BuiltinTypes.UNIT // Default to Unit if not inferred
+        }.toPersistentList()
+    }
+    
+    /**
+     * Recursively infers type parameter mappings from parameter type to argument type.
+     */
+    private fun inferTypeParameterMapping(
+        paramType: Type,
+        argType: Type,
+        typeParameterMap: MutableMap<String, Type>
+    ) {
+        when (paramType) {
+            is Type.NamedType -> {
+                // If paramType is a type parameter (T, U, etc.), map it to argType
+                if (paramType.name.length == 1 && paramType.name[0].isUpperCase()) {
+                    typeParameterMap[paramType.name] = argType
+                }
+            }
+            is Type.GenericType -> {
+                // Handle generic types with nested type parameters
+                if (argType is Type.GenericType && paramType.name == argType.name) {
+                    for (i in paramType.arguments.indices) {
+                        if (i < argType.arguments.size) {
+                            inferTypeParameterMapping(
+                                paramType.arguments[i],
+                                argType.arguments[i],
+                                typeParameterMap
+                            )
+                        }
+                    }
+                }
+            }
+            is Type.UnionType -> {
+                // Handle union types with nested type parameters
+                if (argType is Type.UnionType && paramType.name == argType.name) {
+                    for (i in paramType.typeArguments.indices) {
+                        if (i < argType.typeArguments.size) {
+                            inferTypeParameterMapping(
+                                paramType.typeArguments[i],
+                                argType.typeArguments[i],
+                                typeParameterMap
+                            )
+                        }
+                    }
+                }
+            }
+            // For other types, no inference needed
+            else -> { /* No-op */ }
+        }
+    }
+    
+    /**
+     * Substitutes type parameters in a type with concrete type arguments.
+     */
+    private fun substituteTypeParameters(
+        type: Type,
+        typeParameters: List<String>,
+        typeArguments: List<Type>
+    ): Type {
+        val substitutionMap = typeParameters.zip(typeArguments).toMap()
+        return substituteType(type, substitutionMap)
+    }
+    
+    /**
+     * Recursively substitutes type parameters in a type using the substitution map.
+     */
+    private fun substituteType(type: Type, substitutionMap: Map<String, Type>): Type {
+        return when (type) {
+            is Type.NamedType -> {
+                // Replace type parameter with concrete type if found in substitution map
+                substitutionMap[type.name] ?: type
+            }
+            is Type.GenericType -> {
+                // Recursively substitute type arguments
+                Type.GenericType(
+                    name = type.name,
+                    arguments = type.arguments.map { substituteType(it, substitutionMap) }.toPersistentList(),
+                    sourceLocation = type.sourceLocation
+                )
+            }
+            is Type.UnionType -> {
+                // Recursively substitute type arguments
+                Type.UnionType(
+                    name = type.name,
+                    typeArguments = type.typeArguments.map { substituteType(it, substitutionMap) }.toPersistentList(),
+                    sourceLocation = type.sourceLocation
+                )
+            }
+            is Type.NullableType -> {
+                Type.NullableType(
+                    baseType = substituteType(type.baseType, substitutionMap),
+                    sourceLocation = type.sourceLocation
+                )
+            }
+            is Type.TupleType -> {
+                Type.TupleType(
+                    elementTypes = type.elementTypes.map { substituteType(it, substitutionMap) }.toPersistentList(),
+                    sourceLocation = type.sourceLocation
+                )
+            }
+            is Type.FunctionType -> {
+                Type.FunctionType(
+                    parameterTypes = type.parameterTypes.map { substituteType(it, substitutionMap) }.toPersistentList(),
+                    returnType = substituteType(type.returnType, substitutionMap),
+                    sourceLocation = type.sourceLocation
+                )
+            }
+            // For primitive types, return as-is
+            is Type.PrimitiveType -> type
+        }
+    }
     
     private fun createBuiltinContext(): TypeContext {
         return TypeContext(
@@ -588,6 +1049,83 @@ class TypeChecker {
                 type1.parameterTypes.size == type2.parameterTypes.size &&
                 type1.parameterTypes.zip(type2.parameterTypes).all { (p1, p2) -> typesCompatible(p1, p2) }
             else -> type1 == type2
+        }
+    }
+    
+    /**
+     * Attempts to unify two types for control flow expressions like if-else.
+     * Returns a common type if unification is possible, null otherwise.
+     * 
+     * Unification rules:
+     * - Identical types unify to themselves
+     * - Different primitive types may create union types (for now, fail)
+     * - Compatible numeric types unify to the more general type
+     * - For incompatible types, we could create union types (future enhancement)
+     */
+    private fun unifyTypes(type1: Type, type2: Type): Type? {
+        // If types are exactly the same, unification succeeds
+        if (typesCompatible(type1, type2)) {
+            return type1
+        }
+        
+        // Handle numeric type promotion
+        val numericUnification = attemptNumericUnification(type1, type2)
+        if (numericUnification != null) {
+            return numericUnification
+        }
+        
+        // For this implementation, we'll be strict about type unification
+        // In a more advanced implementation, we could create union types
+        // or allow implicit conversions for compatible types
+        return null
+    }
+    
+    /**
+     * Attempts to unify numeric types following common promotion rules
+     */
+    private fun attemptNumericUnification(type1: Type, type2: Type): Type? {
+        // Extract the type names for numeric types
+        val type1Name = (type1 as? Type.PrimitiveType)?.name
+        val type2Name = (type2 as? Type.PrimitiveType)?.name
+        
+        return when {
+            // Both are Int -> Int
+            type1Name == "Int" && type2Name == "Int" -> BuiltinTypes.INT
+            
+            // Int and Double -> Double
+            (type1Name == "Int" && type2Name == "Double") ||
+            (type1Name == "Double" && type2Name == "Int") -> BuiltinTypes.DOUBLE
+            
+            // Int and Float -> Double (promote to highest precision)
+            (type1Name == "Int" && type2Name == "Float") ||
+            (type1Name == "Float" && type2Name == "Int") -> BuiltinTypes.DOUBLE
+            
+            // Float and Double -> Double
+            (type1Name == "Float" && type2Name == "Double") ||
+            (type1Name == "Double" && type2Name == "Float") -> BuiltinTypes.DOUBLE
+            
+            // Both are Double -> Double
+            type1Name == "Double" && type2Name == "Double" -> BuiltinTypes.DOUBLE
+            
+            // Both are Float -> Float
+            type1Name == "Float" && type2Name == "Float" -> BuiltinTypes.FLOAT
+            
+            // Int and Long -> Long
+            (type1Name == "Int" && type2Name == "Long") ||
+            (type1Name == "Long" && type2Name == "Int") -> BuiltinTypes.LONG
+            
+            // Long and Float -> Double
+            (type1Name == "Long" && type2Name == "Float") ||
+            (type1Name == "Float" && type2Name == "Long") -> BuiltinTypes.DOUBLE
+            
+            // Long and Double -> Double
+            (type1Name == "Long" && type2Name == "Double") ||
+            (type1Name == "Double" && type2Name == "Long") -> BuiltinTypes.DOUBLE
+            
+            // Both are Long -> Long
+            type1Name == "Long" && type2Name == "Long" -> BuiltinTypes.LONG
+            
+            else -> null // No unification possible
         }
     }
 }
