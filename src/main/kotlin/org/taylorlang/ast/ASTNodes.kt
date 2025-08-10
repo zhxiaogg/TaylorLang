@@ -306,6 +306,12 @@ sealed class Type : ASTNode {
         val returnType: Type,
         override val sourceLocation: SourceLocation? = null
     ) : Type()
+    
+    data class UnionType(
+        val name: String,
+        val typeArguments: PersistentList<Type> = persistentListOf(),
+        override val sourceLocation: SourceLocation? = null
+    ) : Type()
 }
 
 // =============================================================================

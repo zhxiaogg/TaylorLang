@@ -230,9 +230,7 @@ class TypeCheckerTest : StringSpec({
     // Union Type and Pattern Matching Tests (TODO: Implement advanced type features)
     // =============================================================================
 
-    "should type check union type declarations".config(enabled = false) {
-        // TODO: Implement union type checking in TypeChecker
-        // Current TypeChecker only supports basic expressions and primitive types
+    "should type check union type declarations" {
         val source = "type Option<T> = Some(T) | None"
         val program = parser.parse(source)
             .getOrThrow()
@@ -244,7 +242,7 @@ class TypeCheckerTest : StringSpec({
         result.statements.first() should beInstanceOf<TypedStatement.TypeDeclaration>()
     }
 
-    "should type check named product types".config(enabled = false) { // TODO: Implement named product type checking
+    "should type check named product types" {
         val source = "type Person = Student(name: String, id: Int) | Teacher(name: String, subject: String)"
         val program = parser.parse(source)
             .getOrThrow()
@@ -256,7 +254,7 @@ class TypeCheckerTest : StringSpec({
         result.statements.first() should beInstanceOf<TypedStatement.TypeDeclaration>()
     }
 
-    "should type check constructor calls".config(enabled = false) { // TODO: Implement constructor type checking
+    "should type check constructor calls" {
         val source = """
             type Option<T> = Some(T) | None
             val x = Some(42)
