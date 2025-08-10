@@ -339,6 +339,8 @@ class TypeChecker {
             is ConstructorCall -> typeCheckConstructorCall(expression, context)
             
             is Literal.TupleLiteral -> typeCheckTupleLiteral(expression, context)
+            is BlockExpression -> typeCheckBlockExpression(expression, context)
+            is IfExpression -> typeCheckIfExpression(expression, context)
             
             else -> Result.failure(RuntimeException("Type checking not implemented for ${expression::class.simpleName}"))
         }
@@ -584,6 +586,172 @@ class TypeChecker {
         return Result.success(TypedExpression(tupleLiteral, tupleType))
     }
     
+    private fun typeCheckBlockExpression(
+        blockExpression: BlockExpression,
+        context: TypeContext
+    ): Result<TypedExpression> {
+        // Create a new scope for the block
+        var blockContext = context
+        val errors = mutableListOf<TypeError>()
+        val typedStatements = mutableListOf<TypedStatement>()
+        
+        // Type check each statement in the block and update context
+        for (statement in blockExpression.statements) {
+            val stmtResult = typeCheckStatement(statement, blockContext)
+            stmtResult.fold(
+                onSuccess = { typedStmt ->
+                    typedStatements.add(typedStmt)
+                    
+                    // Update context with new variable bindings from val declarations
+                    if (typedStmt is TypedStatement.VariableDeclaration) {
+                        blockContext = blockContext.withVariable(
+                            typedStmt.declaration.name,
+                            typedStmt.inferredType
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    errors.add(when (error) {
+                        is TypeError -> error
+                        else -> TypeError.InvalidOperation(
+                            error.message ?: "Unknown error", 
+                            emptyList(), 
+                            statement.sourceLocation
+                        )
+                    })
+                }
+            )
+        }
+        
+        // If there are errors in statements, return them
+        if (errors.isNotEmpty()) {
+            return Result.failure(
+                if (errors.size == 1) errors.first()
+                else TypeError.MultipleErrors(errors)
+            )
+        }
+        
+        // Determine the type of the block based on the final expression
+        val blockType = if (blockExpression.expression != null) {
+            // Block has a final expression - type is the type of that expression
+            typeCheckExpression(blockExpression.expression, blockContext)
+                .fold(
+                    onSuccess = { it.type },
+                    onFailure = { error ->
+                        return Result.failure(when (error) {
+                            is TypeError -> error
+                            else -> TypeError.InvalidOperation(
+                                error.message ?: "Unknown error",
+                                emptyList(),
+                                blockExpression.expression.sourceLocation
+                            )
+                        })
+                    }
+                )
+        } else {
+            // Block has no final expression - type is Unit
+            BuiltinTypes.UNIT
+        }
+        
+        return Result.success(TypedExpression(blockExpression, blockType))
+    }
+    
+    private fun typeCheckIfExpression(
+        ifExpression: IfExpression,
+        context: TypeContext
+    ): Result<TypedExpression> {
+        val errors = mutableListOf<TypeError>()
+        
+        // Type check the condition - must be Boolean
+        val conditionResult = typeCheckExpression(ifExpression.condition, context)
+        val conditionType = conditionResult.fold(
+            onSuccess = { typedExpr ->
+                if (!typesCompatible(typedExpr.type, BuiltinTypes.BOOLEAN)) {
+                    errors.add(TypeError.TypeMismatch(
+                        expected = BuiltinTypes.BOOLEAN,
+                        actual = typedExpr.type,
+                        location = ifExpression.condition.sourceLocation
+                    ))
+                }
+                typedExpr.type
+            },
+            onFailure = { error ->
+                errors.add(when (error) {
+                    is TypeError -> error
+                    else -> TypeError.InvalidOperation(
+                        error.message ?: "Unknown error",
+                        emptyList(),
+                        ifExpression.condition.sourceLocation
+                    )
+                })
+                BuiltinTypes.BOOLEAN // Default to avoid further cascading errors
+            }
+        )
+        
+        // Type check the then branch
+        val thenResult = typeCheckExpression(ifExpression.thenExpression, context)
+        val thenType = thenResult.fold(
+            onSuccess = { it.type },
+            onFailure = { error ->
+                errors.add(when (error) {
+                    is TypeError -> error
+                    else -> TypeError.InvalidOperation(
+                        error.message ?: "Unknown error",
+                        emptyList(),
+                        ifExpression.thenExpression.sourceLocation
+                    )
+                })
+                BuiltinTypes.UNIT // Default to avoid further cascading errors
+            }
+        )
+        
+        // Type check the else branch if present
+        val elseType = if (ifExpression.elseExpression != null) {
+            val elseResult = typeCheckExpression(ifExpression.elseExpression, context)
+            elseResult.fold(
+                onSuccess = { it.type },
+                onFailure = { error ->
+                    errors.add(when (error) {
+                        is TypeError -> error
+                        else -> TypeError.InvalidOperation(
+                            error.message ?: "Unknown error",
+                            emptyList(),
+                            ifExpression.elseExpression.sourceLocation
+                        )
+                    })
+                    BuiltinTypes.UNIT // Default to avoid further cascading errors
+                }
+            )
+        } else {
+            null // No else branch
+        }
+        
+        // Return errors if any occurred during type checking
+        if (errors.isNotEmpty()) {
+            return Result.failure(
+                if (errors.size == 1) errors.first()
+                else TypeError.MultipleErrors(errors)
+            )
+        }
+        
+        // Determine the unified type of the if expression
+        val unifiedType = if (elseType == null) {
+            // No else branch - result is nullable version of then type
+            Type.NullableType(thenType)
+        } else {
+            // Both branches present - unify their types
+            unifyTypes(thenType, elseType) ?: run {
+                return Result.failure(TypeError.TypeMismatch(
+                    expected = thenType,
+                    actual = elseType,
+                    location = ifExpression.elseExpression?.sourceLocation
+                ))
+            }
+        }
+        
+        return Result.success(TypedExpression(ifExpression, unifiedType))
+    }
+    
     // Helper functions
     
     private fun createBuiltinContext(): TypeContext {
@@ -695,6 +863,83 @@ class TypeChecker {
                 type1.parameterTypes.size == type2.parameterTypes.size &&
                 type1.parameterTypes.zip(type2.parameterTypes).all { (p1, p2) -> typesCompatible(p1, p2) }
             else -> type1 == type2
+        }
+    }
+    
+    /**
+     * Attempts to unify two types for control flow expressions like if-else.
+     * Returns a common type if unification is possible, null otherwise.
+     * 
+     * Unification rules:
+     * - Identical types unify to themselves
+     * - Different primitive types may create union types (for now, fail)
+     * - Compatible numeric types unify to the more general type
+     * - For incompatible types, we could create union types (future enhancement)
+     */
+    private fun unifyTypes(type1: Type, type2: Type): Type? {
+        // If types are exactly the same, unification succeeds
+        if (typesCompatible(type1, type2)) {
+            return type1
+        }
+        
+        // Handle numeric type promotion
+        val numericUnification = attemptNumericUnification(type1, type2)
+        if (numericUnification != null) {
+            return numericUnification
+        }
+        
+        // For this implementation, we'll be strict about type unification
+        // In a more advanced implementation, we could create union types
+        // or allow implicit conversions for compatible types
+        return null
+    }
+    
+    /**
+     * Attempts to unify numeric types following common promotion rules
+     */
+    private fun attemptNumericUnification(type1: Type, type2: Type): Type? {
+        // Extract the type names for numeric types
+        val type1Name = (type1 as? Type.PrimitiveType)?.name
+        val type2Name = (type2 as? Type.PrimitiveType)?.name
+        
+        return when {
+            // Both are Int -> Int
+            type1Name == "Int" && type2Name == "Int" -> BuiltinTypes.INT
+            
+            // Int and Double -> Double
+            (type1Name == "Int" && type2Name == "Double") ||
+            (type1Name == "Double" && type2Name == "Int") -> BuiltinTypes.DOUBLE
+            
+            // Int and Float -> Double (promote to highest precision)
+            (type1Name == "Int" && type2Name == "Float") ||
+            (type1Name == "Float" && type2Name == "Int") -> BuiltinTypes.DOUBLE
+            
+            // Float and Double -> Double
+            (type1Name == "Float" && type2Name == "Double") ||
+            (type1Name == "Double" && type2Name == "Float") -> BuiltinTypes.DOUBLE
+            
+            // Both are Double -> Double
+            type1Name == "Double" && type2Name == "Double" -> BuiltinTypes.DOUBLE
+            
+            // Both are Float -> Float
+            type1Name == "Float" && type2Name == "Float" -> BuiltinTypes.FLOAT
+            
+            // Int and Long -> Long
+            (type1Name == "Int" && type2Name == "Long") ||
+            (type1Name == "Long" && type2Name == "Int") -> BuiltinTypes.LONG
+            
+            // Long and Float -> Double
+            (type1Name == "Long" && type2Name == "Float") ||
+            (type1Name == "Float" && type2Name == "Long") -> BuiltinTypes.DOUBLE
+            
+            // Long and Double -> Double
+            (type1Name == "Long" && type2Name == "Double") ||
+            (type1Name == "Double" && type2Name == "Long") -> BuiltinTypes.DOUBLE
+            
+            // Both are Long -> Long
+            type1Name == "Long" && type2Name == "Long" -> BuiltinTypes.LONG
+            
+            else -> null // No unification possible
         }
     }
 }
