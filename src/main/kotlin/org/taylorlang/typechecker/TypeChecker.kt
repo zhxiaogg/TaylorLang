@@ -372,7 +372,7 @@ class TypeChecker(
     
     /**
      * Type check an expression using constraint-based type inference.
-     * Generates constraints from the expression and attempts to solve them.
+     * Generates constraints from the expression and solves them using unification.
      * 
      * @param expression The expression to type check
      * @param context The type checking context
@@ -389,14 +389,47 @@ class TypeChecker(
             // Collect constraints from the expression
             val constraintResult = constraintCollector.collectConstraints(expression, inferenceContext)
             
-            // For now, we'll return the expression with the inferred type
-            // In a complete implementation, we would solve the constraints here
-            // and substitute the solved types back into the expression
+            // Solve constraints using unification
+            val unificationResult = Unifier.solve(constraintResult.constraints)
             
-            // TODO: Implement constraint solving (unification) in a future task
-            // For now, we assume the constraints are solvable and use the inferred type
-            
-            Result.success(TypedExpression(expression, constraintResult.type))
+            unificationResult.fold(
+                onSuccess = { substitution ->
+                    // Apply the solved substitution to the inferred type
+                    val finalType = substitution.apply(constraintResult.type)
+                    Result.success(TypedExpression(expression, finalType))
+                },
+                onFailure = { unificationError ->
+                    // Convert unification errors to type errors
+                    val typeError = when (unificationError) {
+                        is UnificationError.TypeMismatch -> TypeError.TypeMismatch(
+                            expected = unificationError.type1,
+                            actual = unificationError.type2,
+                            location = unificationError.location ?: expression.sourceLocation
+                        )
+                        is UnificationError.InfiniteType -> TypeError.InvalidOperation(
+                            "Infinite type detected: ${unificationError.message}",
+                            emptyList(),
+                            unificationError.location ?: expression.sourceLocation
+                        )
+                        is UnificationError.ArityMismatch -> TypeError.ArityMismatch(
+                            expected = unificationError.expected,
+                            actual = unificationError.actual,
+                            location = unificationError.location ?: expression.sourceLocation
+                        )
+                        is UnificationError.ConstraintSolvingFailed -> TypeError.InvalidOperation(
+                            "Constraint solving failed: ${unificationError.message}",
+                            emptyList(),
+                            expression.sourceLocation
+                        )
+                        else -> TypeError.InvalidOperation(
+                            "Type inference failed: ${unificationError.message}",
+                            emptyList(),
+                            expression.sourceLocation
+                        )
+                    }
+                    Result.failure(typeError)
+                }
+            )
             
         } catch (e: Exception) {
             Result.failure(TypeError.InvalidOperation(
@@ -441,10 +474,59 @@ class TypeChecker(
                         inferenceContext
                     )
                     
-                    // TODO: Solve constraints and verify compatibility
-                    // For now, assume constraints are solvable
+                    // Solve constraints using unification
+                    val unificationResult = Unifier.solve(constraintResult.constraints)
                     
-                    Result.success(TypedExpression(expression, constraintResult.type))
+                    unificationResult.fold(
+                        onSuccess = { substitution ->
+                            // Apply the solved substitution to the inferred type
+                            val finalType = substitution.apply(constraintResult.type)
+                            
+                            // Verify that the final type is compatible with the expected type
+                            val expectedTypeSubstituted = substitution.apply(expectedType)
+                            if (typesCompatible(finalType, expectedTypeSubstituted)) {
+                                Result.success(TypedExpression(expression, finalType))
+                            } else {
+                                Result.failure(TypeError.TypeMismatch(
+                                    expected = expectedTypeSubstituted,
+                                    actual = finalType,
+                                    location = expression.sourceLocation
+                                ))
+                            }
+                        },
+                        onFailure = { unificationError ->
+                            // Convert unification errors to type errors
+                            val typeError = when (unificationError) {
+                                is UnificationError.TypeMismatch -> TypeError.TypeMismatch(
+                                    expected = unificationError.type1,
+                                    actual = unificationError.type2,
+                                    location = unificationError.location ?: expression.sourceLocation
+                                )
+                                is UnificationError.InfiniteType -> TypeError.InvalidOperation(
+                                    "Infinite type detected: ${unificationError.message}",
+                                    listOf(expectedType),
+                                    unificationError.location ?: expression.sourceLocation
+                                )
+                                is UnificationError.ArityMismatch -> TypeError.ArityMismatch(
+                                    expected = unificationError.expected,
+                                    actual = unificationError.actual,
+                                    location = unificationError.location ?: expression.sourceLocation
+                                )
+                                is UnificationError.ConstraintSolvingFailed -> TypeError.InvalidOperation(
+                                    "Constraint solving failed: ${unificationError.message}",
+                                    listOf(expectedType),
+                                    expression.sourceLocation
+                                )
+                                else -> TypeError.InvalidOperation(
+                                    "Type inference with expected type failed: ${unificationError.message}",
+                                    listOf(expectedType),
+                                    expression.sourceLocation
+                                )
+                            }
+                            Result.failure(typeError)
+                        }
+                    )
+                    
                 } catch (e: Exception) {
                     Result.failure(TypeError.InvalidOperation(
                         "Constraint-based type checking with expected type failed: ${e.message}",
@@ -1445,6 +1527,8 @@ class TypeChecker(
                     sourceLocation = type.sourceLocation
                 )
             }
+            // For type variables, return as-is (should not be substituted here)
+            is Type.TypeVar -> type
             // For primitive types, return as-is
             is Type.PrimitiveType -> type
         }

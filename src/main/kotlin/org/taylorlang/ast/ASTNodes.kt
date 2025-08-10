@@ -312,6 +312,15 @@ sealed class Type : ASTNode {
         val typeArguments: PersistentList<Type> = persistentListOf(),
         override val sourceLocation: SourceLocation? = null
     ) : Type()
+    
+    /**
+     * Type variable for type inference.
+     * Represents an unknown type that will be resolved during inference.
+     */
+    data class TypeVar(
+        val id: String,
+        override val sourceLocation: SourceLocation? = null
+    ) : Type()
 }
 
 // =============================================================================

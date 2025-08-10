@@ -1248,6 +1248,9 @@ class ConstraintCollector {
             is Type.NamedType -> {
                 substitution[type.name] ?: type
             }
+            is Type.TypeVar -> {
+                substitution[type.id] ?: type
+            }
             is Type.GenericType -> {
                 Type.GenericType(
                     name = type.name,
