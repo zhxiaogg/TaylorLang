@@ -1,4 +1,4 @@
-# TaylorLang
+# 🐯 TaylorLang
 
 A minimal, pure functional programming language for the JVM with immutability by default, Hindley-Milner type inference, and seamless Java interoperability.
 
