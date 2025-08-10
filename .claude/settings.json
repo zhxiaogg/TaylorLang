@@ -1,7 +1,33 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git commit:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(mkdir:*)",
+      "Bash(./gradlew:*)",
+      "Bash(java:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)",
+      "Bash(rm:*)",
+      "Bash(git rm:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(sed:*)",
+      "WebFetch(domain:docs.github.com)",
+      "Bash(gh milestone create:*)",
+      "Bash(gh issue milestone:*)",
+      "Bash(gh api:*)",
+      "Bash(gh label create:*)",
+      "Bash(gh project create:*)",
+      "Bash(gh milestone list:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh project list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   },
