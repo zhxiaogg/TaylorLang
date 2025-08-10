@@ -267,7 +267,7 @@ class ConstraintCollectorTest : StringSpec({
     // =============================================================================
 
     "Constructor call for known union type should generate correct type" {
-        val variantDef = TypeDefinition.VariantDef("Some", listOf(BuiltinTypes.INT))
+        val variantDef = VariantDef("Some", listOf(BuiltinTypes.INT))
         val unionTypeDef = TypeDefinition.UnionTypeDef(emptyList(), listOf(variantDef))
         val contextWithType = context.withTypeDefinition("Option", unionTypeDef)
 
@@ -359,8 +359,8 @@ class ConstraintCollectorTest : StringSpec({
         val unionTypeDef = TypeDefinition.UnionTypeDef(
             emptyList(),
             listOf(
-                TypeDefinition.VariantDef("Some", listOf(BuiltinTypes.INT)),
-                TypeDefinition.VariantDef("None", emptyList())
+                VariantDef("Some", listOf(BuiltinTypes.INT)),
+                VariantDef("None", emptyList())
             )
         )
         val contextWithUnion = context
