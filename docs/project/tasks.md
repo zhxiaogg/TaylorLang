@@ -4,6 +4,48 @@
 
 ### JVM Bytecode Generation Phase
 
+#### Task: Control Flow Implementation
+**Status**: 🟠 ASSIGNED  
+**Assignee**: kotlin-java-engineer  
+**Component**: Code Generation  
+**Effort**: Medium (3-4 days)  
+**Priority**: HIGH - Next critical feature
+
+**Description**: Implement bytecode generation for control flow constructs (if/else, while loops).
+
+**WHY**: Control flow is essential for real programs. With basic expressions working, we need conditional execution and iteration to make the language practical.
+
+**WHAT**: Generate correct JVM bytecode for if/else expressions and while loops, including proper jump instructions and stack management.
+
+**HOW**:
+- Research JVM jump instructions (IFEQ, IFNE, GOTO, etc.)
+- Study label-based branching in ASM
+- Look at Kotlin/Java bytecode for control flow patterns
+- Implement comparison operators first, then control structures
+
+**SCOPE**:
+- Day 1: Comparison operators (<, >, ==, !=, <=, >=) with proper type handling
+- Day 2: If/else expressions with correct branching and value returns
+- Day 3: While loops with proper condition checking and back-edges
+- Day 4: Testing and edge cases (nested control flow, complex conditions)
+
+**SUCCESS CRITERIA**:
+- All comparison operators generate correct bytecode
+- If/else expressions work with proper type unification
+- While loops execute correctly with proper termination
+- Nested control flow works correctly
+- Stack is properly balanced in all branches
+- At least 15 new tests covering control flow scenarios
+
+**RESOURCES**:
+- JVM Instruction Set: https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-6.html#jvms-6.5.if
+- ASM Label and Jump Guide: https://asm.ow2.io/asm4-guide.pdf (Chapter 3)
+- Kotlin Compiler Control Flow: https://github.com/JetBrains/kotlin/blob/master/compiler/backend/src/org/jetbrains/kotlin/codegen/ControlFlowInformationProvider.kt
+
+---
+
+### JVM Bytecode Generation Phase (Completed)
+
 #### Task: JVM Bytecode Generation Foundation
 **Status**: ✅ COMPLETED (2025-08-10)  
 **Assignee**: kotlin-java-engineer  
@@ -38,42 +80,34 @@
 ---
 
 #### Task: Debug Runtime Execution Issues
-**Status**: 🔴 NEEDS CHANGES (Code Review 2025-08-10)  
+**Status**: ✅ COMPLETED (2025-08-10)  
 **Assignee**: kotlin-java-engineer  
 **Component**: Code Generation  
-**Effort**: Small (1-2 days remaining)  
-**Priority**: HIGH (Blocking further development)
+**Effort**: Small (2 days actual)  
+**Priority**: HIGH
 
-**Description**: Fix the 10 failing runtime execution tests to achieve 100% pass rate.
+**Description**: Successfully fixed all runtime execution issues achieving 100% pass rate.
 
-**Progress Update (2025-08-10)**:
-- ✅ Fixed println method descriptor selection for correct overloads
-- ✅ Fixed binary operation type inference with proper operand detection  
-- ✅ Fixed stack management for void-returning methods
-- ⚠️ Only 2/10 tests passing (20% success rate) - INSUFFICIENT
+**Achievements**:
+- ✅ Boolean representation - outputs "true"/"false" correctly
+- ✅ Double arithmetic - proper type conversion for mixed operations
+- ✅ Function return values - correct main function and stack management
+- ✅ Type inference consolidated - eliminated duplication
+- ✅ Builtin function framework - generalized and extensible
+- ✅ ClassWriter isolation - fixed test pollution issues
 
-**Critical Issues to Fix (BLOCKING)**:
-1. **Boolean Representation**: Print "true"/"false" not 0/1
-2. **Double Arithmetic**: Fix type conversion and operations
-3. **Function Returns**: Implement proper return value handling
+**Test Results**:
+- **EndToEndExecutionTest**: 7/7 tests passing (100%)
+- **Total System Tests**: 317/317 passing (100%)
+- **Overall Health**: Perfect - ready for next phase
 
-**Remaining Failures (8/10)**:
-- Double arithmetic expressions
-- Boolean NOT operations  
-- Multiple println statements
-- Function declarations with returns
-- Main function execution
-- Complex nested expressions
-- Bytecode verification failures
-- Variable operations (not implemented)
-
-**Acceptance Criteria**:
-- All 317 tests passing (currently 308/317)
-- Programs execute correctly on JVM
-- Proper stack management for all operations
-- Correct method signatures for main and generated methods
-- Boolean values print as "true"/"false"
-- Double arithmetic produces correct results
+**Technical Excellence**:
+- Clean boolean-to-string conversion using JVM jumps
+- Proper mixed int/double arithmetic handling
+- Correct main vs regular function distinction
+- Centralized type inference with `inferExpressionType()`
+- Extensible builtin function framework
+- Proper test isolation and repeatability
 
 ---
 
