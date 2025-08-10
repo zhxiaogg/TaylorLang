@@ -159,7 +159,13 @@ class TypeChecker {
                     val signature = createFunctionSignature(statement, ctx)
                         .fold(
                             onSuccess = { it },
-                            onFailure = { errors.addAll(listOf(TypeError.InvalidOperation(it.message ?: "Unknown error", emptyList(), null))); null }
+                            onFailure = { error ->
+                                errors.addAll(listOf(when (error) {
+                                    is TypeError -> error
+                                    else -> TypeError.InvalidOperation(error.message ?: "Unknown error", emptyList(), null)
+                                }))
+                                null
+                            }
                         )
                     if (signature != null) {
                         ctx.withFunction(statement.name, signature)
@@ -175,8 +181,11 @@ class TypeChecker {
         val typedStatements = program.statements.mapNotNull { statement ->
             typeCheckStatement(statement, contextWithDeclarations).fold(
                 onSuccess = { it },
-                onFailure = { 
-                    errors.add(TypeError.InvalidOperation(it.message ?: "Unknown error", emptyList(), null))
+                onFailure = { error ->
+                    errors.add(when (error) {
+                        is TypeError -> error
+                        else -> TypeError.InvalidOperation(error.message ?: "Unknown error", emptyList(), null)
+                    })
                     null 
                 }
             )
@@ -246,10 +255,10 @@ class TypeChecker {
                             }
                             TypedFunctionBody.Expression(typedExpr)
                         },
-                        onFailure = { 
-                            errors.add(when (it) {
-                                is TypeError -> it
-                                else -> TypeError.InvalidOperation(it.message ?: "Unknown error", emptyList(), null)
+                        onFailure = { error ->
+                            errors.add(when (error) {
+                                is TypeError -> error
+                                else -> TypeError.InvalidOperation(error.message ?: "Unknown error", emptyList(), null)
                             })
                             null 
                         }
