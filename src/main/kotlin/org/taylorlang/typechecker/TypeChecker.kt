@@ -215,30 +215,55 @@ class TypeChecker {
     ): Result<TypedStatement> {
         val errors = mutableListOf<TypeError>()
         
-        // Create context with function parameters
+        // Resolve parameter types and create context with function parameters
         val paramContext = function.parameters.fold(context) { ctx, param ->
             val paramType = param.type ?: run {
-                errors.add(TypeError.TypeMismatch(
-                    expected = Type.PrimitiveType("Any"), // Placeholder
-                    actual = Type.PrimitiveType("Unknown"),
-                    location = param.sourceLocation
+                errors.add(TypeError.UndefinedType(
+                    "Missing type annotation for parameter '${param.name}'",
+                    param.sourceLocation
                 ))
                 BuiltinTypes.UNIT
             }
             ctx.withVariable(param.name, paramType)
         }
         
+        // Get the declared return type
+        val declaredReturnType = function.returnType ?: BuiltinTypes.UNIT
+        
         // Type check function body
         val typedBody = when (function.body) {
             is FunctionBody.ExpressionBody -> {
                 typeCheckExpression(function.body.expression, paramContext)
                     .fold(
-                        onSuccess = { TypedFunctionBody.Expression(it) },
-                        onFailure = { errors.add(TypeError.InvalidOperation(it.message ?: "Unknown error", emptyList(), null)); null }
+                        onSuccess = { typedExpr ->
+                            // Validate return type matches function body type
+                            if (!typesCompatible(typedExpr.type, declaredReturnType)) {
+                                errors.add(TypeError.TypeMismatch(
+                                    expected = declaredReturnType,
+                                    actual = typedExpr.type,
+                                    location = function.body.expression.sourceLocation
+                                ))
+                            }
+                            TypedFunctionBody.Expression(typedExpr)
+                        },
+                        onFailure = { 
+                            errors.add(when (it) {
+                                is TypeError -> it
+                                else -> TypeError.InvalidOperation(it.message ?: "Unknown error", emptyList(), null)
+                            })
+                            null 
+                        }
                     )
             }
             is FunctionBody.BlockBody -> {
-                // For now, treat block bodies as Unit-returning
+                // For block bodies, validate the return type is Unit unless explicitly declared
+                if (declaredReturnType != BuiltinTypes.UNIT) {
+                    errors.add(TypeError.TypeMismatch(
+                        expected = declaredReturnType,
+                        actual = BuiltinTypes.UNIT,
+                        location = function.sourceLocation
+                    ))
+                }
                 TypedFunctionBody.Block(emptyList())
             }
         }
@@ -249,7 +274,12 @@ class TypeChecker {
                 typedBody
             ))
         } else {
-            Result.failure(RuntimeException(errors.joinToString("\n") { it.toString() }))
+            val error = if (errors.size == 1) {
+                errors.first()
+            } else {
+                TypeError.MultipleErrors(errors)
+            }
+            Result.failure(error)
         }
     }
     
@@ -380,9 +410,77 @@ class TypeChecker {
         call: FunctionCall,
         context: TypeContext
     ): Result<TypedExpression> {
-        // For now, assume all function calls return Unit
-        // TODO: Implement proper function signature lookup and checking
-        return Result.success(TypedExpression(call, BuiltinTypes.UNIT))
+        // Extract function name from target (assuming it's an Identifier)
+        val functionName = when (call.target) {
+            is Identifier -> call.target.name
+            else -> return Result.failure(TypeError.InvalidOperation(
+                "Complex function expressions not yet supported",
+                emptyList(),
+                call.target.sourceLocation
+            ))
+        }
+        
+        // Look up the function signature
+        val functionSignature = context.lookupFunction(functionName)
+            ?: return Result.failure(TypeError.UnresolvedSymbol(
+                functionName, 
+                call.sourceLocation
+            ))
+        
+        val errors = mutableListOf<TypeError>()
+        
+        // Check arity (parameter count)
+        if (call.arguments.size != functionSignature.parameterTypes.size) {
+            return Result.failure(TypeError.ArityMismatch(
+                expected = functionSignature.parameterTypes.size,
+                actual = call.arguments.size,
+                location = call.sourceLocation
+            ))
+        }
+        
+        // Type check each argument against corresponding parameter type
+        val typedArguments = mutableListOf<TypedExpression>()
+        for (i in call.arguments.indices) {
+            val argument = call.arguments[i]
+            val expectedType = functionSignature.parameterTypes[i]
+            
+            val argResult = typeCheckExpression(argument, context)
+            if (argResult.isFailure) {
+                val error = argResult.exceptionOrNull()
+                errors.add(when (error) {
+                    is TypeError -> error
+                    else -> TypeError.InvalidOperation(error?.message ?: "Unknown error", emptyList(), argument.sourceLocation)
+                })
+                continue
+            }
+            
+            val typedArg = argResult.getOrThrow()
+            typedArguments.add(typedArg)
+            
+            // Check if argument type is compatible with parameter type
+            if (!typesCompatible(typedArg.type, expectedType)) {
+                errors.add(TypeError.TypeMismatch(
+                    expected = expectedType,
+                    actual = typedArg.type,
+                    location = argument.sourceLocation
+                ))
+            }
+        }
+        
+        return if (errors.isEmpty()) {
+            // Create typed function call with typed arguments
+            val typedCall = call.copy(
+                arguments = typedArguments.map { it.expression }.toPersistentList()
+            )
+            Result.success(TypedExpression(typedCall, functionSignature.returnType))
+        } else {
+            val error = if (errors.size == 1) {
+                errors.first()
+            } else {
+                TypeError.MultipleErrors(errors)
+            }
+            Result.failure(error)
+        }
     }
     
     private fun typeCheckConstructorCall(

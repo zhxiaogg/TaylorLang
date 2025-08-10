@@ -272,7 +272,7 @@ class TypeCheckerTest : StringSpec({
     // Function and Parameter Type Tests (TODO: Implement function type checking)
     // =============================================================================
 
-    "should type check function with multiple parameters".config(enabled = false) {
+    "should type check function with multiple parameters" {
         // TODO: Implement multi-parameter function type checking
         // Current issue: TypeChecker doesn't handle complex binary operations with multiple operands
         val source = "fn add(x: Int, y: Int, z: Int): Int => x + y + z"
@@ -285,7 +285,7 @@ class TypeCheckerTest : StringSpec({
         result.statements.size shouldBe 1
     }
 
-    "should type check generic functions".config(enabled = false) { // TODO: Implement generic function support
+    "should type check generic functions" { // TODO: Implement generic function support
         val source = "fn identity<T>(x: T): T => x"
         val program = parser.parse(source)
             .getOrThrow()
@@ -296,7 +296,7 @@ class TypeCheckerTest : StringSpec({
         result.statements.size shouldBe 1
     }
 
-    "should detect parameter type mismatches".config(enabled = false) { // TODO: Implement return type validation
+    "should detect parameter type mismatches" { // TODO: Implement return type validation
         val source = "fn test(x: Int): String => x"  // Returns Int but declares String
         val program = parser.parse(source)
             .getOrThrow()
@@ -306,7 +306,7 @@ class TypeCheckerTest : StringSpec({
         result.isFailure shouldBe true
     }
 
-    "should type check function calls with arguments".config(enabled = false) { // TODO: Implement function call type checking
+    "should type check function calls with arguments" { // TODO: Implement function call type checking
         val source = """
             fn add(x: Int, y: Int): Int => x + y
             val result = add(1, 2)
