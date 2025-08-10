@@ -1,332 +1,210 @@
-# TaylorLang Development Guidelines
+# GitHub Project Management Best Practices for TaylorLang
 
-## Technology Stack
+This document outlines the best practices we follow for managing the TaylorLang project using GitHub's native project management tools.
 
-- **Implementation Language**: Kotlin (instead of Java as originally planned)
-- **Parser**: ANTLR 4 for grammar definition and parsing
-- **Bytecode Generation**: ASM library for JVM bytecode emission
-- **Union Types**: Java 17+ sealed classes for efficient representation
-- **Build System**: Gradle with Kotlin DSL
-- **Target JVM**: Java 17+ (for sealed classes and pattern matching)
+## Overview
 
-## Code Guidelines
+GitHub Projects provides integrated project management that stays synchronized with our code repository. We use milestones, issues, labels, and project boards to track progress and coordinate development efforts.
 
-### General Principles
+## Milestone Management
 
-1. **Functional Programming First**: Use immutable data structures and pure functions by default
-2. **Kotlin Idioms**: Leverage Kotlin's functional programming features (sealed classes, data classes, etc.)
-3. **Type Safety**: Use Kotlin's null safety and type system to prevent runtime errors
-4. **Immutability**: Prefer `val` over `var`, use immutable collections
-5. **Composition over Inheritance**: Favor functional composition and sealed class hierarchies
-
-### Code Style
-
-```kotlin
-// Use data classes for immutable data
-data class ASTNode(
-    val type: NodeType,
-    val children: List<ASTNode> = emptyList(),
-    val sourceLocation: SourceLocation? = null
-)
-
-// Use sealed classes for union types
-sealed class Type {
-    data class Primitive(val name: String) : Type()
-    data class Union(val variants: List<Type>) : Type()
-    data class Generic(val name: String, val parameters: List<Type>) : Type()
-}
-
-// Use functional programming patterns
-fun transform(node: ASTNode, transformer: (ASTNode) -> ASTNode): ASTNode =
-    transformer(node.copy(children = node.children.map { transform(it, transformer) }))
-
-// Use when expressions for exhaustive matching
-fun analyzeType(type: Type): String = when (type) {
-    is Type.Primitive -> "primitive: ${type.name}"
-    is Type.Union -> "union of ${type.variants.size} types"
-    is Type.Generic -> "generic: ${type.name}<${type.parameters.joinToString()}>"
-}
-```
-
-### Immutable Data Structures
-
-**Use these libraries for persistent/immutable collections:**
-
-```kotlin
-// Add to build.gradle.kts
-dependencies {
-    implementation("io.arrow-kt:arrow-core:1.2.1")
-    implementation("org.pcollections:pcollections:4.0.1")
-}
-
-// Prefer immutable collections
-import arrow.core.*
-import org.pcollections.*
-
-// Use Arrow's functional data types
-val result: Either<CompilerError, AST> = parseSource(input)
-val maybeType: Option<Type> = inferType(expression)
-
-// Use PCollections for efficient persistent data structures
-val symbols: PMap<String, Symbol> = HashTreePMap.empty<String, Symbol>()
-    .plus("main", FunctionSymbol("main"))
-    
-val statements: PVector<Statement> = TreePVector.empty<Statement>()
-    .plus(statement1)
-    .plus(statement2)
-```
-
-### Error Handling
-
-```kotlin
-// Use sealed classes for typed errors
-sealed class CompilerError {
-    data class ParseError(val message: String, val location: SourceLocation) : CompilerError()
-    data class TypeError(val expected: Type, val actual: Type, val location: SourceLocation) : CompilerError()
-    data class SymbolError(val symbol: String, val location: SourceLocation) : CompilerError()
-}
-
-// Use Arrow's Either for error handling
-fun parseExpression(input: String): Either<CompilerError, Expression> =
-    try {
-        val ast = antlrParser.parse(input)
-        ast.toExpression().right()
-    } catch (e: ParseException) {
-        CompilerError.ParseError(e.message, e.location).left()
-    }
-
-// Chain operations with Either
-fun compileProgram(source: String): Either<CompilerError, ByteArray> =
-    parseProgram(source)
-        .flatMap { ast -> typeCheck(ast) }
-        .flatMap { typedAst -> generateBytecode(typedAst) }
-```
+### Structure
+- **Time-boxed releases**: Create milestones for specific releases (e.g., "v0.1.0 - Core Language")
+- **Feature-based milestones**: Group related functionality (e.g., "Type System Implementation")
+- **Due dates**: Always set realistic due dates for milestones to track progress
 
 ### Naming Conventions
+- Release milestones: `v{major}.{minor}.{patch} - {Description}`
+- Feature milestones: `{Feature Name} Implementation`
+- Sprint milestones: `Sprint {number} - {dates}`
 
-- **Classes**: PascalCase (`ASTNode`, `TypeChecker`, `BytecodeGenerator`)
-- **Functions/Variables**: camelCase (`parseExpression`, `symbolTable`)
-- **Constants**: UPPER_SNAKE_CASE (`MAX_RECURSION_DEPTH`, `DEFAULT_TARGET_VERSION`)
-- **Sealed Classes**: Use nested classes for variants (`Type.Primitive`, `Expression.Binary`)
+### Best Practices
+- Keep 3-5 active milestones maximum
+- Review milestone progress weekly
+- Close milestones promptly when completed
+- Move incomplete issues to next appropriate milestone
 
-### File Organization
+## Issue Management
 
-```
-compiler/
-├── src/main/kotlin/
-│   ├── ast/                    # AST node definitions
-│   │   ├── Expression.kt
-│   │   ├── Statement.kt
-│   │   └── Type.kt
-│   ├── parser/                 # ANTLR integration
-│   │   ├── TaylorLangParser.kt
-│   │   └── ASTBuilder.kt
-│   ├── typechecker/           # Type system
-│   │   ├── TypeChecker.kt
-│   │   ├── TypeInference.kt
-│   │   └── Unification.kt
-│   ├── codegen/               # Bytecode generation
-│   │   ├── BytecodeGenerator.kt
-│   │   └── ClassWriter.kt
-│   └── main/                  # Compiler entry point
-│       └── Compiler.kt
-└── src/test/kotlin/           # Tests mirror main structure
-    ├── ast/
-    ├── parser/
-    ├── typechecker/
-    └── codegen/
-```
+### Issue Types and Labels
+- `type: bug` - Something isn't working
+- `type: feature` - New feature or enhancement
+- `type: documentation` - Documentation improvements
+- `type: refactoring` - Code structure improvements
+- `type: testing` - Test-related work
 
-## Testing Guidelines
+### Priority Labels
+- `priority: critical` - Blocking other work or breaking existing functionality
+- `priority: high` - Important for current milestone
+- `priority: medium` - Should be addressed soon
+- `priority: low` - Nice to have, not urgent
 
-### Test Structure
+### Component Labels
+- `component: parser` - ANTLR grammar and parsing
+- `component: type-system` - Type checking and inference
+- `component: codegen` - Bytecode generation
+- `component: stdlib` - Standard library
+- `component: tooling` - CLI, IDE extensions, build tools
 
-```kotlin
-// Use Kotest for BDD-style testing
-class TypeCheckerTest : StringSpec({
-    "should infer Int type for numeric literals" {
-        val expression = IntLiteral(42)
-        val result = TypeChecker().inferType(expression)
-        
-        result.shouldBeRight()
-        result.getOrNull() shouldBe Type.Primitive("Int")
-    }
-    
-    "should reject mismatched types in binary operations" {
-        val expression = BinaryOp(
-            left = IntLiteral(42),
-            operator = Plus,
-            right = StringLiteral("hello")
-        )
-        
-        val result = TypeChecker().inferType(expression)
-        result.shouldBeLeft()
-        result.leftOrNull() shouldBe instanceOf<CompilerError.TypeError>()
-    }
-})
+### Issue Structure Template
+```markdown
+## Description
+Brief description of the issue/feature
 
-// Use property-based testing for complex scenarios
-class ParserPropertyTest : StringSpec({
-    "parsing then pretty-printing should be idempotent" {
-        checkAll(Gen.validTaylorLangProgram()) { program ->
-            val parsed = Parser.parse(program)
-            val prettyPrinted = PrettyPrinter.print(parsed.getOrThrow())
-            val reparsed = Parser.parse(prettyPrinted)
-            
-            parsed shouldBe reparsed
-        }
-    }
-})
+## Acceptance Criteria
+- [ ] Specific, testable criteria
+- [ ] One per line
+- [ ] Clear success conditions
+
+## Technical Details
+- Implementation approach
+- Dependencies on other issues
+- Potential risks or blockers
+
+## Testing Requirements
+- Unit tests needed
+- Integration tests needed
+- Performance considerations
+
+## Definition of Done
+- [ ] Implementation complete
+- [ ] Tests written and passing
+- [ ] Code reviewed
+- [ ] Documentation updated
 ```
 
-### Testing Dependencies
+### Best Practices
+- Break large issues into smaller, manageable tasks (< 1 week of work)
+- Use clear, descriptive titles
+- Assign issues to specific team members
+- Link related issues using keywords (closes, fixes, relates to)
+- Update issues regularly with progress comments
+- Use @mentions for team communication
 
-```kotlin
-// Add to build.gradle.kts
-dependencies {
-    testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
-    testImplementation("io.kotest:kotest-assertions-core:5.8.0")
-    testImplementation("io.kotest:kotest-property:5.8.0")
-    testImplementation("io.mockk:mockk:1.13.8")
-}
-```
+## Project Board Organization
 
-## Performance Guidelines
+### Board Views
+1. **Kanban Board**: Status-based workflow (Backlog → In Progress → Review → Done)
+2. **Roadmap View**: Timeline-based view for milestones and releases
+3. **Table View**: Detailed view with all custom fields
+4. **Sprint Board**: Current iteration focus
 
-### Immutable Collections Performance
+### Custom Fields
+- **Priority**: Critical, High, Medium, Low
+- **Component**: Parser, Type System, Codegen, Stdlib, Tooling
+- **Effort**: 1-3 (story points or time estimation)
+- **Assignee**: Team member responsible
+- **Sprint**: Current iteration assignment
 
-```kotlin
-// Use PCollections for performance-critical paths
-class SymbolTable private constructor(
-    private val symbols: PMap<String, Symbol> = HashTreePMap.empty()
-) {
-    fun define(name: String, symbol: Symbol): SymbolTable =
-        SymbolTable(symbols.plus(name, symbol))
-    
-    fun lookup(name: String): Symbol? = symbols[name]
-    
-    // Use lazy evaluation for expensive computations
-    val allSymbols: List<Symbol> by lazy { symbols.values.toList() }
-}
+### Workflow Automation
+- Automatically add new issues to "Backlog"
+- Move to "In Progress" when PR is opened
+- Move to "Review" when PR is ready for review
+- Move to "Done" when PR is merged
+- Auto-assign milestone based on labels
 
-// Prefer sequences for lazy evaluation
-fun collectAllTypes(ast: ASTNode): Sequence<Type> = sequence {
-    when (ast) {
-        is Expression -> ast.type?.let { yield(it) }
-        is Statement -> yieldAll(ast.children.asSequence().flatMap { collectAllTypes(it) })
-    }
-}
-```
+## Communication Guidelines
 
-### Memory-Conscious Code
+### @Mentions Protocol
+- `@username` for specific person attention
+- `@team/developers` for development team
+- Use sparingly to avoid notification fatigue
 
-```kotlin
-// Use object pooling for frequently created objects
-object TypePool {
-    val intType: Type.Primitive by lazy { Type.Primitive("Int") }
-    val stringType: Type.Primitive by lazy { Type.Primitive("String") }
-    val booleanType: Type.Primitive by lazy { Type.Primitive("Boolean") }
-}
+### Progress Updates
+- Weekly milestone progress reviews
+- Daily updates on in-progress issues
+- Immediate notification for blockers
 
-// Avoid creating unnecessary intermediate collections
-fun transformExpressions(expressions: List<Expression>): List<Expression> =
-    expressions.asSequence()
-        .filter { it.isValid() }
-        .map { transform(it) }
-        .toList()
-```
+### Documentation Requirements
+- All architectural decisions documented in issues
+- ADRs (Architecture Decision Records) for major choices
+- Code changes require documentation updates
 
-## Build Configuration
+## Workflow Process
 
-### Gradle Setup (build.gradle.kts)
+### New Feature Development
+1. Create feature issue with full template
+2. Add to appropriate milestone
+3. Label with type, priority, component
+4. Break into smaller implementation tasks if needed
+5. Assign to team member
+6. Move through board workflow as progress is made
 
-```kotlin
-plugins {
-    kotlin("jvm") version "1.9.21"
-    antlr
-    application
-}
+### Bug Triage
+1. Immediate labeling with severity
+2. Assign to current milestone if critical
+3. Reproduce and document steps
+4. Assign to component expert
+5. Link to any related issues
 
-kotlin {
-    jvmToolchain(17)
-    
-    compilerOptions {
-        freeCompilerArgs.addAll(
-            "-Xjsr305=strict",
-            "-opt-in=kotlin.RequiresOptIn"
-        )
-    }
-}
+### Release Process
+1. Create release milestone 2-4 weeks in advance
+2. Add all planned issues to milestone
+3. Weekly milestone review meetings
+4. Feature freeze 1 week before due date
+5. Final testing and documentation updates
+6. Release and close milestone
 
-dependencies {
-    // Core dependencies
-    implementation("org.jetbrains.kotlin:kotlin-stdlib")
-    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.6")
-    
-    // ANTLR
-    antlr("org.antlr:antlr4:4.13.1")
-    implementation("org.antlr:antlr4-runtime:4.13.1")
-    
-    // Bytecode generation
-    implementation("org.ow2.asm:asm:9.6")
-    implementation("org.ow2.asm:asm-tree:9.6")
-    
-    // Functional programming
-    implementation("io.arrow-kt:arrow-core:1.2.1")
-    implementation("org.pcollections:pcollections:4.0.1")
-    
-    // Testing
-    testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
-    testImplementation("io.kotest:kotest-assertions-core:5.8.0")
-    testImplementation("io.kotest:kotest-property:5.8.0")
-}
+## Quality Standards
 
-tasks.generateGrammarSource {
-    outputDirectory = file("src/main/generated/antlr")
-    arguments = arguments + listOf("-visitor", "-long-messages")
-}
+### Definition of Done
+Every issue must meet these criteria before closing:
+- [ ] Implementation completed per acceptance criteria
+- [ ] Unit tests written and passing (>80% coverage)
+- [ ] Integration tests passing
+- [ ] Code reviewed by team member
+- [ ] Documentation updated
+- [ ] No breaking changes without migration path
 
-tasks.test {
-    useJUnitPlatform()
-}
-```
+### Code Review Requirements
+- All PRs require at least one approval
+- PRs should be < 500 lines when possible
+- Include tests with implementation
+- Update documentation for user-facing changes
 
-## Development Workflow
+## Metrics and Reporting
 
-### Git Workflow
+### Key Metrics to Track
+- Milestone completion percentage
+- Average issue resolution time
+- Bug discovery rate vs. resolution rate
+- Team velocity (issues completed per sprint)
 
-1. **Feature branches**: Create branches from `main` for each feature
-2. **Commit messages**: Use conventional commits (feat:, fix:, refactor:, etc.)
-3. **Pull requests**: All changes go through PR review
-4. **CI/CD**: Automated testing and building on every PR
+### Review Cycles
+- Daily: Individual progress updates
+- Weekly: Milestone progress review
+- Bi-weekly: Retrospective and process improvements
+- Monthly: Roadmap and priority adjustments
 
-### Development Setup
+## Tools Integration
 
-```bash
-# 1. Clone and setup
-git clone <repository>
-cd TaylorLang
+### GitHub Actions
+- Automatically run tests on PR creation
+- Auto-assign reviewers based on changed files
+- Update project board status on PR events
+- Generate release notes from closed issues
 
-# 2. Build project
-./gradlew build
+### IDE Integration
+- VS Code extension for creating issues
+- GitHub CLI for rapid issue creation
+- Project board shortcuts for developers
 
-# 3. Run tests
-./gradlew test
+## Anti-Patterns to Avoid
 
-# 4. Generate ANTLR sources
-./gradlew generateGrammarSource
+- Creating issues too large (>1 week of work)
+- Leaving issues unassigned for extended periods
+- Not updating issue status regularly
+- Missing acceptance criteria or definition of done
+- Creating duplicate issues without linking
+- Using issues for internal team communication
+- Letting milestone due dates slip without adjustment
 
-# 5. Run compiler on example
-./gradlew run --args="examples/hello.tl"
-```
+## Templates
 
-### Code Review Checklist
+We maintain issue and PR templates in `.github/` directory:
+- Bug report template
+- Feature request template
+- Pull request template
+- Release checklist template
 
-- [ ] Code follows Kotlin idioms and functional programming principles
-- [ ] Uses immutable data structures where appropriate
-- [ ] Includes comprehensive tests
-- [ ] Error handling uses Either/Result types
-- [ ] Performance considerations addressed
-- [ ] Documentation updated if needed
-
-This development approach leverages Kotlin's strengths for building a robust, maintainable compiler while staying true to functional programming principles.
+Following these practices ensures our project remains organized, transparent, and efficiently managed throughout the development lifecycle.
