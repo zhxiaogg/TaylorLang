@@ -3,13 +3,10 @@ package org.taylorlang.codegen
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import org.taylorlang.parser.TaylorLangParser
-import org.taylorlang.typechecker.TypedProgram
-import org.taylorlang.typechecker.StatementTypeChecker
-import org.taylorlang.typechecker.TypeContext
+import org.taylorlang.typechecker.TypeChecker
 
 class VariableWhileLoopIntegrationTest : StringSpec({
     val parser = TaylorLangParser()
-    val context = TypeContext.withBuiltins()
     val generator = BytecodeGenerator()
     
     "should generate bytecode for while loop with variable counter" {
@@ -25,13 +22,9 @@ class VariableWhileLoopIntegrationTest : StringSpec({
         // Parse the program
         val program = parser.parse(code).getOrThrow()
         
-        // Type check statements sequentially
-        val statementChecker = StatementTypeChecker(context)
-        val typedStatements = program.statements.map { statement ->
-            statement.accept(statementChecker).getOrThrow()
-        }
-        
-        val typedProgram = TypedProgram(typedStatements)
+        // Type check the complete program
+        val typeChecker = TypeChecker()
+        val typedProgram = typeChecker.typeCheck(program).getOrThrow()
         
         // Generate bytecode (should not throw)
         val result = generator.generateBytecode(typedProgram)
@@ -57,13 +50,9 @@ class VariableWhileLoopIntegrationTest : StringSpec({
         // Parse the program
         val program = parser.parse(code).getOrThrow()
         
-        // Type check statements sequentially
-        val statementChecker = StatementTypeChecker(context)
-        val typedStatements = program.statements.map { statement ->
-            statement.accept(statementChecker).getOrThrow()
-        }
-        
-        val typedProgram = TypedProgram(typedStatements)
+        // Type check the complete program
+        val typeChecker = TypeChecker()
+        val typedProgram = typeChecker.typeCheck(program).getOrThrow()
         
         // Generate bytecode (should not throw)
         val result = generator.generateBytecode(typedProgram)
@@ -85,13 +74,9 @@ class VariableWhileLoopIntegrationTest : StringSpec({
         // Parse the program
         val program = parser.parse(code).getOrThrow()
         
-        // Type check statements sequentially
-        val statementChecker = StatementTypeChecker(context)
-        val typedStatements = program.statements.map { statement ->
-            statement.accept(statementChecker).getOrThrow()
-        }
-        
-        val typedProgram = TypedProgram(typedStatements)
+        // Type check the complete program
+        val typeChecker = TypeChecker()
+        val typedProgram = typeChecker.typeCheck(program).getOrThrow()
         
         // Generate bytecode (should not throw)
         val result = generator.generateBytecode(typedProgram)

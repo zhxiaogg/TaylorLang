@@ -168,21 +168,31 @@ class RefactoredTypeChecker(
         val errors = mutableListOf<TypeError>()
         var currentContext = initialContext
         val typedStatements = mutableListOf<TypedStatement>()
+        val sharedScopeManager = ScopeManager()
         
         for (statement in statements) {
-            val statementChecker = StatementTypeChecker(currentContext)
+            val statementChecker = StatementTypeChecker(currentContext, sharedScopeManager)
             val result = statement.accept(statementChecker)
             
             result.fold(
                 onSuccess = { typedStatement ->
                     typedStatements.add(typedStatement)
                     
-                    // Update context with new variable bindings from val declarations
-                    if (typedStatement is TypedStatement.VariableDeclaration) {
-                        currentContext = currentContext.withVariable(
-                            typedStatement.declaration.name,
-                            typedStatement.inferredType
-                        )
+                    // Update context with new variable bindings from variable declarations
+                    when (typedStatement) {
+                        is TypedStatement.VariableDeclaration -> {
+                            currentContext = currentContext.withVariable(
+                                typedStatement.declaration.name,
+                                typedStatement.inferredType
+                            )
+                        }
+                        is TypedStatement.MutableVariableDeclaration -> {
+                            currentContext = currentContext.withVariable(
+                                typedStatement.declaration.name,
+                                typedStatement.inferredType
+                            )
+                        }
+                        else -> { /* No context update needed for other statement types */ }
                     }
                 },
                 onFailure = { error ->

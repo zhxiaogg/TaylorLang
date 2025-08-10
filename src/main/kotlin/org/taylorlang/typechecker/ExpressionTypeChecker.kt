@@ -108,12 +108,21 @@ class ExpressionTypeChecker(
                 onSuccess = { typedStmt ->
                     typedStatements.add(typedStmt)
                     
-                    // Update context with new variable bindings from val declarations
-                    if (typedStmt is TypedStatement.VariableDeclaration) {
-                        blockContext = blockContext.withVariable(
-                            typedStmt.declaration.name,
-                            typedStmt.inferredType
-                        )
+                    // Update context with new variable bindings from variable declarations
+                    when (typedStmt) {
+                        is TypedStatement.VariableDeclaration -> {
+                            blockContext = blockContext.withVariable(
+                                typedStmt.declaration.name,
+                                typedStmt.inferredType
+                            )
+                        }
+                        is TypedStatement.MutableVariableDeclaration -> {
+                            blockContext = blockContext.withVariable(
+                                typedStmt.declaration.name,
+                                typedStmt.inferredType
+                            )
+                        }
+                        else -> { /* No context update needed for other statement types */ }
                     }
                 },
                 onFailure = { error ->
