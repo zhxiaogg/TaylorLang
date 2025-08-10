@@ -601,13 +601,13 @@ class BytecodeGenerator {
      */
     private fun generateWhileExpression(whileExpr: WhileExpression, resultType: Type) {
         val conditionLabel = org.objectweb.asm.Label()
+        val loopBodyStart = org.objectweb.asm.Label()
         val loopEnd = org.objectweb.asm.Label()
         
-        // Jump to condition check first (like javac does)
+        // Jump to condition check first
         methodVisitor!!.visitJumpInsn(GOTO, conditionLabel)
         
         // Loop body start label
-        val loopBodyStart = org.objectweb.asm.Label()
         methodVisitor!!.visitLabel(loopBodyStart)
         
         // Generate body
@@ -626,11 +626,10 @@ class BytecodeGenerator {
         val conditionType = inferExpressionType(whileExpr.condition)
         generateExpression(TypedExpression(whileExpr.condition, conditionType))
         
-        // Jump to end if condition is false (0) - this is the key difference!
-        methodVisitor!!.visitJumpInsn(IFEQ, loopEnd)
+        // Jump to loop body if condition is true (non-zero) - TECH LEAD'S FIX
+        methodVisitor!!.visitJumpInsn(IFNE, loopBodyStart)
         
-        // Jump back to loop body if we reach here (condition was true)
-        methodVisitor!!.visitJumpInsn(GOTO, loopBodyStart)
+        // Fall through to loop end when condition is false
         
         // Loop end label  
         methodVisitor!!.visitLabel(loopEnd)
