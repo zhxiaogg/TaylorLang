@@ -85,6 +85,7 @@ expression
     | expression '||' expression          // Logical or
     | expression '?:' expression          // Null coalescing
     | ifExpr                             // If expression
+    | whileExpr                          // While loop
     | forExpr                            // For loop
     | matchExpr                           // Pattern matching
     | lambdaExpr                          // Lambda expression
@@ -126,6 +127,9 @@ argList: expression (',' expression)*;
 // If expressions: if (condition) expr else expr
 // Supports both single expressions and block expressions
 ifExpr: 'if' '(' expression ')' expression ('else' expression)?;
+
+// While loops: while (condition) { body }
+whileExpr: 'while' '(' expression ')' expression;
 
 // For loops: for (item in collection) { body }
 forExpr: 'for' '(' IDENTIFIER 'in' expression ')' expression;

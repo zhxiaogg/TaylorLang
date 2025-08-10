@@ -64,6 +64,7 @@ interface ASTVisitor<R> {
     fun visitMatchCase(node: MatchCase): R
     fun visitLambdaExpression(node: LambdaExpression): R
     fun visitIfExpression(node: IfExpression): R
+    fun visitWhileExpression(node: WhileExpression): R
     fun visitForExpression(node: ForExpression): R
     fun visitConstructorCall(node: ConstructorCall): R
     fun visitBlockExpression(node: BlockExpression): R

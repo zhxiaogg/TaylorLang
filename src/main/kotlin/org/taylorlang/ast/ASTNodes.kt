@@ -248,6 +248,14 @@ data class ForExpression(
     override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitForExpression(this)
 }
 
+data class WhileExpression(
+    val condition: Expression,
+    val body: Expression,
+    override val sourceLocation: SourceLocation? = null
+) : Expression {
+    override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitWhileExpression(this)
+}
+
 data class ConstructorCall(
     val constructor: String,
     val arguments: PersistentList<Expression> = persistentListOf(),

@@ -306,6 +306,67 @@ class ControlFlowExpressionChecker(
     }
     
     /**
+     * Type check a while expression.
+     * 
+     * @param node The while expression to type check
+     * @return Result containing the typed expression or error
+     */
+    fun visitWhileExpression(node: WhileExpression): Result<TypedExpression> {
+        val errors = mutableListOf<TypeError>()
+        
+        // Type check the condition - must be Boolean
+        val conditionResult = node.condition.accept(baseChecker)
+        conditionResult.fold(
+            onSuccess = { typedExpr ->
+                if (!typesCompatible(typedExpr.type, BuiltinTypes.BOOLEAN)) {
+                    errors.add(TypeError.TypeMismatch(
+                        expected = BuiltinTypes.BOOLEAN,
+                        actual = typedExpr.type,
+                        location = node.condition.sourceLocation
+                    ))
+                }
+            },
+            onFailure = { error ->
+                errors.add(when (error) {
+                    is TypeError -> error
+                    else -> TypeError.InvalidOperation(
+                        error.message ?: "Unknown error",
+                        emptyList(),
+                        node.condition.sourceLocation
+                    )
+                })
+            }
+        )
+        
+        // Type check the body
+        val bodyResult = node.body.accept(baseChecker)
+        bodyResult.fold(
+            onSuccess = { /* Body type is not used for while result */ },
+            onFailure = { error ->
+                errors.add(when (error) {
+                    is TypeError -> error
+                    else -> TypeError.InvalidOperation(
+                        error.message ?: "Unknown error",
+                        emptyList(),
+                        node.body.sourceLocation
+                    )
+                })
+            }
+        )
+        
+        // Return errors if any occurred during type checking
+        if (errors.isNotEmpty()) {
+            return Result.failure(
+                if (errors.size == 1) errors.first()
+                else TypeError.MultipleErrors(errors)
+            )
+        }
+        
+        // While loops typically return Unit
+        return Result.success(TypedExpression(node, BuiltinTypes.UNIT))
+    }
+    
+    /**
      * Type check a match expression.
      * 
      * @param node The match expression to type check

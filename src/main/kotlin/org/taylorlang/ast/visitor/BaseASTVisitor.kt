@@ -154,6 +154,7 @@ abstract class BaseASTVisitor<R> : ASTVisitor<R> {
             is MatchExpression -> visitMatchExpression(node)
             is LambdaExpression -> visitLambdaExpression(node)
             is IfExpression -> visitIfExpression(node)
+            is WhileExpression -> visitWhileExpression(node)
             is ForExpression -> visitForExpression(node)
             is ConstructorCall -> visitConstructorCall(node)
             is BlockExpression -> visitBlockExpression(node)
@@ -212,6 +213,12 @@ abstract class BaseASTVisitor<R> : ASTVisitor<R> {
         val thenResult = node.thenExpression.accept(this)
         val elseResult = node.elseExpression?.accept(this) ?: defaultResult()
         return combineResults(listOf(conditionResult, thenResult, elseResult))
+    }
+    
+    override fun visitWhileExpression(node: WhileExpression): R {
+        val conditionResult = node.condition.accept(this)
+        val bodyResult = node.body.accept(this)
+        return combine(conditionResult, bodyResult)
     }
     
     override fun visitForExpression(node: ForExpression): R {

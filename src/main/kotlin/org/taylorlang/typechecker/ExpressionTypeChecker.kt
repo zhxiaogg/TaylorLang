@@ -50,6 +50,7 @@ class ExpressionTypeChecker(
             is BinaryOp -> arithmeticChecker.visitBinaryOp(node)
             is UnaryOp -> arithmeticChecker.visitUnaryOp(node)
             is IfExpression -> controlFlowChecker.visitIfExpression(node)
+            is WhileExpression -> controlFlowChecker.visitWhileExpression(node)
             is MatchExpression -> controlFlowChecker.visitMatchExpression(node)
             is BlockExpression -> visitBlockExpression(node)
             is Literal -> literalChecker.visitLiteral(node)
@@ -83,6 +84,10 @@ class ExpressionTypeChecker(
     
     override fun visitIfExpression(node: IfExpression): Result<TypedExpression> {
         return controlFlowChecker.visitIfExpression(node)
+    }
+    
+    override fun visitWhileExpression(node: WhileExpression): Result<TypedExpression> {
+        return controlFlowChecker.visitWhileExpression(node)
     }
     
     override fun visitMatchExpression(node: MatchExpression): Result<TypedExpression> {

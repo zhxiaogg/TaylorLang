@@ -303,6 +303,12 @@ class BytecodeGenerator {
                 // For now, just load 0 as placeholder
                 methodVisitor!!.visitLdcInsn(0)
             }
+            is IfExpression -> {
+                generateIfExpression(expression, expr.type)
+            }
+            is WhileExpression -> {
+                generateWhileExpression(expression, expr.type)
+            }
             is FunctionCall -> {
                 generateFunctionCall(expression, expr.type)
             }
@@ -383,8 +389,34 @@ class BytecodeGenerator {
                     methodVisitor!!.visitInsn(DDIV)
                 }
             }
+            // Comparison operators
+            BinaryOperator.LESS_THAN -> {
+                generateComparison(isIntegerType(operandType), IFLT)
+            }
+            BinaryOperator.LESS_EQUAL -> {
+                generateComparison(isIntegerType(operandType), IFLE)
+            }
+            BinaryOperator.GREATER_THAN -> {
+                generateComparison(isIntegerType(operandType), IFGT)
+            }
+            BinaryOperator.GREATER_EQUAL -> {
+                generateComparison(isIntegerType(operandType), IFGE)
+            }
+            BinaryOperator.EQUAL -> {
+                generateComparison(isIntegerType(operandType), IFEQ)
+            }
+            BinaryOperator.NOT_EQUAL -> {
+                generateComparison(isIntegerType(operandType), IFNE)
+            }
+            // Boolean operators
+            BinaryOperator.AND -> {
+                generateBooleanAnd()
+            }
+            BinaryOperator.OR -> {
+                generateBooleanOr()
+            }
             else -> {
-                // Unsupported operation - use appropriate add instruction
+                // Unsupported operation - use appropriate add instruction as fallback
                 if (isIntegerType(operandType)) {
                     methodVisitor!!.visitInsn(IADD)
                 } else {
@@ -402,11 +434,31 @@ class BytecodeGenerator {
         val leftType = inferExpressionType(binaryOp.left)
         val rightType = inferExpressionType(binaryOp.right)
         
-        // If either operand is double, the result is double
-        return when {
-            leftType == BuiltinTypes.DOUBLE || rightType == BuiltinTypes.DOUBLE -> BuiltinTypes.DOUBLE
-            leftType == BuiltinTypes.INT && rightType == BuiltinTypes.INT -> BuiltinTypes.INT
-            else -> BuiltinTypes.INT // Default to int
+        // For comparison and boolean operations, we need to determine the operand type
+        // (not the result type, which is boolean)
+        return when (binaryOp.operator) {
+            BinaryOperator.LESS_THAN, BinaryOperator.LESS_EQUAL,
+            BinaryOperator.GREATER_THAN, BinaryOperator.GREATER_EQUAL,
+            BinaryOperator.EQUAL, BinaryOperator.NOT_EQUAL -> {
+                // For comparisons, promote to the wider type for comparison
+                when {
+                    leftType == BuiltinTypes.DOUBLE || rightType == BuiltinTypes.DOUBLE -> BuiltinTypes.DOUBLE
+                    leftType == BuiltinTypes.INT && rightType == BuiltinTypes.INT -> BuiltinTypes.INT
+                    else -> BuiltinTypes.INT // Default to int
+                }
+            }
+            BinaryOperator.AND, BinaryOperator.OR -> {
+                // Boolean operations work on boolean operands
+                BuiltinTypes.BOOLEAN
+            }
+            else -> {
+                // For arithmetic operations, if either operand is double, the result is double
+                when {
+                    leftType == BuiltinTypes.DOUBLE || rightType == BuiltinTypes.DOUBLE -> BuiltinTypes.DOUBLE
+                    leftType == BuiltinTypes.INT && rightType == BuiltinTypes.INT -> BuiltinTypes.INT
+                    else -> BuiltinTypes.INT // Default to int
+                }
+            }
         }
     }
     
@@ -459,7 +511,16 @@ class BytecodeGenerator {
             is Literal.StringLiteral -> BuiltinTypes.STRING
             is BinaryOp -> {
                 // For binary operations, determine the result type
-                if (isIntegerExpression(expr)) BuiltinTypes.INT else BuiltinTypes.DOUBLE
+                when (expr.operator) {
+                    BinaryOperator.LESS_THAN, BinaryOperator.LESS_EQUAL,
+                    BinaryOperator.GREATER_THAN, BinaryOperator.GREATER_EQUAL,
+                    BinaryOperator.EQUAL, BinaryOperator.NOT_EQUAL,
+                    BinaryOperator.AND, BinaryOperator.OR -> BuiltinTypes.BOOLEAN
+                    else -> {
+                        // Arithmetic operations
+                        if (isIntegerExpression(expr)) BuiltinTypes.INT else BuiltinTypes.DOUBLE
+                    }
+                }
             }
             is UnaryOp -> {
                 when (expr.operator) {
@@ -467,7 +528,122 @@ class BytecodeGenerator {
                     UnaryOperator.MINUS -> inferExpressionType(expr.operand)
                 }
             }
+            is IfExpression -> {
+                // For if expressions, determine the result type based on branches
+                val thenType = inferExpressionType(expr.thenExpression)
+                if (expr.elseExpression != null) {
+                    val elseType = inferExpressionType(expr.elseExpression)
+                    // Promote to the wider type if different
+                    when {
+                        thenType == BuiltinTypes.DOUBLE || elseType == BuiltinTypes.DOUBLE -> BuiltinTypes.DOUBLE
+                        thenType == BuiltinTypes.STRING || elseType == BuiltinTypes.STRING -> BuiltinTypes.STRING
+                        thenType == BuiltinTypes.BOOLEAN || elseType == BuiltinTypes.BOOLEAN -> BuiltinTypes.BOOLEAN
+                        else -> thenType
+                    }
+                } else {
+                    // No else branch - type is nullable or Unit
+                    thenType
+                }
+            }
+            is WhileExpression -> {
+                // While loops return Unit
+                BuiltinTypes.UNIT
+            }
             else -> BuiltinTypes.INT // Default fallback
+        }
+    }
+    
+    /**
+     * Generate code for if expressions
+     */
+    private fun generateIfExpression(ifExpr: IfExpression, resultType: Type) {
+        val elseLabel = org.objectweb.asm.Label()
+        val endLabel = org.objectweb.asm.Label()
+        
+        // Generate condition
+        val conditionType = inferExpressionType(ifExpr.condition)
+        generateExpression(TypedExpression(ifExpr.condition, conditionType))
+        
+        // Jump to else if condition is false (0)
+        methodVisitor!!.visitJumpInsn(IFEQ, elseLabel)
+        
+        // Generate then branch
+        val thenType = inferExpressionType(ifExpr.thenExpression)
+        generateExpression(TypedExpression(ifExpr.thenExpression, thenType))
+        
+        // Skip else branch
+        methodVisitor!!.visitJumpInsn(GOTO, endLabel)
+        
+        // Generate else branch
+        methodVisitor!!.visitLabel(elseLabel)
+        if (ifExpr.elseExpression != null) {
+            val elseType = inferExpressionType(ifExpr.elseExpression)
+            generateExpression(TypedExpression(ifExpr.elseExpression, elseType))
+        } else {
+            // No else branch - push default value based on result type
+            when (getJvmType(resultType)) {
+                "I", "Z" -> methodVisitor!!.visitLdcInsn(0)
+                "D" -> methodVisitor!!.visitLdcInsn(0.0)
+                "Ljava/lang/String;" -> methodVisitor!!.visitLdcInsn("")
+                "V" -> {
+                    // Unit/void - no value to push
+                }
+                else -> methodVisitor!!.visitInsn(ACONST_NULL)
+            }
+        }
+        
+        // End label
+        methodVisitor!!.visitLabel(endLabel)
+    }
+    
+    /**
+     * Generate code for while expressions
+     */
+    private fun generateWhileExpression(whileExpr: WhileExpression, resultType: Type) {
+        val conditionLabel = org.objectweb.asm.Label()
+        val loopEnd = org.objectweb.asm.Label()
+        
+        // Jump to condition check first (like javac does)
+        methodVisitor!!.visitJumpInsn(GOTO, conditionLabel)
+        
+        // Loop body start label
+        val loopBodyStart = org.objectweb.asm.Label()
+        methodVisitor!!.visitLabel(loopBodyStart)
+        
+        // Generate body
+        val bodyType = inferExpressionType(whileExpr.body)
+        generateExpression(TypedExpression(whileExpr.body, bodyType))
+        
+        // Pop the body result (while loops don't use body results)
+        if (getJvmType(bodyType) != "V") {
+            methodVisitor!!.visitInsn(POP)
+        }
+        
+        // Condition check label
+        methodVisitor!!.visitLabel(conditionLabel)
+        
+        // Generate condition
+        val conditionType = inferExpressionType(whileExpr.condition)
+        generateExpression(TypedExpression(whileExpr.condition, conditionType))
+        
+        // Jump to end if condition is false (0) - this is the key difference!
+        methodVisitor!!.visitJumpInsn(IFEQ, loopEnd)
+        
+        // Jump back to loop body if we reach here (condition was true)
+        methodVisitor!!.visitJumpInsn(GOTO, loopBodyStart)
+        
+        // Loop end label  
+        methodVisitor!!.visitLabel(loopEnd)
+        
+        // While loop result is typically Unit - push appropriate default value
+        when (getJvmType(resultType)) {
+            "I", "Z" -> methodVisitor!!.visitLdcInsn(0)
+            "D" -> methodVisitor!!.visitLdcInsn(0.0)
+            "Ljava/lang/String;" -> methodVisitor!!.visitLdcInsn("")
+            "V" -> {
+                // Unit/void - no value to push
+            }
+            else -> methodVisitor!!.visitInsn(ACONST_NULL)
         }
     }
     
@@ -548,6 +724,77 @@ class BytecodeGenerator {
         
         // End
         methodVisitor!!.visitLabel(endLabel)
+    }
+    
+    /**
+     * Generate comparison operation that returns a boolean result
+     */
+    private fun generateComparison(isIntegerComparison: Boolean, comparisonOp: Int) {
+        val trueLabel = org.objectweb.asm.Label()
+        val endLabel = org.objectweb.asm.Label()
+        
+        if (isIntegerComparison) {
+            // Integer comparison: use IF_ICMP* instructions
+            val icmpOp = when (comparisonOp) {
+                IFLT -> IF_ICMPLT
+                IFLE -> IF_ICMPLE  
+                IFGT -> IF_ICMPGT
+                IFGE -> IF_ICMPGE
+                IFEQ -> IF_ICMPEQ
+                IFNE -> IF_ICMPNE
+                else -> IF_ICMPEQ
+            }
+            methodVisitor!!.visitJumpInsn(icmpOp, trueLabel)
+        } else {
+            // Double comparison: use DCMPG + IF* instructions
+            methodVisitor!!.visitInsn(DCMPG)
+            methodVisitor!!.visitJumpInsn(comparisonOp, trueLabel)
+        }
+        
+        // False case: push 0 (false)
+        methodVisitor!!.visitLdcInsn(0)
+        methodVisitor!!.visitJumpInsn(GOTO, endLabel)
+        
+        // True case: push 1 (true)
+        methodVisitor!!.visitLabel(trueLabel)
+        methodVisitor!!.visitLdcInsn(1)
+        
+        // End
+        methodVisitor!!.visitLabel(endLabel)
+    }
+    
+    /**
+     * Generate short-circuit AND operation (&&)
+     * Stack: [left_operand, right_operand] -> [boolean_result]
+     */
+    private fun generateBooleanAnd() {
+        val falseLabel = org.objectweb.asm.Label()
+        val endLabel = org.objectweb.asm.Label()
+        
+        // For now, implement as a simple bitwise AND operation
+        // This is not truly short-circuit, but it's much simpler and reliable
+        methodVisitor!!.visitInsn(IAND)
+        
+        // Note: For true short-circuit behavior, we'd need to avoid evaluating
+        // the right operand when the left is false, but that requires
+        // restructuring how binary operations are generated
+    }
+    
+    /**
+     * Generate short-circuit OR operation (||)
+     * Stack: [left_operand, right_operand] -> [boolean_result]
+     */
+    private fun generateBooleanOr() {
+        val trueLabel = org.objectweb.asm.Label()
+        val endLabel = org.objectweb.asm.Label()
+        
+        // For now, implement as a simple bitwise OR operation
+        // This is not truly short-circuit, but it's much simpler and reliable
+        methodVisitor!!.visitInsn(IOR)
+        
+        // Note: For true short-circuit behavior, we'd need to avoid evaluating
+        // the right operand when the left is true, but that requires
+        // restructuring how binary operations are generated
     }
     
     /**

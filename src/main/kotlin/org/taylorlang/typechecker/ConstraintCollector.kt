@@ -126,6 +126,7 @@ class ConstraintCollector {
             
             // Control flow expressions
             is IfExpression -> handleIfExpression(expression, expectedType, context)
+            is WhileExpression -> handleWhileExpression(expression, expectedType, context)
             is MatchExpression -> handleMatchExpression(expression, expectedType, context)
             
             // Scoped expressions
@@ -678,6 +679,33 @@ class ConstraintCollector {
             // No else branch - result is nullable
             Type.NullableType(thenResult.type)
         }
+        
+        return ConstraintResult(resultType, allConstraints)
+    }
+    
+    private fun handleWhileExpression(
+        whileExpr: WhileExpression,
+        expectedType: Type?,
+        context: InferenceContext
+    ): ConstraintResult {
+        // Collect constraints from condition (must be Boolean)
+        val conditionResult = collectConstraintsWithExpected(
+            whileExpr.condition,
+            BuiltinTypes.BOOLEAN,
+            context
+        )
+        
+        // Collect constraints from body - while loop body executes 0 or more times
+        // so the result of the body is not directly the result of the while expression
+        val bodyResult = collectConstraints(whileExpr.body, context)
+        
+        // Merge all constraints
+        val allConstraints = conditionResult.constraints
+            .merge(bodyResult.constraints)
+        
+        // While loop result type is typically Unit in most languages
+        // unless specified otherwise by expected type
+        val resultType = expectedType ?: BuiltinTypes.UNIT
         
         return ConstraintResult(resultType, allConstraints)
     }
