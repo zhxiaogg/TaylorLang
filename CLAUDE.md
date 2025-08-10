@@ -1,0 +1,1 @@
+- don't do git commit with Claude code as co author

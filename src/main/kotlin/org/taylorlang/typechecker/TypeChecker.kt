@@ -1,9 +1,5 @@
 package org.taylorlang.typechecker
 
-import arrow.core.Either
-import arrow.core.flatMap
-import arrow.core.left
-import arrow.core.right
 import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toPersistentMap
@@ -13,7 +9,7 @@ import org.taylorlang.ast.*
 /**
  * Type checking errors
  */
-sealed class TypeError {
+sealed class TypeError : Throwable() {
     data class UnresolvedSymbol(
         val symbol: String,
         val location: SourceLocation?
@@ -50,6 +46,10 @@ sealed class TypeError {
     data class DuplicateDefinition(
         val name: String,
         val location: SourceLocation?
+    ) : TypeError()
+    
+    data class MultipleErrors(
+        val errors: List<TypeError>
     ) : TypeError()
 }
 
@@ -130,7 +130,7 @@ class TypeChecker {
     /**
      * Type check a complete program
      */
-    fun typeCheck(program: Program): Either<List<TypeError>, TypedProgram> {
+    fun typeCheck(program: Program): Result<TypedProgram> {
         val errors = mutableListOf<TypeError>()
         val context = createBuiltinContext()
         
@@ -144,8 +144,8 @@ class TypeChecker {
                 is FunctionDecl -> {
                     val signature = createFunctionSignature(statement, ctx)
                         .fold(
-                            { errors.addAll(it); null },
-                            { it }
+                            onSuccess = { it },
+                            onFailure = { errors.addAll(listOf(TypeError.InvalidOperation(it.message ?: "Unknown error", emptyList(), null))); null }
                         )
                     if (signature != null) {
                         ctx.withFunction(statement.name, signature)
@@ -159,19 +159,19 @@ class TypeChecker {
         
         // Second pass: type check all statements
         val typedStatements = program.statements.mapNotNull { statement ->
-            when (val result = typeCheckStatement(statement, contextWithDeclarations)) {
-                is Either.Left -> {
-                    errors.addAll(result.value)
-                    null
+            typeCheckStatement(statement, contextWithDeclarations).fold(
+                onSuccess = { it },
+                onFailure = { 
+                    errors.add(TypeError.InvalidOperation(it.message ?: "Unknown error", emptyList(), null))
+                    null 
                 }
-                is Either.Right -> result.value
-            }
+            )
         }
         
         return if (errors.isEmpty()) {
-            TypedProgram(typedStatements).right()
+            Result.success(TypedProgram(typedStatements))
         } else {
-            errors.left()
+            Result.failure(TypeError.MultipleErrors(errors))
         }
     }
     
@@ -181,19 +181,13 @@ class TypeChecker {
     private fun typeCheckStatement(
         statement: Statement,
         context: TypeContext
-    ): Either<List<TypeError>, TypedStatement> {
+    ): Result<TypedStatement> {
         return when (statement) {
             is FunctionDecl -> typeCheckFunction(statement, context)
-            is TypeDecl -> TypedStatement.TypeDeclaration(statement).right()
+            is TypeDecl -> Result.success(TypedStatement.TypeDeclaration(statement))
             is ValDecl -> typeCheckValDecl(statement, context)
             is Expression -> typeCheckExpression(statement, context).map { 
                 TypedStatement.ExpressionStatement(it) 
-            }
-        }.mapLeft { error -> 
-            when (error) {
-                is List<*> -> error.filterIsInstance<TypeError>()
-                is TypeError -> listOf(error)
-                else -> listOf(TypeError.InvalidOperation("Unknown error", emptyList(), null))
             }
         }
     }
@@ -204,7 +198,7 @@ class TypeChecker {
     private fun typeCheckFunction(
         function: FunctionDecl,
         context: TypeContext
-    ): Either<List<TypeError>, TypedStatement> {
+    ): Result<TypedStatement> {
         val errors = mutableListOf<TypeError>()
         
         // Create context with function parameters
@@ -225,8 +219,8 @@ class TypeChecker {
             is FunctionBody.ExpressionBody -> {
                 typeCheckExpression(function.body.expression, paramContext)
                     .fold(
-                        { errors.addAll(listOf(it)); null },
-                        { TypedFunctionBody.Expression(it) }
+                        onSuccess = { TypedFunctionBody.Expression(it) },
+                        onFailure = { errors.add(TypeError.InvalidOperation(it.message ?: "Unknown error", emptyList(), null)); null }
                     )
             }
             is FunctionBody.BlockBody -> {
@@ -236,12 +230,12 @@ class TypeChecker {
         }
         
         return if (errors.isEmpty() && typedBody != null) {
-            TypedStatement.FunctionDeclaration(
+            Result.success(TypedStatement.FunctionDeclaration(
                 function.copy(),
                 typedBody
-            ).right()
+            ))
         } else {
-            errors.left()
+            Result.failure(RuntimeException(errors.joinToString("\n") { it.toString() }))
         }
     }
     
@@ -251,31 +245,24 @@ class TypeChecker {
     private fun typeCheckValDecl(
         valDecl: ValDecl,
         context: TypeContext
-    ): Either<List<TypeError>, TypedStatement> {
+    ): Result<TypedStatement> {
         return typeCheckExpression(valDecl.initializer, context)
-            .fold(
-                { error -> listOf(error).left() },
-                { typedInitializer ->
-                    val inferredType = typedInitializer.type
-                    
-                    // Check declared type matches inferred type if provided
-                    valDecl.type?.let { declaredType ->
-                        if (!typesCompatible(declaredType, inferredType)) {
-                            return listOf(TypeError.TypeMismatch(
-                                expected = declaredType,
-                                actual = inferredType,
-                                location = valDecl.sourceLocation
-                            )).left()
-                        }
+            .mapCatching { typedInitializer ->
+                val inferredType = typedInitializer.type
+                
+                // Check declared type matches inferred type if provided
+                valDecl.type?.let { declaredType ->
+                    if (!typesCompatible(declaredType, inferredType)) {
+                        throw RuntimeException("Type mismatch: expected $declaredType, got $inferredType")
                     }
-                    
-                    TypedStatement.VariableDeclaration(
-                        valDecl.copy(),
-                        typedInitializer,
-                        inferredType
-                    ).right()
                 }
-            )
+                
+                TypedStatement.VariableDeclaration(
+                    valDecl.copy(),
+                    typedInitializer,
+                    inferredType
+                )
+            }
     }
     
     /**
@@ -284,14 +271,14 @@ class TypeChecker {
     fun typeCheckExpression(
         expression: Expression,
         context: TypeContext
-    ): Either<TypeError, TypedExpression> {
+    ): Result<TypedExpression> {
         return when (expression) {
             is Identifier -> typeCheckIdentifier(expression, context)
-            is Literal.IntLiteral -> TypedExpression(expression, BuiltinTypes.INT).right()
-            is Literal.FloatLiteral -> TypedExpression(expression, BuiltinTypes.DOUBLE).right()
-            is Literal.StringLiteral -> TypedExpression(expression, BuiltinTypes.STRING).right()
-            is Literal.BooleanLiteral -> TypedExpression(expression, BuiltinTypes.BOOLEAN).right()
-            is Literal.NullLiteral -> TypedExpression(expression, Type.NullableType(BuiltinTypes.UNIT)).right()
+            is Literal.IntLiteral -> Result.success(TypedExpression(expression, BuiltinTypes.INT))
+            is Literal.FloatLiteral -> Result.success(TypedExpression(expression, BuiltinTypes.DOUBLE))
+            is Literal.StringLiteral -> Result.success(TypedExpression(expression, BuiltinTypes.STRING))
+            is Literal.BooleanLiteral -> Result.success(TypedExpression(expression, BuiltinTypes.BOOLEAN))
+            is Literal.NullLiteral -> Result.success(TypedExpression(expression, Type.NullableType(BuiltinTypes.UNIT)))
             
             is BinaryOp -> typeCheckBinaryOp(expression, context)
             is UnaryOp -> typeCheckUnaryOp(expression, context)
@@ -300,112 +287,105 @@ class TypeChecker {
             
             is Literal.TupleLiteral -> typeCheckTupleLiteral(expression, context)
             
-            else -> TypeError.InvalidOperation(
-                operation = "type checking ${expression::class.simpleName}",
-                operandTypes = emptyList(),
-                location = expression.sourceLocation
-            ).left()
+            else -> Result.failure(RuntimeException("Type checking not implemented for ${expression::class.simpleName}"))
         }
     }
     
     private fun typeCheckIdentifier(
         identifier: Identifier,
         context: TypeContext
-    ): Either<TypeError, TypedExpression> {
+    ): Result<TypedExpression> {
         val type = context.lookupVariable(identifier.name)
-            ?: return TypeError.UnresolvedSymbol(
-                symbol = identifier.name,
-                location = identifier.sourceLocation
-            ).left()
+            ?: return Result.failure(TypeError.UnresolvedSymbol(identifier.name, identifier.sourceLocation))
         
-        return TypedExpression(identifier, type).right()
+        return Result.success(TypedExpression(identifier, type))
     }
     
     private fun typeCheckBinaryOp(
         binaryOp: BinaryOp,
         context: TypeContext
-    ): Either<TypeError, TypedExpression> {
+    ): Result<TypedExpression> {
         return typeCheckExpression(binaryOp.left, context)
-            .flatMap { leftTyped ->
+            .mapCatching { leftTyped ->
                 typeCheckExpression(binaryOp.right, context)
-                    .flatMap { rightTyped ->
+                    .mapCatching { rightTyped ->
                         val resultType = inferBinaryOpType(
                             binaryOp.operator,
                             leftTyped.type,
                             rightTyped.type
-                        ) ?: return TypeError.InvalidOperation(
-                            operation = binaryOp.operator.name,
-                            operandTypes = listOf(leftTyped.type, rightTyped.type),
-                            location = binaryOp.sourceLocation
-                        ).left()
+                        ) ?: throw TypeError.InvalidOperation(
+                            "${binaryOp.operator.name} on types ${leftTyped.type} and ${rightTyped.type}",
+                            listOf(leftTyped.type, rightTyped.type),
+                            binaryOp.sourceLocation
+                        )
                         
                         TypedExpression(
                             binaryOp.copy(left = leftTyped.expression, right = rightTyped.expression),
                             resultType
-                        ).right()
-                    }
+                        )
+                    }.getOrThrow()
             }
     }
     
     private fun typeCheckUnaryOp(
         unaryOp: UnaryOp,
         context: TypeContext
-    ): Either<TypeError, TypedExpression> {
+    ): Result<TypedExpression> {
         return typeCheckExpression(unaryOp.operand, context)
-            .flatMap { operandTyped ->
+            .mapCatching { operandTyped ->
                 val resultType = inferUnaryOpType(unaryOp.operator, operandTyped.type)
-                    ?: return TypeError.InvalidOperation(
-                        operation = unaryOp.operator.name,
-                        operandTypes = listOf(operandTyped.type),
-                        location = unaryOp.sourceLocation
-                    ).left()
+                    ?: throw TypeError.InvalidOperation(
+                        "${unaryOp.operator.name} on type ${operandTyped.type}",
+                        listOf(operandTyped.type),
+                        unaryOp.sourceLocation
+                    )
                 
                 TypedExpression(
                     unaryOp.copy(operand = operandTyped.expression),
                     resultType
-                ).right()
+                )
             }
     }
     
     private fun typeCheckFunctionCall(
         call: FunctionCall,
         context: TypeContext
-    ): Either<TypeError, TypedExpression> {
+    ): Result<TypedExpression> {
         // For now, assume all function calls return Unit
         // TODO: Implement proper function signature lookup and checking
-        return TypedExpression(call, BuiltinTypes.UNIT).right()
+        return Result.success(TypedExpression(call, BuiltinTypes.UNIT))
     }
     
     private fun typeCheckConstructorCall(
         call: ConstructorCall,
         context: TypeContext
-    ): Either<TypeError, TypedExpression> {
+    ): Result<TypedExpression> {
         // TODO: Implement constructor type checking
-        return TypedExpression(call, BuiltinTypes.UNIT).right()
+        return Result.success(TypedExpression(call, BuiltinTypes.UNIT))
     }
     
     private fun typeCheckTupleLiteral(
         tupleLiteral: Literal.TupleLiteral,
         context: TypeContext
-    ): Either<TypeError, TypedExpression> {
+    ): Result<TypedExpression> {
         // Type check each element of the tuple
         val elementResults = tupleLiteral.elements.map { element ->
             typeCheckExpression(element, context)
         }
         
         // Check if all elements type-checked successfully
-        val errors = elementResults.mapNotNull { it.leftOrNull() }
-        if (errors.isNotEmpty()) {
-            return errors.first().left() // Return first error
+        val failures = elementResults.mapNotNull { it.exceptionOrNull() }
+        if (failures.isNotEmpty()) {
+            return Result.failure(failures.first()) // Return first error
         }
         
         // Extract types from successful results
         val elementTypes = elementResults.map { 
-            it.getOrNull()!!.type 
+            it.getOrThrow().type 
         }.toPersistentList()
         
         val tupleType = Type.TupleType(elementTypes)
-        return TypedExpression(tupleLiteral, tupleType).right()
+        return Result.success(TypedExpression(tupleLiteral, tupleType))
     }
     
     // Helper functions
@@ -432,18 +412,18 @@ class TypeChecker {
     private fun createFunctionSignature(
         function: FunctionDecl,
         context: TypeContext
-    ): Either<List<TypeError>, FunctionSignature> {
+    ): Result<FunctionSignature> {
         val paramTypes = function.parameters.map { param ->
             param.type ?: BuiltinTypes.UNIT // Default to Unit if no type specified
         }
         
         val returnType = function.returnType ?: BuiltinTypes.UNIT
         
-        return FunctionSignature(
+        return Result.success(FunctionSignature(
             typeParameters = function.typeParams.toList(),
             parameterTypes = paramTypes,
             returnType = returnType
-        ).right()
+        ))
     }
     
     private fun inferBinaryOpType(operator: BinaryOperator, leftType: Type, rightType: Type): Type? {
@@ -497,8 +477,22 @@ class TypeChecker {
     }
     
     private fun typesCompatible(type1: Type, type2: Type): Boolean {
-        // Simple structural equality for now
-        return type1 == type2
+        // Structural equality ignoring source locations
+        return when {
+            type1 is Type.PrimitiveType && type2 is Type.PrimitiveType -> 
+                type1.name == type2.name
+            type1 is Type.NamedType && type2 is Type.NamedType -> 
+                type1.name == type2.name
+            type1 is Type.GenericType && type2 is Type.GenericType -> 
+                type1.name == type2.name && type1.arguments.size == type2.arguments.size &&
+                type1.arguments.zip(type2.arguments).all { (a1, a2) -> typesCompatible(a1, a2) }
+            type1 is Type.TupleType && type2 is Type.TupleType -> 
+                type1.elementTypes.size == type2.elementTypes.size &&
+                type1.elementTypes.zip(type2.elementTypes).all { (t1, t2) -> typesCompatible(t1, t2) }
+            type1 is Type.NullableType && type2 is Type.NullableType ->
+                typesCompatible(type1.baseType, type2.baseType)
+            else -> type1 == type2
+        }
     }
 }
 

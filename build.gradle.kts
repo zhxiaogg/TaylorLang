@@ -35,9 +35,6 @@ dependencies {
     implementation("org.ow2.asm:asm:9.6")
     implementation("org.ow2.asm:asm-tree:9.6")
     
-    // Functional programming libraries
-    implementation("io.arrow-kt:arrow-core:1.2.1")
-    implementation("org.pcollections:pcollections:4.0.1")
     
     // Testing
     testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
@@ -75,6 +72,15 @@ tasks.jar {
 
 tasks.test {
     useJUnitPlatform()
+    
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+        showCauses = true
+        showExceptions = true
+        showStackTraces = true
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
 }
 
 application {

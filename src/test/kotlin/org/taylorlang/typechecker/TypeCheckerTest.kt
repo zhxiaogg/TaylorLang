@@ -4,7 +4,6 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.beInstanceOf
-import arrow.core.getOrElse
 import org.taylorlang.ast.*
 import org.taylorlang.parser.TaylorLangParser
 import kotlinx.collections.immutable.persistentListOf
@@ -37,7 +36,7 @@ class TypeCheckerTest : StringSpec({
         val context = TypeContext()
         
         val result = typeChecker.typeCheckExpression(expression, context)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.type shouldBe BuiltinTypes.INT
     }
@@ -47,7 +46,7 @@ class TypeCheckerTest : StringSpec({
         val context = TypeContext()
         
         val result = typeChecker.typeCheckExpression(expression, context)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.type shouldBe BuiltinTypes.STRING
     }
@@ -57,7 +56,7 @@ class TypeCheckerTest : StringSpec({
         val context = TypeContext()
         
         val result = typeChecker.typeCheckExpression(expression, context)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.type shouldBe BuiltinTypes.BOOLEAN
     }
@@ -71,7 +70,7 @@ class TypeCheckerTest : StringSpec({
         val context = TypeContext()
         
         val result = typeChecker.typeCheckExpression(expression, context)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.type shouldBe BuiltinTypes.INT
     }
@@ -85,7 +84,7 @@ class TypeCheckerTest : StringSpec({
         val context = TypeContext()
         
         val result = typeChecker.typeCheckExpression(expression, context)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.type shouldBe BuiltinTypes.BOOLEAN
     }
@@ -99,7 +98,7 @@ class TypeCheckerTest : StringSpec({
         val context = TypeContext()
         
         val result = typeChecker.typeCheckExpression(expression, context)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.type shouldBe BuiltinTypes.BOOLEAN
     }
@@ -112,7 +111,7 @@ class TypeCheckerTest : StringSpec({
         val context = TypeContext()
         
         val result = typeChecker.typeCheckExpression(expression, context)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.type shouldBe BuiltinTypes.INT
     }
@@ -122,7 +121,7 @@ class TypeCheckerTest : StringSpec({
         val context = TypeContext().withVariable("x", BuiltinTypes.INT)
         
         val result = typeChecker.typeCheckExpression(expression, context)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.type shouldBe BuiltinTypes.INT
     }
@@ -133,8 +132,8 @@ class TypeCheckerTest : StringSpec({
         
         val result = typeChecker.typeCheckExpression(expression, context)
         
-        result.isLeft() shouldBe true
-        result.leftOrNull() should beInstanceOf<TypeError.UnresolvedSymbol>()
+        result.isFailure shouldBe true
+        result.exceptionOrNull() should beInstanceOf<TypeError.UnresolvedSymbol>()
     }
 
     "should fail for type mismatches in binary operations" {
@@ -147,8 +146,8 @@ class TypeCheckerTest : StringSpec({
         
         val result = typeChecker.typeCheckExpression(expression, context)
         
-        result.isLeft() shouldBe true
-        result.leftOrNull() should beInstanceOf<TypeError.InvalidOperation>()
+        result.isFailure shouldBe true
+        result.exceptionOrNull() should beInstanceOf<TypeError.InvalidOperation>()
     }
 
     "should type check tuple literals" {
@@ -161,7 +160,7 @@ class TypeCheckerTest : StringSpec({
         val context = TypeContext()
         
         val result = typeChecker.typeCheckExpression(expression, context)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.type should beInstanceOf<Type.TupleType>()
         val tupleType = result.type as Type.TupleType
@@ -173,10 +172,10 @@ class TypeCheckerTest : StringSpec({
     "should type check variable declarations with type inference" {
         val source = "val x = 42"
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
         val statement = result.statements.first()
@@ -189,10 +188,10 @@ class TypeCheckerTest : StringSpec({
     "should type check simple function declarations" {
         val source = "fn identity(x: Int): Int => x"
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
         val statement = result.statements.first()
@@ -208,7 +207,7 @@ class TypeCheckerTest : StringSpec({
         val context = TypeContext()
         
         val result = typeChecker.typeCheckExpression(expression, context)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         // Should promote to Double
         result.type shouldBe BuiltinTypes.DOUBLE
@@ -217,11 +216,11 @@ class TypeCheckerTest : StringSpec({
     "should type check complex expressions" {
         val source = "1 + 2 * 3 < 10"
         val expression = parser.parseExpression(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val context = TypeContext()
         val result = typeChecker.typeCheckExpression(expression, context)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         // Should be Boolean due to comparison
         result.type shouldBe BuiltinTypes.BOOLEAN
@@ -236,10 +235,10 @@ class TypeCheckerTest : StringSpec({
         // Current TypeChecker only supports basic expressions and primitive types
         val source = "type Option<T> = Some(T) | None"
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
         result.statements.first() should beInstanceOf<TypedStatement.TypeDeclaration>()
@@ -248,10 +247,10 @@ class TypeCheckerTest : StringSpec({
     "should type check named product types".config(enabled = false) { // TODO: Implement named product type checking
         val source = "type Person = Student(name: String, id: Int) | Teacher(name: String, subject: String)"
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
         result.statements.first() should beInstanceOf<TypedStatement.TypeDeclaration>()
@@ -263,10 +262,10 @@ class TypeCheckerTest : StringSpec({
             val x = Some(42)
         """.trimIndent()
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 2
     }
@@ -280,10 +279,10 @@ class TypeCheckerTest : StringSpec({
         // Current issue: TypeChecker doesn't handle complex binary operations with multiple operands
         val source = "fn add(x: Int, y: Int, z: Int): Int => x + y + z"
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
     }
@@ -291,10 +290,10 @@ class TypeCheckerTest : StringSpec({
     "should type check generic functions".config(enabled = false) { // TODO: Implement generic function support
         val source = "fn identity<T>(x: T): T => x"
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
     }
@@ -302,11 +301,11 @@ class TypeCheckerTest : StringSpec({
     "should detect parameter type mismatches".config(enabled = false) { // TODO: Implement return type validation
         val source = "fn test(x: Int): String => x"  // Returns Int but declares String
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
         
-        result.isLeft() shouldBe true
+        result.isFailure shouldBe true
     }
 
     "should type check function calls with arguments".config(enabled = false) { // TODO: Implement function call type checking
@@ -315,10 +314,10 @@ class TypeCheckerTest : StringSpec({
             val result = add(1, 2)
         """.trimIndent()
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 2
     }
@@ -330,10 +329,10 @@ class TypeCheckerTest : StringSpec({
     "should type check nullable types".config(enabled = false) { // TODO: Implement nullable type support
         val source = "val x: String? = null"
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
     }
@@ -341,10 +340,10 @@ class TypeCheckerTest : StringSpec({
     "should type check tuple types".config(enabled = false) { // TODO: Fix tuple type checking implementation
         val source = "val x: (Int, String) = (42, \"hello\")"
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
     }
@@ -352,10 +351,10 @@ class TypeCheckerTest : StringSpec({
     "should type check generic type instantiation".config(enabled = false) { // TODO: Implement generic type checking
         val source = "val x: List<Int> = [1, 2, 3]"
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
     }
@@ -373,10 +372,10 @@ class TypeCheckerTest : StringSpec({
             }
         """.trimIndent()
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
     }
@@ -386,10 +385,10 @@ class TypeCheckerTest : StringSpec({
             fn test(x: Int): String => if (x > 0) "positive" else "non-positive"
         """.trimIndent()
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
     }
@@ -399,12 +398,12 @@ class TypeCheckerTest : StringSpec({
             val x = if (true) 42 else "hello"
         """.trimIndent()
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
         
         // Should fail because then and else branches have different types
-        result.isLeft() shouldBe true
+        result.isFailure shouldBe true
     }
 
     // =============================================================================
@@ -414,10 +413,10 @@ class TypeCheckerTest : StringSpec({
     "should type check stdlib collection functions".config(enabled = false) { // TODO: Implement stdlib function type checking
         val source = "val numbers = List.of(1, 2, 3)"
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
     }
@@ -425,10 +424,10 @@ class TypeCheckerTest : StringSpec({
     "should type check map creation with stdlib".config(enabled = false) { // TODO: Implement stdlib Map type checking
         val source = "val config = Map.of(\"host\", \"localhost\", \"port\", 8080)"
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
     }
@@ -436,10 +435,10 @@ class TypeCheckerTest : StringSpec({
     "should type check tuple literals correctly".config(enabled = false) { // TODO: Fix tuple literal type checking
         val source = "val point = (10, 20)"
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
     }
@@ -455,10 +454,10 @@ class TypeCheckerTest : StringSpec({
             val name = student.name
         """.trimIndent()
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 3
     }
@@ -469,10 +468,10 @@ class TypeCheckerTest : StringSpec({
             val first = arr[0]
         """.trimIndent()
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 2
     }
@@ -491,8 +490,8 @@ class TypeCheckerTest : StringSpec({
         
         val result = typeChecker.typeCheckExpression(expression, context)
         
-        result.isLeft() shouldBe true
-        val error = result.leftOrNull()
+        result.isFailure shouldBe true
+        val error = result.exceptionOrNull()
         error should beInstanceOf<TypeError.InvalidOperation>()
     }
 
@@ -503,14 +502,16 @@ class TypeCheckerTest : StringSpec({
             val z = undefined_var
         """.trimIndent()
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
         
-        result.isLeft() shouldBe true
+        result.isFailure shouldBe true
         // Should collect multiple errors
-        val errors = result.leftOrNull()
-        errors should beInstanceOf<List<*>>()
+        val errors = result.exceptionOrNull()
+        errors should beInstanceOf<TypeError.MultipleErrors>()
+        val multipleErrors = errors as TypeError.MultipleErrors
+        multipleErrors.errors.size shouldBe 3
     }
 
     // =============================================================================
@@ -526,10 +527,10 @@ class TypeCheckerTest : StringSpec({
             }
         """.trimIndent()
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 2
     }
@@ -545,10 +546,10 @@ class TypeCheckerTest : StringSpec({
             }
         """.trimIndent()
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
-            .getOrElse { throw AssertionError("Type check failed: $it") }
+            .getOrThrow()
         
         result.statements.size shouldBe 1
     }
@@ -561,11 +562,11 @@ class TypeCheckerTest : StringSpec({
             val y = x
         """.trimIndent()
         val program = parser.parse(source)
-            .getOrElse { throw AssertionError("Parse failed: $it") }
+            .getOrThrow()
         
         val result = typeChecker.typeCheck(program)
         
         // Should fail because x is not in scope
-        result.isLeft() shouldBe true
+        result.isFailure shouldBe true
     }
 })

@@ -4,7 +4,6 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.beInstanceOf
-import arrow.core.getOrElse
 import org.taylorlang.ast.*
 
 class ParserTest : StringSpec({
@@ -13,9 +12,7 @@ class ParserTest : StringSpec({
     "should parse simple function declaration" {
         val source = "fn add(x: Int, y: Int): Int => x + y"
         
-        val result = parser.parse(source).getOrElse { 
-            throw AssertionError("Parse failed: ${it.message}") 
-        }
+        val result = parser.parse(source).getOrThrow()
         
         result.statements.size shouldBe 1
         result.statements[0] should beInstanceOf<FunctionDecl>()
@@ -32,9 +29,7 @@ class ParserTest : StringSpec({
     "should parse union type declaration" {
         val source = "type Result<T, E> = Ok(T) | Error(E)"
         
-        val result = parser.parse(source).getOrElse { 
-            throw AssertionError("Parse failed: ${it.message}") 
-        }
+        val result = parser.parse(source).getOrThrow()
         
         result.statements.size shouldBe 1
         result.statements[0] should beInstanceOf<TypeDecl>()
@@ -53,9 +48,7 @@ class ParserTest : StringSpec({
     "should parse variable declaration with type inference" {
         val source = "val x = 42"
         
-        val result = parser.parse(source).getOrElse { 
-            throw AssertionError("Parse failed: ${it.message}") 
-        }
+        val result = parser.parse(source).getOrThrow()
         
         result.statements.size shouldBe 1
         result.statements[0] should beInstanceOf<ValDecl>()
@@ -88,9 +81,7 @@ class ParserTest : StringSpec({
     "should parse binary operations with correct precedence" {
         val source = "1 + 2 * 3"
         
-        val result = parser.parseExpression(source).getOrElse { 
-            throw AssertionError("Parse failed: ${it.message}") 
-        }
+        val result = parser.parseExpression(source).getOrThrow()
         
         result should beInstanceOf<BinaryOp>()
         result as BinaryOp
@@ -111,9 +102,7 @@ class ParserTest : StringSpec({
             }
         """.trimIndent()
         
-        val result = parser.parseExpression(source).getOrElse { 
-            throw AssertionError("Parse failed: ${it.message}") 
-        }
+        val result = parser.parseExpression(source).getOrThrow()
         
         result should beInstanceOf<MatchExpression>()
         result as MatchExpression
@@ -155,7 +144,7 @@ class ParserTest : StringSpec({
         
         invalidSources.forEach { source ->
             val result = parser.parse(source)
-            result.isLeft() shouldBe true
+            result.isFailure shouldBe true
         }
     }
 
@@ -177,9 +166,7 @@ class ParserTest : StringSpec({
             }
         """.trimIndent()
         
-        val result = parser.parse(source).getOrElse { 
-            throw AssertionError("Parse failed: ${it.message}") 
-        }
+        val result = parser.parse(source).getOrThrow()
         
         result.statements.size shouldBe 3
         result.statements[0] should beInstanceOf<TypeDecl>()
@@ -196,9 +183,7 @@ class ParserTest : StringSpec({
         
         primitiveTypes.forEach { primitiveType ->
             val source = "val x: $primitiveType = null"
-            val result = parser.parse(source).getOrElse {
-                throw AssertionError("Parse failed for primitive type '$primitiveType': ${it.message}")
-            }
+            val result = parser.parse(source).getOrThrow()
             
             val valDecl = result.statements[0] as ValDecl
             valDecl.type should beInstanceOf<Type.PrimitiveType>()
@@ -208,9 +193,7 @@ class ParserTest : StringSpec({
 
     "should parse generic types with multiple arguments" {
         val source = "val x: Map<String, List<Int>> = null"
-        val result = parser.parse(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parse(source).getOrThrow()
         
         val valDecl = result.statements[0] as ValDecl
         valDecl.type should beInstanceOf<Type.GenericType>()
@@ -224,9 +207,7 @@ class ParserTest : StringSpec({
 
     "should parse nullable types" {
         val source = "val x: String? = null"
-        val result = parser.parse(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parse(source).getOrThrow()
         
         val valDecl = result.statements[0] as ValDecl
         valDecl.type should beInstanceOf<Type.NullableType>()
@@ -238,9 +219,7 @@ class ParserTest : StringSpec({
 
     "should parse tuple types" {
         val source = "val x: (Int, String, Boolean) = null"
-        val result = parser.parse(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parse(source).getOrThrow()
         
         val valDecl = result.statements[0] as ValDecl
         valDecl.type should beInstanceOf<Type.TupleType>()
@@ -254,9 +233,7 @@ class ParserTest : StringSpec({
 
     "should parse named product types in union declarations" {
         val source = "type Person = Student(name: String, id: Int) | Teacher(name: String, subject: String)"
-        val result = parser.parse(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parse(source).getOrThrow()
         
         val typeDecl = result.statements[0] as TypeDecl
         typeDecl.unionType.variants.size shouldBe 2
@@ -278,9 +255,7 @@ class ParserTest : StringSpec({
 
     "should parse positioned product types in union declarations" {
         val source = "type Option<T> = Some(T) | None"
-        val result = parser.parse(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parse(source).getOrThrow()
         
         val typeDecl = result.statements[0] as TypeDecl
         typeDecl.unionType.variants.size shouldBe 2
@@ -309,9 +284,7 @@ class ParserTest : StringSpec({
         )
         
         testCases.forEach { (source, expectedOp) ->
-            val result = parser.parseExpression(source).getOrElse {
-                throw AssertionError("Parse failed for '$source': ${it.message}")
-            }
+            val result = parser.parseExpression(source).getOrThrow()
             
             result should beInstanceOf<UnaryOp>()
             val unaryOp = result as UnaryOp
@@ -342,9 +315,7 @@ class ParserTest : StringSpec({
         )
         
         testCases.forEach { (source, expectedOp) ->
-            val result = parser.parseExpression(source).getOrElse {
-                throw AssertionError("Parse failed for '$source': ${it.message}")
-            }
+            val result = parser.parseExpression(source).getOrThrow()
             
             result should beInstanceOf<BinaryOp>()
             val binaryOp = result as BinaryOp
@@ -354,9 +325,7 @@ class ParserTest : StringSpec({
 
     "should parse property access" {
         val source = "person.name"
-        val result = parser.parseExpression(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parseExpression(source).getOrThrow()
         
         result should beInstanceOf<PropertyAccess>()
         val propAccess = result as PropertyAccess
@@ -366,9 +335,7 @@ class ParserTest : StringSpec({
 
     "should parse chained property access" {
         val source = "user.profile.name"
-        val result = parser.parseExpression(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parseExpression(source).getOrThrow()
         
         result should beInstanceOf<PropertyAccess>()
         val outerAccess = result as PropertyAccess
@@ -382,9 +349,7 @@ class ParserTest : StringSpec({
 
     "should parse function calls with arguments" {
         val source = "add(1, 2, 3)"
-        val result = parser.parseExpression(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parseExpression(source).getOrThrow()
         
         result should beInstanceOf<FunctionCall>()
         val funcCall = result as FunctionCall
@@ -398,9 +363,7 @@ class ParserTest : StringSpec({
 
     "should parse index access" {
         val source = "arr[0]"
-        val result = parser.parseExpression(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parseExpression(source).getOrThrow()
         
         result should beInstanceOf<IndexAccess>()
         val indexAccess = result as IndexAccess
@@ -410,9 +373,7 @@ class ParserTest : StringSpec({
 
     "should parse constructor calls" {
         val source = "Some(42)"
-        val result = parser.parseExpression(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parseExpression(source).getOrThrow()
         
         // At parse time, constructor calls look like function calls
         // Semantic analysis will determine if it's actually a constructor
@@ -427,9 +388,7 @@ class ParserTest : StringSpec({
 
     "should parse if expressions with else" {
         val source = "if (x > 0) \"positive\" else \"non-positive\""
-        val result = parser.parseExpression(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parseExpression(source).getOrThrow()
         
         result should beInstanceOf<IfExpression>()
         val ifExpr = result as IfExpression
@@ -440,9 +399,7 @@ class ParserTest : StringSpec({
 
     "should parse if expressions without else" {
         val source = "if (x > 0) \"positive\""
-        val result = parser.parseExpression(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parseExpression(source).getOrThrow()
         
         result should beInstanceOf<IfExpression>()
         val ifExpr = result as IfExpression
@@ -453,9 +410,7 @@ class ParserTest : StringSpec({
 
     "should parse block expressions" {
         val source = "{ val x = 42; x * 2 }"
-        val result = parser.parseExpression(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parseExpression(source).getOrThrow()
         
         result should beInstanceOf<BlockExpression>()
         val blockExpr = result as BlockExpression
@@ -468,9 +423,7 @@ class ParserTest : StringSpec({
         // Empty blocks are ambiguous with empty maps in this grammar
         // Let's test a block with just an expression instead
         val source = "{ 42 }"
-        val result = parser.parseExpression(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parseExpression(source).getOrThrow()
         
         result should beInstanceOf<BlockExpression>()
         val blockExpr = result as BlockExpression
@@ -493,9 +446,7 @@ class ParserTest : StringSpec({
             }
         """.trimIndent()
         
-        val result = parser.parseExpression(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parseExpression(source).getOrThrow()
         
         result should beInstanceOf<MatchExpression>()
         val matchExpr = result as MatchExpression
@@ -517,9 +468,7 @@ class ParserTest : StringSpec({
             }
         """.trimIndent()
         
-        val result = parser.parseExpression(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parseExpression(source).getOrThrow()
         
         result should beInstanceOf<MatchExpression>()
         val matchExpr = result as MatchExpression
@@ -538,9 +487,7 @@ class ParserTest : StringSpec({
 
     "should parse function with no parameters" {
         val source = "fn getAnswer(): Int => 42"
-        val result = parser.parse(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parse(source).getOrThrow()
         
         val function = result.statements[0] as FunctionDecl
         function.name shouldBe "getAnswer"
@@ -550,9 +497,7 @@ class ParserTest : StringSpec({
 
     "should parse function with optional parameter types" {
         val source = "fn test(x, y: Int) => x + y"
-        val result = parser.parse(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parse(source).getOrThrow()
         
         val function = result.statements[0] as FunctionDecl
         function.parameters.size shouldBe 2
@@ -562,9 +507,7 @@ class ParserTest : StringSpec({
 
     "should parse generic function declarations" {
         val source = "fn identity<T>(x: T): T => x"
-        val result = parser.parse(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parse(source).getOrThrow()
         
         val function = result.statements[0] as FunctionDecl
         function.name shouldBe "identity"
@@ -580,9 +523,7 @@ class ParserTest : StringSpec({
             }
         """.trimIndent()
         
-        val result = parser.parse(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parse(source).getOrThrow()
         
         val function = result.statements[0] as FunctionDecl
         function.body should beInstanceOf<FunctionBody.BlockBody>()
@@ -602,9 +543,7 @@ class ParserTest : StringSpec({
         )
         
         testCases.forEach { (source, expectedValue) ->
-            val result = parser.parseExpression(source).getOrElse {
-                throw AssertionError("Parse failed for '$source': ${it.message}")
-            }
+            val result = parser.parseExpression(source).getOrThrow()
             
             result should beInstanceOf<Literal.StringLiteral>()
             val stringLit = result as Literal.StringLiteral
@@ -616,9 +555,7 @@ class ParserTest : StringSpec({
         val testCases = listOf("3.14", "0.5", "123.456")
         
         testCases.forEach { source ->
-            val result = parser.parseExpression(source).getOrElse {
-                throw AssertionError("Parse failed for '$source': ${it.message}")
-            }
+            val result = parser.parseExpression(source).getOrThrow()
             
             result should beInstanceOf<Literal.FloatLiteral>()
             val floatLit = result as Literal.FloatLiteral
@@ -634,9 +571,7 @@ class ParserTest : StringSpec({
         )
         
         testCases.forEach { (source, expectedFunction) ->
-            val result = parser.parseExpression(source).getOrElse {
-                throw AssertionError("Parse failed for '$source': ${it.message}")
-            }
+            val result = parser.parseExpression(source).getOrThrow()
             
             result should beInstanceOf<FunctionCall>()
             val funcCall = result as FunctionCall
@@ -655,9 +590,7 @@ class ParserTest : StringSpec({
         )
         
         testCases.forEach { source ->
-            val result = parser.parseExpression(source).getOrElse {
-                throw AssertionError("Parse failed for '$source': ${it.message}")
-            }
+            val result = parser.parseExpression(source).getOrThrow()
             
             result should beInstanceOf<ForExpression>()
             val forExpr = result as ForExpression
@@ -672,9 +605,7 @@ class ParserTest : StringSpec({
 
     "should parse complex nested expressions" {
         val source = "((x + y) * z).length > arr[index + 1].getValue()"
-        val result = parser.parseExpression(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parseExpression(source).getOrThrow()
         
         result should beInstanceOf<BinaryOp>()
         val comparison = result as BinaryOp
@@ -695,9 +626,7 @@ class ParserTest : StringSpec({
         )
         
         testCases.forEach { (source, expectedOps) ->
-            val result = parser.parseExpression(source).getOrElse {
-                throw AssertionError("Parse failed for '$source': ${it.message}")
-            }
+            val result = parser.parseExpression(source).getOrThrow()
             
             // Verify the structure reflects correct precedence
             result should beInstanceOf<BinaryOp>()
@@ -715,9 +644,7 @@ class ParserTest : StringSpec({
             }
         """.trimIndent()
         
-        val result = parser.parse(source).getOrElse {
-            throw AssertionError("Parse failed: ${it.message}")
-        }
+        val result = parser.parse(source).getOrThrow()
         
         result.statements.size shouldBe 1
         result.statements[0] should beInstanceOf<FunctionDecl>()

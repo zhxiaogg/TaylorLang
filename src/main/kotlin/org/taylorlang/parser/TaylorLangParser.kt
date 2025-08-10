@@ -1,8 +1,5 @@
 package org.taylorlang.parser
 
-import arrow.core.Either
-import arrow.core.left
-import arrow.core.right
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.tree.*
 import org.taylorlang.ast.Program
@@ -27,7 +24,7 @@ class TaylorLangParser {
     /**
      * Parse TaylorLang source code into an AST
      */
-    fun parse(source: String, fileName: String = "<unknown>"): Either<ParseError, Program> {
+    fun parse(source: String, fileName: String = "<unknown>"): Result<Program> {
         return try {
             val lexer = TaylorLangLexer(CharStreams.fromString(source, fileName))
             val tokens = CommonTokenStream(lexer)
@@ -46,32 +43,23 @@ class TaylorLangParser {
             // Check for parsing errors
             if (errorListener.errors.isNotEmpty()) {
                 val firstError = errorListener.errors.first()
-                return ParseError(
-                    message = firstError.message,
-                    line = firstError.line,
-                    column = firstError.column
-                ).left()
+                return Result.failure(RuntimeException("${firstError.message} at ${firstError.line}:${firstError.column}"))
             }
             
             // Build AST
             val astBuilder = ASTBuilder()
             val program = astBuilder.visitProgram(parseTree)
             
-            program.right()
+            Result.success(program)
         } catch (e: Exception) {
-            ParseError(
-                message = "Unexpected parsing error: ${e.message}",
-                line = 1,
-                column = 0,
-                cause = e
-            ).left()
+            Result.failure(RuntimeException("Unexpected parsing error: ${e.message}", e))
         }
     }
     
     /**
      * Parse a single expression (useful for testing and REPL)
      */
-    fun parseExpression(source: String, fileName: String = "<expression>"): Either<ParseError, org.taylorlang.ast.Expression> {
+    fun parseExpression(source: String, fileName: String = "<expression>"): Result<org.taylorlang.ast.Expression> {
         return try {
             val lexer = TaylorLangLexer(CharStreams.fromString(source, fileName))
             val tokens = CommonTokenStream(lexer)
@@ -90,25 +78,16 @@ class TaylorLangParser {
             // Check for parsing errors
             if (errorListener.errors.isNotEmpty()) {
                 val firstError = errorListener.errors.first()
-                return ParseError(
-                    message = firstError.message,
-                    line = firstError.line,
-                    column = firstError.column
-                ).left()
+                return Result.failure(RuntimeException("${firstError.message} at ${firstError.line}:${firstError.column}"))
             }
             
             // Build AST
             val astBuilder = ASTBuilder()
             val expression = astBuilder.visitExpression(parseTree)
             
-            expression.right()
+            Result.success(expression)
         } catch (e: Exception) {
-            ParseError(
-                message = "Unexpected parsing error: ${e.message}",
-                line = 1,
-                column = 0,
-                cause = e
-            ).left()
+            Result.failure(RuntimeException("Unexpected parsing error: ${e.message}", e))
         }
     }
 }
