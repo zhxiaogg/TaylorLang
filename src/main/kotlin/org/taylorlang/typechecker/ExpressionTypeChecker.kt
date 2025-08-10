@@ -101,8 +101,17 @@ class ExpressionTypeChecker(
         val typedStatements = mutableListOf<TypedStatement>()
         
         // Type check each statement in the block and update context
+        val sharedScopeManager = ScopeManager()
+        
+        // Populate scope manager with variables from the current context
+        // Note: This is a simplified approach assuming variables in TypeContext are mutable
+        // In a more complete implementation, we'd need to track mutability in TypeContext too
+        for ((name, type) in blockContext.variables) {
+            sharedScopeManager.declareVariable(name, type, isMutable = true)
+        }
+        
         for (statement in node.statements) {
-            val stmtChecker = StatementTypeChecker(blockContext)
+            val stmtChecker = StatementTypeChecker(blockContext, sharedScopeManager)
             val stmtResult = statement.accept(stmtChecker)
             stmtResult.fold(
                 onSuccess = { typedStmt ->
