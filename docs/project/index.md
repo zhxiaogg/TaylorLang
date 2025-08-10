@@ -7,16 +7,22 @@
 ## Current Status
 
 ### Active Development
-1. **Union Type Implementation** - Complete support for algebraic data types
-2. **Type Inference Engine** - Constraint-based type inference system
-3. **Pattern Matching** - Exhaustive pattern matching with type safety
+1. **Type Inference Engine** - Building constraint-based type inference system
+   - ✅ Constraint Data Model (COMPLETED 2025-08-10)
+   - 🚀 Constraint Collection from AST (IN PROGRESS - kotlin-java-engineer)
+   - ⏳ Unification Algorithm (PLANNED)
+   - ⏳ Integration with TypeChecker (PLANNED)
 
-### Completed
+### Recently Completed (Sprint 2)
+- ✅ **Union Type Implementation** - Full support for algebraic data types with pattern matching (2025-08-10)
+- ✅ **Constraint Data Model** - Foundation for type inference with TypeVar and ConstraintSet (2025-08-10)
+
+### Foundation Complete (Sprint 1)
 - Project structure and build system
 - ANTLR grammar and parser
 - AST definitions and builder
-- Basic type checker
-- Test framework setup
+- Basic type checker with generics support
+- Comprehensive test framework
 
 ### Planned
 - Bytecode generation

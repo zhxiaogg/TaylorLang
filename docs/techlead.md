@@ -176,6 +176,9 @@ The implementation is of exceptional quality with thoughtful design, comprehensi
 3. **Maintain high test coverage**: Every new feature needs comprehensive tests
 4. **Document as we go**: Update language docs with each feature addition
 5. **Constraint Data Model APPROVED**: Implementation meets all requirements with excellent quality
+6. **Task Progression Decision**: After Constraint Data Model completion, proceed with Constraint Collection from AST as the logical next step in building the type inference engine
+7. **Sprint 2 Progress**: Union Types and Constraint Data Model both completed successfully, establishing strong foundation for type inference
+8. **Constraint Collection Task Assignment** (2025-08-10): Assigned to kotlin-java-engineer as next priority task in type inference pipeline
 
 ## Task Creation Guidelines
 

@@ -1,1 +1,2 @@
-- don't do git commit with Claude code as co author
+- it's totally safe to run git commit, just don't use Claude as co-author
+- 
