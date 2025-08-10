@@ -125,9 +125,30 @@ object BuiltinTypes {
 }
 
 /**
- * Main type checker implementation
+ * Type checking mode enumeration.
  */
-class TypeChecker {
+enum class TypeCheckingMode {
+    /**
+     * Traditional algorithmic type checking with direct type inference.
+     * Uses the existing type checking implementation.
+     */
+    ALGORITHMIC,
+    
+    /**
+     * Constraint-based type checking with type inference.
+     * Generates constraints and uses unification for solving.
+     */
+    CONSTRAINT_BASED
+}
+
+/**
+ * Main type checker implementation supporting both algorithmic and constraint-based type checking.
+ */
+class TypeChecker(
+    private val mode: TypeCheckingMode = TypeCheckingMode.ALGORITHMIC
+) {
+    
+    private val constraintCollector = ConstraintCollector()
     
     /**
      * Type check a complete program
@@ -336,9 +357,148 @@ class TypeChecker {
     }
     
     /**
-     * Type check an expression and return typed expression
+     * Type check an expression and return typed expression.
+     * Uses the configured type checking mode (algorithmic or constraint-based).
      */
     fun typeCheckExpression(
+        expression: Expression,
+        context: TypeContext
+    ): Result<TypedExpression> {
+        return when (mode) {
+            TypeCheckingMode.ALGORITHMIC -> typeCheckExpressionAlgorithmic(expression, context)
+            TypeCheckingMode.CONSTRAINT_BASED -> typeCheckExpressionConstraintBased(expression, context)
+        }
+    }
+    
+    /**
+     * Type check an expression using constraint-based type inference.
+     * Generates constraints from the expression and attempts to solve them.
+     * 
+     * @param expression The expression to type check
+     * @param context The type checking context
+     * @return A result containing the typed expression or error
+     */
+    private fun typeCheckExpressionConstraintBased(
+        expression: Expression,
+        context: TypeContext
+    ): Result<TypedExpression> {
+        return try {
+            // Convert TypeContext to InferenceContext
+            val inferenceContext = InferenceContext.fromTypeContext(context)
+            
+            // Collect constraints from the expression
+            val constraintResult = constraintCollector.collectConstraints(expression, inferenceContext)
+            
+            // For now, we'll return the expression with the inferred type
+            // In a complete implementation, we would solve the constraints here
+            // and substitute the solved types back into the expression
+            
+            // TODO: Implement constraint solving (unification) in a future task
+            // For now, we assume the constraints are solvable and use the inferred type
+            
+            Result.success(TypedExpression(expression, constraintResult.type))
+            
+        } catch (e: Exception) {
+            Result.failure(TypeError.InvalidOperation(
+                "Constraint-based type checking failed: ${e.message}",
+                emptyList(),
+                expression.sourceLocation
+            ))
+        }
+    }
+    
+    /**
+     * Type check an expression with an expected type using constraint-based inference.
+     * This is useful for checking expressions in specific contexts.
+     * 
+     * @param expression The expression to type check
+     * @param expectedType The expected type for the expression
+     * @param context The type checking context
+     * @return A result containing the typed expression or error
+     */
+    fun typeCheckExpressionWithExpected(
+        expression: Expression,
+        expectedType: Type,
+        context: TypeContext
+    ): Result<TypedExpression> {
+        return when (mode) {
+            TypeCheckingMode.ALGORITHMIC -> {
+                // Fall back to regular type checking for now
+                typeCheckExpressionAlgorithmic(expression, context).mapCatching { typedExpr ->
+                    // Validate that the type matches the expected type
+                    if (!typesCompatible(typedExpr.type, expectedType)) {
+                        throw RuntimeException("Type mismatch: expected $expectedType, got ${typedExpr.type}")
+                    }
+                    typedExpr
+                }
+            }
+            TypeCheckingMode.CONSTRAINT_BASED -> {
+                try {
+                    val inferenceContext = InferenceContext.fromTypeContext(context)
+                    val constraintResult = constraintCollector.collectConstraintsWithExpected(
+                        expression, 
+                        expectedType, 
+                        inferenceContext
+                    )
+                    
+                    // TODO: Solve constraints and verify compatibility
+                    // For now, assume constraints are solvable
+                    
+                    Result.success(TypedExpression(expression, constraintResult.type))
+                } catch (e: Exception) {
+                    Result.failure(TypeError.InvalidOperation(
+                        "Constraint-based type checking with expected type failed: ${e.message}",
+                        listOf(expectedType),
+                        expression.sourceLocation
+                    ))
+                }
+            }
+        }
+    }
+    
+    /**
+     * Collect constraints from an expression without solving them.
+     * This is useful for debugging and understanding the constraint generation process.
+     * 
+     * @param expression The expression to analyze
+     * @param context The type checking context
+     * @return A result containing the constraint result or error
+     */
+    fun collectConstraintsOnly(
+        expression: Expression,
+        context: TypeContext
+    ): Result<ConstraintResult> {
+        return try {
+            val inferenceContext = InferenceContext.fromTypeContext(context)
+            val constraintResult = constraintCollector.collectConstraints(expression, inferenceContext)
+            Result.success(constraintResult)
+        } catch (e: Exception) {
+            Result.failure(TypeError.InvalidOperation(
+                "Constraint collection failed: ${e.message}",
+                emptyList(),
+                expression.sourceLocation
+            ))
+        }
+    }
+    
+    /**
+     * Create a TypeChecker instance configured for constraint-based type checking.
+     */
+    companion object {
+        fun withConstraints(): TypeChecker {
+            return TypeChecker(TypeCheckingMode.CONSTRAINT_BASED)
+        }
+        
+        fun algorithmic(): TypeChecker {
+            return TypeChecker(TypeCheckingMode.ALGORITHMIC)
+        }
+    }
+    
+    /**
+     * Original algorithmic type checking implementation.
+     * This preserves the existing behavior while allowing for constraint-based checking.
+     */
+    private fun typeCheckExpressionAlgorithmic(
         expression: Expression,
         context: TypeContext
     ): Result<TypedExpression> {

@@ -4,5 +4,6 @@
       "Bash(git commit:*)"
     ],
     "deny": []
-  }
+  },
+  "includeCoAuthoredBy": false
 }
