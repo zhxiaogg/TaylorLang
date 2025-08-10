@@ -5,13 +5,15 @@
 ### JVM Bytecode Generation Phase
 
 #### Task: Variable Storage and Retrieval
-**Status**: 🟠 ASSIGNED  
+**Status**: ⚠️ NEEDS FIX  
 **Assignee**: kotlin-java-engineer  
 **Component**: Code Generation  
 **Effort**: Medium (3 days)  
-**Priority**: HIGH - Next critical feature
+**Priority**: HIGH - Critical fix needed
 
 **Description**: Implement local variable storage and retrieval with proper scoping and stack frame management.
+
+**Review Status**: APPROVED WITH CONDITIONS (2025-08-10)
 
 **WHY**: Variables are fundamental to programming. We need to store and retrieve values to make programs useful beyond simple expressions.
 
@@ -41,6 +43,93 @@
 - ASM Local Variables Guide: https://asm.ow2.io/asm4-guide.pdf (Chapter 3.2)
 - Load/Store Instructions: https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-6.html#jvms-6.5.iload
 - Kotlin Variable Codegen: https://github.com/JetBrains/kotlin/tree/master/compiler/backend/src/org/jetbrains/kotlin/codegen
+
+**Implementation Achievements**:
+- ✅ Variable declaration (var/val) with type inference
+- ✅ Variable assignment with mutability checking
+- ✅ Variable usage in expressions (Identifier)
+- ✅ Scoping system with ScopeManager
+- ✅ JVM slot allocation with VariableSlotManager
+- ✅ Type safety integration
+- **14/17 tests passing (82.4%)**
+
+**Critical Issue Found**:
+- Context propagation bug in StatementTypeChecker
+- Variables not visible inside while loop blocks
+- Single-line fix required: make context mutable
+
+**Fix Required**:
+```kotlin
+class StatementTypeChecker(
+    private var context: TypeContext,  // Change to var
+    ...
+)
+```
+
+---
+
+#### Task: Fix Variable Context Propagation
+**Status**: 🔴 URGENT  
+**Assignee**: kotlin-java-engineer  
+**Component**: Type System  
+**Effort**: Small (30 minutes)  
+**Priority**: CRITICAL - Blocking variable feature
+
+**Description**: Fix context propagation bug in StatementTypeChecker preventing variables from being visible in nested blocks.
+
+**Root Cause**: 
+StatementTypeChecker updates local context when variables are declared but ExpressionTypeChecker is created with original context.
+
+**Fix**:
+1. Change `context` from `val` to `var` in StatementTypeChecker constructor
+2. Ensure all ExpressionTypeChecker instances use current context
+3. Verify VariableWhileLoopIntegrationTest passes
+
+**Success Criteria**:
+- All 3 VariableWhileLoopIntegrationTest tests pass
+- Variables visible across all statement boundaries
+- No regression in other tests
+
+---
+
+#### Task: User-Defined Functions
+**Status**: 🟢 READY  
+**Assignee**: kotlin-java-engineer  
+**Component**: Code Generation  
+**Effort**: Large (4-5 days)  
+**Priority**: HIGH - Next major feature
+
+**Description**: Implement user-defined function declaration and invocation with proper parameter passing and return values.
+
+**WHY**: Functions enable code reuse, abstraction, and modular programming - essential for any real programming language.
+
+**WHAT**: Implement function declaration parsing, type checking, and JVM method generation with proper calling conventions.
+
+**HOW**:
+- Research JVM method descriptors and calling conventions
+- Study parameter passing and stack frame setup
+- Implement function declaration and call bytecode generation
+- Handle return values and void functions
+
+**SCOPE**:
+- Day 1: Function declaration bytecode generation
+- Day 2: Parameter passing and local variable setup
+- Day 3: Function call generation and return values
+- Day 4: Recursive functions and multiple functions
+- Day 5: Testing and edge cases
+
+**SUCCESS CRITERIA**:
+- Functions can be declared with parameters and return types
+- Functions can be called with arguments
+- Return values work correctly
+- Recursive functions work
+- Local variables in functions don't conflict
+- At least 15 comprehensive tests
+
+**RESOURCES**:
+- JVM Method Descriptors: https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.3.3
+- ASM Method Generation: https://asm.ow2.io/asm4-guide.pdf (Chapter 3)
+- Calling Conventions: https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-2.html#jvms-2.6
 
 ---
 
