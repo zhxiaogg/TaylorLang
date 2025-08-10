@@ -12,6 +12,8 @@ statement
     : functionDecl
     | typeDecl
     | valDecl
+    | varDecl
+    | assignment
     | expression
     ;
 
@@ -42,8 +44,12 @@ namedFieldList: namedField (',' namedField)*;
 namedField: IDENTIFIER ':' type;
 positionedFieldList: type (',' type)*;
 
-// Variable declarations: val x = 42
+// Variable declarations: val x = 42, var y: Int = 10
 valDecl: 'val' IDENTIFIER (':' type)? '=' expression;
+varDecl: 'var' IDENTIFIER (':' type)? '=' expression;
+
+// Assignment statements: x = newValue
+assignment: IDENTIFIER '=' expression;
 
 // Type parameters: <T, E>
 typeParams: '<' typeParam (',' typeParam)* '>';

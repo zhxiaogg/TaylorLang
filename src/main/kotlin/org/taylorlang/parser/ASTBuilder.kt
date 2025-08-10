@@ -31,6 +31,8 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
             ctx.functionDecl() != null -> visit(ctx.functionDecl()) as Statement
             ctx.typeDecl() != null -> visit(ctx.typeDecl()) as Statement
             ctx.valDecl() != null -> visit(ctx.valDecl()) as Statement
+            ctx.varDecl() != null -> visit(ctx.varDecl()) as Statement
+            ctx.assignment() != null -> visit(ctx.assignment()) as Statement
             ctx.expression() != null -> visit(ctx.expression()) as Statement
             else -> throw IllegalStateException("Unknown statement type")
         }
@@ -170,6 +172,30 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
         )
     }
 
+    override fun visitVarDecl(ctx: TaylorLangParser.VarDeclContext): VarDecl {
+        val name = ctx.IDENTIFIER().text
+        val type = ctx.type()?.let { visit(it) as Type }
+        val initializer = visit(ctx.expression()) as Expression
+        
+        return VarDecl(
+            name = name,
+            type = type,
+            initializer = initializer,
+            sourceLocation = ctx.toSourceLocation()
+        )
+    }
+
+    override fun visitAssignment(ctx: TaylorLangParser.AssignmentContext): Assignment {
+        val variable = ctx.IDENTIFIER().text
+        val value = visit(ctx.expression()) as Expression
+        
+        return Assignment(
+            variable = variable,
+            value = value,
+            sourceLocation = ctx.toSourceLocation()
+        )
+    }
+
     // =============================================================================
     // Expressions
     // =============================================================================
@@ -257,6 +283,7 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
             ctx.matchExpr() != null -> visit(ctx.matchExpr()) as Expression
             ctx.lambdaExpr() != null -> visit(ctx.lambdaExpr()) as Expression
             ctx.ifExpr() != null -> visit(ctx.ifExpr()) as Expression
+            ctx.whileExpr() != null -> visit(ctx.whileExpr()) as Expression
             ctx.forExpr() != null -> visit(ctx.forExpr()) as Expression
             
             else -> throw IllegalStateException("Unknown expression type: ${ctx.text}")
@@ -463,6 +490,17 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
             condition = condition,
             thenExpression = thenExpression,
             elseExpression = elseExpression,
+            sourceLocation = ctx.toSourceLocation()
+        )
+    }
+
+    override fun visitWhileExpr(ctx: TaylorLangParser.WhileExprContext): WhileExpression {
+        val condition = visit(ctx.expression(0)) as Expression
+        val body = visit(ctx.expression(1)) as Expression
+        
+        return WhileExpression(
+            condition = condition,
+            body = body,
             sourceLocation = ctx.toSourceLocation()
         )
     }

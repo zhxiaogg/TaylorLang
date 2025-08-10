@@ -63,6 +63,8 @@ abstract class BaseASTVisitor<R> : ASTVisitor<R> {
             is FunctionDecl -> visitFunctionDecl(node)
             is TypeDecl -> visitTypeDecl(node)
             is ValDecl -> visitValDecl(node)
+            is VarDecl -> visitVarDecl(node)
+            is Assignment -> visitAssignment(node)
             is Expression -> visitExpression(node)
         }
     }
@@ -83,6 +85,16 @@ abstract class BaseASTVisitor<R> : ASTVisitor<R> {
         val typeResult = node.type?.accept(this) ?: defaultResult()
         val initResult = node.initializer.accept(this)
         return combine(typeResult, initResult)
+    }
+    
+    override fun visitVarDecl(node: VarDecl): R {
+        val typeResult = node.type?.accept(this) ?: defaultResult()
+        val initResult = node.initializer.accept(this)
+        return combine(typeResult, initResult)
+    }
+    
+    override fun visitAssignment(node: Assignment): R {
+        return node.value.accept(this)
     }
     
     // =============================================================================

@@ -24,6 +24,17 @@ sealed class TypedStatement {
         val inferredType: Type
     ) : TypedStatement()
     
+    data class MutableVariableDeclaration(
+        val declaration: VarDecl,
+        val initializer: TypedExpression,
+        val inferredType: Type
+    ) : TypedStatement()
+    
+    data class Assignment(
+        val assignment: org.taylorlang.ast.Assignment,
+        val value: TypedExpression
+    ) : TypedStatement()
+    
     data class ExpressionStatement(
         val expression: TypedExpression
     ) : TypedStatement()
@@ -51,9 +62,11 @@ sealed class TypedFunctionBody {
  * - Type declaration processing
  * - Expression statement wrapping
  * - Statement context management
+ * - Proper variable scoping with mutable/immutable distinction
  */
 class StatementTypeChecker(
-    private val context: TypeContext
+    private var context: TypeContext,
+    private val scopeManager: ScopeManager = ScopeManager()
 ) : BaseASTVisitor<Result<TypedStatement>>() {
     
     override fun defaultResult(): Result<TypedStatement> {
@@ -79,6 +92,8 @@ class StatementTypeChecker(
             is FunctionDecl -> visitFunctionDecl(node)
             is TypeDecl -> visitTypeDecl(node)
             is ValDecl -> visitValDecl(node)
+            is VarDecl -> visitVarDecl(node)
+            is org.taylorlang.ast.Assignment -> visitAssignment(node)
             is Expression -> visitExpressionStatement(node)
         }
     }
@@ -229,7 +244,7 @@ class StatementTypeChecker(
             val inferredType = typedInitializer.type
             
             // Check declared type matches inferred type if provided
-            node.type?.let { declaredType ->
+            val finalType = node.type?.let { declaredType ->
                 if (!typesCompatible(declaredType, inferredType)) {
                     throw TypeError.TypeMismatch(
                         expected = declaredType,
@@ -237,12 +252,97 @@ class StatementTypeChecker(
                         location = node.sourceLocation
                     )
                 }
-            }
+                declaredType
+            } ?: inferredType
+            
+            // Register immutable variable in scope manager
+            scopeManager.declareVariable(
+                name = node.name,
+                type = finalType,
+                isMutable = false,
+                location = node.sourceLocation
+            ).getOrThrow()
+            
+            // Also add to TypeContext for identifier resolution
+            context = context.withVariable(node.name, finalType)
             
             TypedStatement.VariableDeclaration(
                 node.copy(),
                 typedInitializer,
-                inferredType
+                finalType
+            )
+        }
+    }
+    
+    override fun visitVarDecl(node: VarDecl): Result<TypedStatement> {
+        val expressionChecker = ExpressionTypeChecker(context)
+        return node.initializer.accept(expressionChecker).mapCatching { typedInitializer ->
+            val inferredType = typedInitializer.type
+            
+            // Check declared type matches inferred type if provided
+            val finalType = node.type?.let { declaredType ->
+                if (!typesCompatible(declaredType, inferredType)) {
+                    throw TypeError.TypeMismatch(
+                        expected = declaredType,
+                        actual = inferredType,
+                        location = node.sourceLocation
+                    )
+                }
+                declaredType
+            } ?: inferredType
+            
+            // Register mutable variable in scope manager
+            scopeManager.declareVariable(
+                name = node.name,
+                type = finalType,
+                isMutable = true,
+                location = node.sourceLocation
+            ).getOrThrow()
+            
+            // Also add to TypeContext for identifier resolution
+            context = context.withVariable(node.name, finalType)
+            
+            TypedStatement.MutableVariableDeclaration(
+                node.copy(),
+                typedInitializer,
+                finalType
+            )
+        }
+    }
+    
+    override fun visitAssignment(node: org.taylorlang.ast.Assignment): Result<TypedStatement> {
+        // Check that the variable exists and is mutable
+        val variableType = scopeManager.getVariableType(node.variable, node.sourceLocation).getOrElse { error ->
+            return Result.failure(error)
+        }
+        
+        val isMutable = scopeManager.isVariableMutable(node.variable, node.sourceLocation).getOrElse { error ->
+            return Result.failure(error)
+        }
+        
+        if (!isMutable) {
+            return Result.failure(TypeError.InvalidOperation(
+                "Cannot assign to immutable variable '${node.variable}'",
+                emptyList(),
+                node.sourceLocation
+            ))
+        }
+        
+        // Type check the assigned value
+        val expressionChecker = ExpressionTypeChecker(context)
+        return node.value.accept(expressionChecker).mapCatching { typedValue ->
+            // Check type compatibility
+            if (!typesCompatible(variableType, typedValue.type)) {
+                throw TypeError.TypeMismatch(
+                    expected = variableType,
+                    actual = typedValue.type,
+                    location = node.sourceLocation
+                )
+            }
+            
+            TypedStatement.Assignment(
+                node.copy(),
+                typedValue
             )
         }
     }

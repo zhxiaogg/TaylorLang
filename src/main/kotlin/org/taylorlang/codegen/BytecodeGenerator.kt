@@ -45,6 +45,7 @@ class BytecodeGenerator {
     
     private var methodVisitor: MethodVisitor? = null
     private var currentClassName: String = "Program"
+    private val variableSlotManager = VariableSlotManager()
     
     /**
      * Generate bytecode from a typed program
@@ -181,10 +182,37 @@ class BytecodeGenerator {
                     // Function declarations are handled separately
                 }
                 is TypedStatement.VariableDeclaration -> {
-                    // Generate variable initialization
+                    // Generate variable initialization value
                     generateExpression(statement.initializer)
-                    // Store in local variable (simplified - just pop for now)
-                    methodVisitor!!.visitInsn(POP)
+                    
+                    // Allocate slot and store variable
+                    val slot = variableSlotManager.allocateSlot(
+                        statement.declaration.name, 
+                        statement.inferredType
+                    )
+                    val storeInstruction = variableSlotManager.getStoreInstruction(statement.inferredType)
+                    methodVisitor!!.visitVarInsn(storeInstruction, slot)
+                }
+                is TypedStatement.MutableVariableDeclaration -> {
+                    // Generate mutable variable initialization value
+                    generateExpression(statement.initializer)
+                    
+                    // Allocate slot and store variable
+                    val slot = variableSlotManager.allocateSlot(
+                        statement.declaration.name, 
+                        statement.inferredType
+                    )
+                    val storeInstruction = variableSlotManager.getStoreInstruction(statement.inferredType)
+                    methodVisitor!!.visitVarInsn(storeInstruction, slot)
+                }
+                is TypedStatement.Assignment -> {
+                    // Generate assignment value
+                    generateExpression(statement.value)
+                    
+                    // Store in existing variable slot
+                    val slot = variableSlotManager.getSlotOrThrow(statement.assignment.variable)
+                    val storeInstruction = variableSlotManager.getStoreInstruction(statement.value.type)
+                    methodVisitor!!.visitVarInsn(storeInstruction, slot)
                 }
                 is TypedStatement.TypeDeclaration -> {
                     // Type declarations don't generate runtime code
@@ -193,7 +221,7 @@ class BytecodeGenerator {
         }
         
         methodVisitor!!.visitInsn(RETURN)
-        methodVisitor!!.visitMaxs(10, 10) // Conservative estimates
+        methodVisitor!!.visitMaxs(10, variableSlotManager.getMaxSlots()) // Use actual slot count
         methodVisitor!!.visitEnd()
     }
     
@@ -210,6 +238,12 @@ class BytecodeGenerator {
             }
             is TypedStatement.VariableDeclaration -> {
                 // Variable declarations are handled in main method
+            }
+            is TypedStatement.MutableVariableDeclaration -> {
+                // Mutable variable declarations are handled in main method
+            }
+            is TypedStatement.Assignment -> {
+                // Assignments are handled in main method
             }
             is TypedStatement.TypeDeclaration -> {
                 // Type declarations don't generate runtime code
@@ -300,8 +334,15 @@ class BytecodeGenerator {
                 generateUnaryOperation(expression, expr.type)
             }
             is Identifier -> {
-                // For now, just load 0 as placeholder
-                methodVisitor!!.visitLdcInsn(0)
+                // Load variable from local slot
+                if (variableSlotManager.hasSlot(expression.name)) {
+                    val slot = variableSlotManager.getSlot(expression.name)!!
+                    val loadInstruction = variableSlotManager.getLoadInstruction(expr.type)
+                    methodVisitor!!.visitVarInsn(loadInstruction, slot)
+                } else {
+                    // For now, load 0 as placeholder for unknown identifiers (e.g., functions)
+                    methodVisitor!!.visitLdcInsn(0)
+                }
             }
             is IfExpression -> {
                 generateIfExpression(expression, expr.type)

@@ -33,6 +33,8 @@ interface ASTVisitor<R> {
     fun visitFunctionDecl(node: FunctionDecl): R
     fun visitTypeDecl(node: TypeDecl): R
     fun visitValDecl(node: ValDecl): R
+    fun visitVarDecl(node: VarDecl): R
+    fun visitAssignment(node: Assignment): R
     
     // =============================================================================
     // Supporting Statement Nodes

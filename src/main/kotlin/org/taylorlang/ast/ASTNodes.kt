@@ -133,6 +133,23 @@ data class ValDecl(
     override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitValDecl(this)
 }
 
+data class VarDecl(
+    val name: String,
+    val type: Type? = null,
+    val initializer: Expression,
+    override val sourceLocation: SourceLocation? = null
+) : Statement {
+    override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitVarDecl(this)
+}
+
+data class Assignment(
+    val variable: String,
+    val value: Expression,
+    override val sourceLocation: SourceLocation? = null
+) : Statement {
+    override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitAssignment(this)
+}
+
 // =============================================================================
 // Expressions
 // =============================================================================
