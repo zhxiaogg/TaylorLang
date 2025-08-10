@@ -109,7 +109,7 @@ object BuiltinTypes {
      */
     fun isPrimitive(type: Type): Boolean {
         return when (type) {
-            is Type.PrimitiveType -> primitives.containsValue(type)
+            is Type.PrimitiveType -> primitiveNames.contains(type.name)
             else -> false
         }
     }
@@ -120,7 +120,15 @@ object BuiltinTypes {
      * @return true if the type is numeric
      */
     fun isNumeric(type: Type): Boolean {
-        return numericTypes.contains(type)
+        return when (type) {
+            is Type.PrimitiveType -> {
+                when (type.name) {
+                    "Int", "Long", "Float", "Double" -> true
+                    else -> false
+                }
+            }
+            else -> false
+        }
     }
     
     /**
@@ -129,7 +137,15 @@ object BuiltinTypes {
      * @return true if the type is integral (Int or Long)
      */
     fun isIntegral(type: Type): Boolean {
-        return integralTypes.contains(type)
+        return when (type) {
+            is Type.PrimitiveType -> {
+                when (type.name) {
+                    "Int", "Long" -> true
+                    else -> false
+                }
+            }
+            else -> false
+        }
     }
     
     /**
@@ -138,7 +154,15 @@ object BuiltinTypes {
      * @return true if the type is floating-point (Float or Double)
      */
     fun isFloatingPoint(type: Type): Boolean {
-        return floatingPointTypes.contains(type)
+        return when (type) {
+            is Type.PrimitiveType -> {
+                when (type.name) {
+                    "Float", "Double" -> true
+                    else -> false
+                }
+            }
+            else -> false
+        }
     }
     
     /**
@@ -154,12 +178,33 @@ object BuiltinTypes {
             return null
         }
         
-        // Both types are numeric, find the wider one
-        val index1 = numericTypes.indexOf(type1)
-        val index2 = numericTypes.indexOf(type2)
+        // Map type names to their promotion precedence
+        fun getNumericPrecedence(type: Type): Int? {
+            return when {
+                type is Type.PrimitiveType -> when (type.name) {
+                    "Int" -> 0
+                    "Long" -> 1
+                    "Float" -> 2
+                    "Double" -> 3
+                    else -> null
+                }
+                else -> null
+            }
+        }
         
-        return if (index1 != -1 && index2 != -1) {
-            numericTypes[maxOf(index1, index2)]
+        val precedence1 = getNumericPrecedence(type1)
+        val precedence2 = getNumericPrecedence(type2)
+        
+        return if (precedence1 != null && precedence2 != null) {
+            // Return the canonical builtin type with the higher precedence
+            val widerPrecedence = maxOf(precedence1, precedence2)
+            when (widerPrecedence) {
+                0 -> INT
+                1 -> LONG
+                2 -> FLOAT
+                3 -> DOUBLE
+                else -> null
+            }
         } else {
             null
         }
