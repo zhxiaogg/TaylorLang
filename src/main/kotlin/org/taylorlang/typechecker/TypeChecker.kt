@@ -1,6 +1,7 @@
 package org.taylorlang.typechecker
 
 import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.collections.immutable.toPersistentList
@@ -139,7 +140,20 @@ class TypeChecker {
             when (statement) {
                 is TypeDecl -> {
                     val typeDef = createTypeDefinition(statement)
-                    ctx.withType(statement.name, typeDef)
+                    val newCtx = ctx.withType(statement.name, typeDef)
+                    
+                    // Also add each variant constructor as a function signature
+                    typeDef.variants.fold(newCtx) { acc, variant ->
+                        val signature = FunctionSignature(
+                            typeParameters = statement.typeParams.toList(),
+                            parameterTypes = variant.fields,
+                            returnType = Type.UnionType(
+                                name = statement.name,
+                                typeArguments = statement.typeParams.map { Type.NamedType(it) }.toPersistentList()
+                            )
+                        )
+                        acc.withFunction(variant.name, signature)
+                    }
                 }
                 is FunctionDecl -> {
                     val signature = createFunctionSignature(statement, ctx)
@@ -295,10 +309,25 @@ class TypeChecker {
         identifier: Identifier,
         context: TypeContext
     ): Result<TypedExpression> {
-        val type = context.lookupVariable(identifier.name)
-            ?: return Result.failure(TypeError.UnresolvedSymbol(identifier.name, identifier.sourceLocation))
+        // First check if it's a variable
+        val variableType = context.lookupVariable(identifier.name)
+        if (variableType != null) {
+            return Result.success(TypedExpression(identifier, variableType))
+        }
         
-        return Result.success(TypedExpression(identifier, type))
+        // Check if it's a zero-argument constructor
+        val constructorSignature = context.lookupFunction(identifier.name)
+        if (constructorSignature != null && constructorSignature.parameterTypes.isEmpty()) {
+            // Convert the identifier to a constructor call for consistency
+            val constructorCall = ConstructorCall(
+                constructor = identifier.name,
+                arguments = persistentListOf(),
+                sourceLocation = identifier.sourceLocation
+            )
+            return typeCheckConstructorCall(constructorCall, context)
+        }
+        
+        return Result.failure(TypeError.UnresolvedSymbol(identifier.name, identifier.sourceLocation))
     }
     
     private fun typeCheckBinaryOp(
@@ -360,8 +389,68 @@ class TypeChecker {
         call: ConstructorCall,
         context: TypeContext
     ): Result<TypedExpression> {
-        // TODO: Implement constructor type checking
-        return Result.success(TypedExpression(call, BuiltinTypes.UNIT))
+        // Look for the constructor in all union type definitions
+        val matchingType = context.types.values.firstNotNullOfOrNull { typeDef ->
+            when (typeDef) {
+                is TypeDefinition.UnionTypeDef -> {
+                    // Check if any variant matches the constructor name
+                    val matchingVariant = typeDef.variants.find { variant -> 
+                        variant.name == call.constructor 
+                    }
+                    if (matchingVariant != null) {
+                        // Find the union type name from the context
+                        val unionTypeName = context.types.entries.find { it.value == typeDef }?.key
+                        if (unionTypeName != null) {
+                            // Type check constructor arguments
+                            val expectedTypes = matchingVariant.fields
+                            if (call.arguments.size != expectedTypes.size) {
+                                return Result.failure(TypeError.ArityMismatch(
+                                    expected = expectedTypes.size,
+                                    actual = call.arguments.size,
+                                    location = call.sourceLocation
+                                ))
+                            }
+                            
+                            // Check each argument type
+                            for (i in call.arguments.indices) {
+                                val argResult = typeCheckExpression(call.arguments[i], context)
+                                if (argResult.isFailure) {
+                                    return argResult
+                                }
+                                val argType = argResult.getOrThrow().type
+                                if (!typesCompatible(argType, expectedTypes[i])) {
+                                    return Result.failure(TypeError.TypeMismatch(
+                                        expected = expectedTypes[i],
+                                        actual = argType,
+                                        location = call.arguments[i].sourceLocation
+                                    ))
+                                }
+                            }
+                            
+                            // Return the union type with generic parameters if any
+                            val typeArguments = if (typeDef.typeParameters.isNotEmpty()) {
+                                // For now, we'll use Unit for unspecified type parameters
+                                // In a full implementation, we'd perform type inference
+                                typeDef.typeParameters.map { BuiltinTypes.UNIT }.toPersistentList()
+                            } else {
+                                persistentListOf()
+                            }
+                            
+                            Type.UnionType(unionTypeName, typeArguments)
+                        } else null
+                    } else null
+                }
+            }
+        }
+        
+        return if (matchingType != null) {
+            Result.success(TypedExpression(call, matchingType))
+        } else {
+            Result.failure(TypeError.UnresolvedSymbol(
+                call.constructor, 
+                call.sourceLocation
+            ))
+        }
     }
     
     private fun typeCheckTupleLiteral(
@@ -491,6 +580,13 @@ class TypeChecker {
                 type1.elementTypes.zip(type2.elementTypes).all { (t1, t2) -> typesCompatible(t1, t2) }
             type1 is Type.NullableType && type2 is Type.NullableType ->
                 typesCompatible(type1.baseType, type2.baseType)
+            type1 is Type.UnionType && type2 is Type.UnionType ->
+                type1.name == type2.name && type1.typeArguments.size == type2.typeArguments.size &&
+                type1.typeArguments.zip(type2.typeArguments).all { (a1, a2) -> typesCompatible(a1, a2) }
+            type1 is Type.FunctionType && type2 is Type.FunctionType ->
+                typesCompatible(type1.returnType, type2.returnType) &&
+                type1.parameterTypes.size == type2.parameterTypes.size &&
+                type1.parameterTypes.zip(type2.parameterTypes).all { (p1, p2) -> typesCompatible(p1, p2) }
             else -> type1 == type2
         }
     }
