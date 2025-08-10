@@ -2,6 +2,34 @@
 
 ## Project Analysis Log
 
+### 2025-08-10 Critical Test Fixes Review
+
+#### Review of 8 Critical Test Fixes (Commit 311d229)
+**Status**: NEEDS CHANGES - Regression Detected
+
+The engineer attempted to fix 8 critical test failures but introduced 4 new regressions in ConstraintCollectorTest:
+
+**Successfully Fixed (8 tests)**:
+- TypeCheckerTest: All 53 tests passing (nullary constructors, arity validation)
+- UnificationIntegrationTest: All 20 tests passing (arithmetic inference, branch unification)
+- ConstraintBasedTypeCheckerTest: All 12 tests passing
+
+**New Regressions (4 tests)**:
+- ConstraintCollectorTest failures due to optimization that skips constraints for known numeric types
+- Tests expect constraints to always be generated, but optimization skips them for INT literals
+- Creates inconsistent behavior: INT+INT (0 constraints) vs x+INT (1 constraint)
+
+**Root Cause**: 
+The optimization `if (!isNumericType(type))` skips constraint generation for known numeric types. While logically correct, this breaks test expectations and creates inconsistent system behavior.
+
+**Required Fix**:
+Remove the optimization and always generate subtype constraints for consistency. This ensures predictable constraint counts and maintains test compatibility.
+
+**Lessons Learned**:
+- Optimizations that change observable behavior (constraint counts) need careful consideration
+- Test expectations document intended behavior, not just implementation details
+- Consistency in constraint generation is more important than minor optimizations
+
 ### 2025-08-10 Next Priority Decision - TypeChecker Refactoring
 
 #### Current State Assessment
@@ -988,6 +1016,56 @@ ast/
 
 **Review Date**: 2025-08-10
 **Review Status**: **APPROVED WITH CONDITIONS** ✅⚠️
+
+## 2025-08-10 Next Priority Task Decision
+
+### Current Project State Assessment
+**Date**: 2025-08-10  
+**Build Status**: FAILING (8 test failures - 97% pass rate)
+**Critical Decision**: Next task assignment after TypeChecker refactoring approval
+
+#### Analysis of Current Situation
+
+1. **Type Inference Pipeline Status**:
+   - ✅ Constraint Data Model (100% complete)
+   - ✅ Constraint Collection (100% complete)  
+   - ✅ Unification Algorithm (100% complete)
+   - 🚀 Integration with TypeChecker (marked IN PROGRESS but acceptance criteria show ✅)
+
+2. **Test Failure Breakdown** (8 failures):
+   - 2 Constraint-based mode failures (binary operations)
+   - 2 Pattern matching edge cases (exhaustiveness, arity validation)
+   - 4 Unification integration tests (arithmetic type inference)
+   
+3. **Technical Debt**:
+   - ConstraintCollector.kt: 1298 lines (needs refactoring)
+   - 8 test failures blocking clean build
+   - Type inference integration marked IN PROGRESS despite completed criteria
+
+#### Strategic Decision: Fix Critical Test Failures
+
+**PRIORITY TASK**: Resolve the 8 failing tests to achieve clean build
+
+**Rationale**:
+1. **Build Health Critical**: Cannot proceed to Phase 3 (Code Generation) with failing tests
+2. **Root Causes Identified**: Most failures relate to constraint-based type checking
+3. **Small Scope**: 8 specific test failures is a focused, achievable task
+4. **Unblocks Progress**: Clean build enables moving to bytecode generation
+5. **Quality Gate**: Ensures type system is solid before next phase
+
+**Task Categories**:
+1. **Constraint-Based Binary Operations** (2 failures)
+   - Issue: Binary operations not working in constraint mode
+   - Location: ConstraintBasedTypeCheckerTest
+   
+2. **Pattern Matching Issues** (2 failures)
+   - Non-exhaustive match detection
+   - Constructor pattern arity validation
+   - Location: TypeCheckerTest
+   
+3. **Arithmetic Type Inference** (4 failures)
+   - Numeric type promotion not working
+   - Location: UnificationIntegrationTest
 
 #### Final Review Summary
 
