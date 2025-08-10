@@ -38,25 +38,42 @@
 ---
 
 #### Task: Debug Runtime Execution Issues
-**Status**: 🔵 IN PROGRESS  
+**Status**: 🔴 NEEDS CHANGES (Code Review 2025-08-10)  
 **Assignee**: kotlin-java-engineer  
 **Component**: Code Generation  
-**Effort**: Small (1-2 days)  
-**Priority**: MEDIUM
+**Effort**: Small (1-2 days remaining)  
+**Priority**: HIGH (Blocking further development)
 
 **Description**: Fix the 10 failing runtime execution tests to achieve 100% pass rate.
 
-**Issues to Fix**:
-- EndToEndExecutionTest: 7 tests failing with exit code 1
-- SimpleBytecodeExecutionTest: 3 tests failing with execution errors
-- All tests generate valid bytecode that passes verification
-- Issues appear to be JVM execution details (stack management, method signatures)
+**Progress Update (2025-08-10)**:
+- ✅ Fixed println method descriptor selection for correct overloads
+- ✅ Fixed binary operation type inference with proper operand detection  
+- ✅ Fixed stack management for void-returning methods
+- ⚠️ Only 2/10 tests passing (20% success rate) - INSUFFICIENT
+
+**Critical Issues to Fix (BLOCKING)**:
+1. **Boolean Representation**: Print "true"/"false" not 0/1
+2. **Double Arithmetic**: Fix type conversion and operations
+3. **Function Returns**: Implement proper return value handling
+
+**Remaining Failures (8/10)**:
+- Double arithmetic expressions
+- Boolean NOT operations  
+- Multiple println statements
+- Function declarations with returns
+- Main function execution
+- Complex nested expressions
+- Bytecode verification failures
+- Variable operations (not implemented)
 
 **Acceptance Criteria**:
-- All 317 tests passing
+- All 317 tests passing (currently 308/317)
 - Programs execute correctly on JVM
 - Proper stack management for all operations
 - Correct method signatures for main and generated methods
+- Boolean values print as "true"/"false"
+- Double arithmetic produces correct results
 
 ---
 
