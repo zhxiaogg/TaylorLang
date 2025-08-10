@@ -43,7 +43,6 @@ data class GenerationResult(
  */
 class BytecodeGenerator {
     
-    private val classWriter = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
     private var methodVisitor: MethodVisitor? = null
     private var currentClassName: String = "Program"
     
@@ -58,6 +57,9 @@ class BytecodeGenerator {
         return try {
             currentClassName = className
             
+            // Create a new ClassWriter for each generation to avoid reuse issues
+            val classWriter = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+            
             // Initialize class writer
             classWriter.visit(
                 V17, // Java 17 bytecode version
@@ -69,7 +71,7 @@ class BytecodeGenerator {
             )
             
             // Generate default constructor
-            generateConstructor()
+            generateConstructor(classWriter)
             
             // Check if program has a main function
             val hasMainFunction = typedProgram.statements.any { statement ->
@@ -80,11 +82,11 @@ class BytecodeGenerator {
             if (hasMainFunction) {
                 // Generate statements as methods
                 for (statement in typedProgram.statements) {
-                    generateStatement(statement)
+                    generateStatement(statement, classWriter)
                 }
             } else {
                 // Generate main method that executes all statements
-                generateMainMethod(typedProgram.statements)
+                generateMainMethod(typedProgram.statements, classWriter)
             }
             
             classWriter.visitEnd()
@@ -123,7 +125,7 @@ class BytecodeGenerator {
     /**
      * Generate default constructor
      */
-    private fun generateConstructor() {
+    private fun generateConstructor(classWriter: ClassWriter) {
         val mv = classWriter.visitMethod(
             ACC_PUBLIC,
             "<init>",
@@ -142,7 +144,7 @@ class BytecodeGenerator {
     /**
      * Generate main method that executes statements
      */
-    private fun generateMainMethod(statements: List<TypedStatement>) {
+    private fun generateMainMethod(statements: List<TypedStatement>, classWriter: ClassWriter) {
         methodVisitor = classWriter.visitMethod(
             ACC_PUBLIC + ACC_STATIC,
             "main",
@@ -198,10 +200,10 @@ class BytecodeGenerator {
     /**
      * Generate code for a statement
      */
-    private fun generateStatement(statement: TypedStatement) {
+    private fun generateStatement(statement: TypedStatement, classWriter: ClassWriter) {
         when (statement) {
             is TypedStatement.FunctionDeclaration -> {
-                generateFunctionDeclaration(statement)
+                generateFunctionDeclaration(statement, classWriter)
             }
             is TypedStatement.ExpressionStatement -> {
                 // Expression statements are handled in main method
@@ -218,13 +220,15 @@ class BytecodeGenerator {
     /**
      * Generate code for function declaration
      */
-    private fun generateFunctionDeclaration(funcDecl: TypedStatement.FunctionDeclaration) {
-        val descriptor = buildMethodDescriptor(funcDecl.declaration)
-        val access = if (funcDecl.declaration.name == "main") {
-            ACC_PUBLIC + ACC_STATIC
+    private fun generateFunctionDeclaration(funcDecl: TypedStatement.FunctionDeclaration, classWriter: ClassWriter) {
+        val isMainFunction = funcDecl.declaration.name == "main"
+        val descriptor = if (isMainFunction) {
+            "([Ljava/lang/String;)V"  // Main function always has this signature
         } else {
-            ACC_PUBLIC + ACC_STATIC
+            buildMethodDescriptor(funcDecl.declaration)
         }
+        
+        val access = ACC_PUBLIC + ACC_STATIC
         
         methodVisitor = classWriter.visitMethod(
             access,
@@ -238,7 +242,16 @@ class BytecodeGenerator {
         when (val body = funcDecl.body) {
             is TypedFunctionBody.Expression -> {
                 generateExpression(body.expression)
-                generateReturn(body.expression.type)
+                
+                if (isMainFunction) {
+                    // Main function should not return a value, just execute and return void
+                    // For main function with expression body, the expression is executed but the result is not returned
+                    // println calls already handle their own void return, so we don't need to pop anything
+                    methodVisitor!!.visitInsn(RETURN)
+                } else {
+                    // Regular function returns the expression value
+                    generateReturn(body.expression.type)
+                }
             }
             is TypedFunctionBody.Block -> {
                 for (stmt in body.statements) {
@@ -310,17 +323,32 @@ class BytecodeGenerator {
     private fun generateBinaryOperation(binaryOp: BinaryOp, resultType: Type) {
         // Determine the operand type by inspecting the operands
         val operandType = determineOperandType(binaryOp, resultType)
+        val isDoubleOp = !isIntegerType(operandType)
         
         // Generate left operand
         when (val left = binaryOp.left) {
-            is Literal.IntLiteral -> methodVisitor!!.visitLdcInsn(left.value)
+            is Literal.IntLiteral -> {
+                if (isDoubleOp) {
+                    // Convert int to double for double operations
+                    methodVisitor!!.visitLdcInsn(left.value.toDouble())
+                } else {
+                    methodVisitor!!.visitLdcInsn(left.value)
+                }
+            }
             is Literal.FloatLiteral -> methodVisitor!!.visitLdcInsn(left.value)
             else -> generateExpression(TypedExpression(left, operandType))
         }
         
         // Generate right operand
         when (val right = binaryOp.right) {
-            is Literal.IntLiteral -> methodVisitor!!.visitLdcInsn(right.value)
+            is Literal.IntLiteral -> {
+                if (isDoubleOp) {
+                    // Convert int to double for double operations
+                    methodVisitor!!.visitLdcInsn(right.value.toDouble())
+                } else {
+                    methodVisitor!!.visitLdcInsn(right.value)
+                }
+            }
             is Literal.FloatLiteral -> methodVisitor!!.visitLdcInsn(right.value)
             else -> generateExpression(TypedExpression(right, operandType))
         }
@@ -356,8 +384,12 @@ class BytecodeGenerator {
                 }
             }
             else -> {
-                // Unsupported operation - just add for now
-                methodVisitor!!.visitInsn(IADD)
+                // Unsupported operation - use appropriate add instruction
+                if (isIntegerType(operandType)) {
+                    methodVisitor!!.visitInsn(IADD)
+                } else {
+                    methodVisitor!!.visitInsn(DADD)
+                }
             }
         }
     }
@@ -366,14 +398,15 @@ class BytecodeGenerator {
      * Determine the operand type for binary operations
      */
     private fun determineOperandType(binaryOp: BinaryOp, resultType: Type): Type {
-        // For arithmetic operations with integer literals, always use int
+        // Use the consolidated type inference logic
+        val leftType = inferExpressionType(binaryOp.left)
+        val rightType = inferExpressionType(binaryOp.right)
+        
+        // If either operand is double, the result is double
         return when {
-            // If either operand is a float/double literal, use double
-            binaryOp.left is Literal.FloatLiteral || binaryOp.right is Literal.FloatLiteral -> BuiltinTypes.DOUBLE
-            // For integer literals and nested binary operations with integers, use int
-            isIntegerExpression(binaryOp.left) && isIntegerExpression(binaryOp.right) -> BuiltinTypes.INT
-            // Default to int for arithmetic operations
-            else -> BuiltinTypes.INT
+            leftType == BuiltinTypes.DOUBLE || rightType == BuiltinTypes.DOUBLE -> BuiltinTypes.DOUBLE
+            leftType == BuiltinTypes.INT && rightType == BuiltinTypes.INT -> BuiltinTypes.INT
+            else -> BuiltinTypes.INT // Default to int
         }
     }
     
@@ -416,56 +449,105 @@ class BytecodeGenerator {
     }
     
     /**
+     * Infer the type of an expression based on its structure
+     */
+    private fun inferExpressionType(expr: Expression): Type {
+        return when (expr) {
+            is Literal.IntLiteral -> BuiltinTypes.INT
+            is Literal.FloatLiteral -> BuiltinTypes.DOUBLE
+            is Literal.BooleanLiteral -> BuiltinTypes.BOOLEAN
+            is Literal.StringLiteral -> BuiltinTypes.STRING
+            is BinaryOp -> {
+                // For binary operations, determine the result type
+                if (isIntegerExpression(expr)) BuiltinTypes.INT else BuiltinTypes.DOUBLE
+            }
+            is UnaryOp -> {
+                when (expr.operator) {
+                    UnaryOperator.NOT -> BuiltinTypes.BOOLEAN
+                    UnaryOperator.MINUS -> inferExpressionType(expr.operand)
+                }
+            }
+            else -> BuiltinTypes.INT // Default fallback
+        }
+    }
+    
+    /**
      * Generate code for function calls
      */
     private fun generateFunctionCall(call: FunctionCall, resultType: Type) {
-        if (call.target is Identifier && call.target.name == "println") {
-            // Handle println specially
-            methodVisitor!!.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;")
-            
-            // Generate arguments and determine the correct method signature
-            val methodDescriptor = if (call.arguments.isNotEmpty()) {
-                val arg = call.arguments[0]
-                
-                // Infer the argument type - we need to determine this properly
-                val argType = when (arg) {
-                    is Literal.IntLiteral -> BuiltinTypes.INT
-                    is Literal.FloatLiteral -> BuiltinTypes.DOUBLE
-                    is Literal.BooleanLiteral -> BuiltinTypes.BOOLEAN
-                    is Literal.StringLiteral -> BuiltinTypes.STRING
-                    is BinaryOp -> {
-                        // For binary operations, determine the result type
-                        if (isIntegerExpression(arg)) BuiltinTypes.INT else BuiltinTypes.DOUBLE
-                    }
-                    else -> BuiltinTypes.INT // Default to int for expressions
-                }
-                
-                generateExpression(TypedExpression(arg, argType))
-                
-                // Map to appropriate PrintStream.println overload
-                when (argType) {
-                    BuiltinTypes.INT -> "(I)V"
-                    BuiltinTypes.DOUBLE -> "(D)V"
-                    BuiltinTypes.BOOLEAN -> "(Z)V"
-                    BuiltinTypes.STRING -> "(Ljava/lang/String;)V"
-                    else -> "(Ljava/lang/Object;)V"
-                }
-            } else {
-                methodVisitor!!.visitLdcInsn("")
-                "(Ljava/lang/String;)V"
+        val functionName = (call.target as? Identifier)?.name
+        
+        when (functionName) {
+            "println" -> generatePrintlnCall(call)
+            else -> {
+                // Regular function call - simplified for now
+                methodVisitor!!.visitLdcInsn(0) // Placeholder return value
             }
-            
-            methodVisitor!!.visitMethodInsn(
-                INVOKEVIRTUAL,
-                "java/io/PrintStream",
-                "println",
-                methodDescriptor,
-                false
-            )
-        } else {
-            // Regular function call - simplified for now
-            methodVisitor!!.visitLdcInsn(0) // Placeholder return value
         }
+    }
+    
+    /**
+     * Generate code for println builtin function
+     */
+    private fun generatePrintlnCall(call: FunctionCall) {
+        methodVisitor!!.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;")
+        
+        // Generate arguments and determine the correct method signature
+        val methodDescriptor = if (call.arguments.isNotEmpty()) {
+            val arg = call.arguments[0]
+            val argType = inferExpressionType(arg)
+            
+            generateExpression(TypedExpression(arg, argType))
+            
+            // Map to appropriate PrintStream.println overload
+            when (argType) {
+                BuiltinTypes.INT -> "(I)V"
+                BuiltinTypes.DOUBLE -> "(D)V"
+                BuiltinTypes.BOOLEAN -> {
+                    // Convert boolean to string representation
+                    convertBooleanToString()
+                    "(Ljava/lang/String;)V"
+                }
+                BuiltinTypes.STRING -> "(Ljava/lang/String;)V"
+                else -> "(Ljava/lang/Object;)V"
+            }
+        } else {
+            methodVisitor!!.visitLdcInsn("")
+            "(Ljava/lang/String;)V"
+        }
+        
+        methodVisitor!!.visitMethodInsn(
+            INVOKEVIRTUAL,
+            "java/io/PrintStream",
+            "println",
+            methodDescriptor,
+            false
+        )
+    }
+    
+    /**
+     * Convert a boolean value on the stack to its string representation ("true" or "false")
+     */
+    private fun convertBooleanToString() {
+        // The stack has a boolean (0 or 1) on top
+        // We'll use a simple if-else to convert to string
+        
+        val trueLabel = org.objectweb.asm.Label()
+        val endLabel = org.objectweb.asm.Label()
+        
+        // If the boolean value is not 0 (i.e., true), jump to trueLabel
+        methodVisitor!!.visitJumpInsn(IFNE, trueLabel)
+        
+        // False case: push "false"
+        methodVisitor!!.visitLdcInsn("false")
+        methodVisitor!!.visitJumpInsn(GOTO, endLabel)
+        
+        // True case: push "true"
+        methodVisitor!!.visitLabel(trueLabel)
+        methodVisitor!!.visitLdcInsn("true")
+        
+        // End
+        methodVisitor!!.visitLabel(endLabel)
     }
     
     /**
