@@ -29,16 +29,29 @@ class ControlFlowExpressionChecker(
      * @return Result containing the typed expression or error
      */
     fun visitFunctionCall(node: FunctionCall): Result<TypedExpression> {
-        // Extract function name from target (assuming it's an Identifier)
-        val functionName = when (node.target) {
-            is Identifier -> node.target.name
-            else -> return Result.failure(TypeError.InvalidOperation(
-                "Complex function expressions not yet supported",
-                emptyList(),
-                node.target.sourceLocation
-            ))
+        return when (node.target) {
+            is Identifier -> {
+                // Regular function call
+                visitRegularFunctionCall(node, node.target.name)
+            }
+            is PropertyAccess -> {
+                // Method call (e.g., value.toString())
+                visitMethodCall(node, node.target)
+            }
+            else -> {
+                Result.failure(TypeError.InvalidOperation(
+                    "Complex function expressions not yet supported",
+                    emptyList(),
+                    node.target.sourceLocation
+                ))
+            }
         }
-        
+    }
+    
+    /**
+     * Handle regular function calls where target is an identifier.
+     */
+    private fun visitRegularFunctionCall(node: FunctionCall, functionName: String): Result<TypedExpression> {
         // Look up the function signature
         val functionSignature = context.lookupFunction(functionName)
             ?: return Result.failure(TypeError.UnresolvedSymbol(
@@ -135,6 +148,50 @@ class ControlFlowExpressionChecker(
                 TypeError.MultipleErrors(errors)
             }
             Result.failure(error)
+        }
+    }
+    
+    /**
+     * Handle method calls where target is a property access (e.g., value.toString()).
+     * For now, this implements basic method calls on built-in types.
+     */
+    private fun visitMethodCall(node: FunctionCall, propertyAccess: PropertyAccess): Result<TypedExpression> {
+        // First, type check the target object
+        val targetResult = propertyAccess.target.accept(baseChecker)
+        if (targetResult.isFailure) {
+            return targetResult // Propagate error from target
+        }
+        
+        val targetType = targetResult.getOrThrow().type
+        val methodName = propertyAccess.property
+        
+        // Handle built-in method calls
+        return when {
+            // toString() method is available on all types and returns String
+            methodName == "toString" && node.arguments.isEmpty() -> {
+                Result.success(TypedExpression(node, BuiltinTypes.STRING))
+            }
+            
+            // For numeric types, implement basic methods
+            targetType == BuiltinTypes.INT && methodName == "toDouble" && node.arguments.isEmpty() -> {
+                Result.success(TypedExpression(node, BuiltinTypes.DOUBLE))
+            }
+            
+            targetType == BuiltinTypes.DOUBLE && methodName == "toInt" && node.arguments.isEmpty() -> {
+                Result.success(TypedExpression(node, BuiltinTypes.INT))
+            }
+            
+            // String methods
+            targetType == BuiltinTypes.STRING && methodName == "length" && node.arguments.isEmpty() -> {
+                Result.success(TypedExpression(node, BuiltinTypes.INT))
+            }
+            
+            else -> {
+                Result.failure(TypeError.UnresolvedSymbol(
+                    "$targetType.$methodName",
+                    propertyAccess.sourceLocation
+                ))
+            }
         }
     }
     

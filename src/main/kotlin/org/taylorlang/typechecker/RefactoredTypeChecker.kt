@@ -55,27 +55,6 @@ class RefactoredTypeChecker(
     }
     
     /**
-     * Type check an expression with the configured strategy.
-     */
-    fun typeCheckExpression(
-        expression: Expression,
-        context: TypeContext
-    ): Result<TypedExpression> {
-        return strategy.typeCheckExpression(expression, context)
-    }
-    
-    /**
-     * Type check an expression with an expected type.
-     */
-    fun typeCheckExpressionWithExpected(
-        expression: Expression,
-        expectedType: Type,
-        context: TypeContext
-    ): Result<TypedExpression> {
-        return strategy.typeCheckExpressionWithExpected(expression, expectedType, context)
-    }
-    
-    /**
      * Collect constraints from an expression without solving them.
      * Only available for constraint-based mode.
      */
@@ -227,14 +206,48 @@ class RefactoredTypeChecker(
     }
     
     /**
-     * Create a single error or multiple errors wrapper.
+     * Create a multiple errors wrapper for program-level type checking.
+     * 
+     * At the program level, we always use MultipleErrors for consistency,
+     * even when there's only one error. This provides a uniform interface
+     * and allows tests and consumers to handle errors consistently.
      */
     private fun createMultipleErrorsOrSingle(errors: List<TypeError>): TypeError {
-        return if (errors.size == 1) {
-            errors.first()
-        } else {
-            TypeError.MultipleErrors(errors)
-        }
+        return TypeError.MultipleErrors(errors)
+    }
+    
+    /**
+     * Type check a single expression using the configured strategy.
+     * 
+     * This method provides direct expression type checking without the context
+     * of a full program. It delegates to the configured strategy (algorithmic
+     * or constraint-based) for the actual type checking work.
+     * 
+     * @param expression The expression to type check
+     * @param context The type checking context with variable/function/type bindings
+     * @return Result containing either a TypedExpression or a TypeError
+     */
+    fun typeCheckExpression(
+        expression: Expression,
+        context: TypeContext
+    ): Result<TypedExpression> {
+        return strategy.typeCheckExpression(expression, context)
+    }
+    
+    /**
+     * Type check an expression with an expected type using the configured strategy.
+     * 
+     * @param expression The expression to type check
+     * @param expectedType The type expected for this expression
+     * @param context The type checking context
+     * @return Result containing either a TypedExpression or a TypeError
+     */
+    fun typeCheckExpressionWithExpected(
+        expression: Expression,
+        expectedType: Type,
+        context: TypeContext
+    ): Result<TypedExpression> {
+        return strategy.typeCheckExpressionWithExpected(expression, expectedType, context)
     }
     
     // =============================================================================
