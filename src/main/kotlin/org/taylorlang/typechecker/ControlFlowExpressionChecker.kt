@@ -390,26 +390,42 @@ class ControlFlowExpressionChecker(
                             caseTypes.add(typedExpr.type)
                         },
                         onFailure = { error ->
-                            errors.add(when (error) {
-                                is TypeError -> error
-                                else -> TypeError.InvalidOperation(
-                                    error.message ?: "Unknown error",
-                                    emptyList(),
-                                    case.expression.sourceLocation
-                                )
-                            })
+                            when (error) {
+                                is TypeError.MultipleErrors -> {
+                                    // Flatten multiple errors instead of nesting them
+                                    errors.addAll(error.errors)
+                                }
+                                is TypeError -> {
+                                    errors.add(error)
+                                }
+                                else -> {
+                                    errors.add(TypeError.InvalidOperation(
+                                        error.message ?: "Unknown error",
+                                        emptyList(),
+                                        case.expression.sourceLocation
+                                    ))
+                                }
+                            }
                         }
                     )
                 },
                 onFailure = { error ->
-                    errors.add(when (error) {
-                        is TypeError -> error
-                        else -> TypeError.InvalidOperation(
-                            error.message ?: "Unknown error",
-                            emptyList(),
-                            case.pattern.sourceLocation
-                        )
-                    })
+                    when (error) {
+                        is TypeError.MultipleErrors -> {
+                            // Flatten multiple errors instead of nesting them
+                            errors.addAll(error.errors)
+                        }
+                        is TypeError -> {
+                            errors.add(error)
+                        }
+                        else -> {
+                            errors.add(TypeError.InvalidOperation(
+                                error.message ?: "Unknown error",
+                                emptyList(),
+                                case.pattern.sourceLocation
+                            ))
+                        }
+                    }
                 }
             )
         }

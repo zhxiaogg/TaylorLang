@@ -105,7 +105,29 @@ class PatternTypeChecker(
     }
     
     private fun visitIdentifierPatternInternal(node: Pattern.IdentifierPattern, targetType: Type): Result<PatternInfo> {
-        // Identifier pattern binds the entire value to a variable
+        // Check if this identifier is actually a nullary constructor
+        val typeName = when (targetType) {
+            is Type.UnionType -> targetType.name
+            is Type.GenericType -> targetType.name
+            else -> null
+        }
+        
+        if (typeName != null) {
+            val unionTypeDef = context.lookupType(typeName) as? TypeDefinition.UnionTypeDef
+            val nullaryVariant = unionTypeDef?.variants?.find { 
+                it.name == node.name && it.isNullary() 
+            }
+            
+            if (nullaryVariant != null) {
+                // This identifier is actually a nullary constructor - treat as constructor pattern
+                return Result.success(PatternInfo(
+                    bindings = emptyMap(),
+                    coveredVariants = setOf(node.name)
+                ))
+            }
+        }
+        
+        // Regular identifier pattern - binds the entire value to a variable
         val coveredVariants = when (targetType) {
             is Type.UnionType -> {
                 val unionTypeDef = context.lookupType(targetType.name) as? TypeDefinition.UnionTypeDef

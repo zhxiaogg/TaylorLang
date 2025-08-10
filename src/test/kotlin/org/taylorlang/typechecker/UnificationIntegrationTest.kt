@@ -432,8 +432,8 @@ class UnificationIntegrationTest : StringSpec({
         val finalSubst = unificationResult.getOrThrow()
         val finalType = finalSubst.apply(constraintResult.type)
         
-        // Result should be Int (compatible branch types)
-        finalType shouldBe BuiltinTypes.INT
+        // Result should be Double due to arithmetic promotion in then branch
+        finalType shouldBe BuiltinTypes.DOUBLE
     }
 
     // =============================================================================

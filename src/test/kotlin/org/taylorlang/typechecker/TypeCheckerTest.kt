@@ -871,9 +871,15 @@ class TypeCheckerTest : StringSpec({
         result.exceptionOrNull() should beInstanceOf<TypeError.MultipleErrors>()
         val errors = (result.exceptionOrNull() as TypeError.MultipleErrors).errors
         
-        // Should contain an ArityMismatch error
-        val arityError = errors.find { it is TypeError.ArityMismatch }
-        arityError shouldBe beInstanceOf<TypeError.ArityMismatch>()
+        // Should contain an ArityMismatch error - check both direct and nested errors
+        val allErrors = errors.flatMap { error ->
+            when (error) {
+                is TypeError.MultipleErrors -> error.errors
+                else -> listOf(error)
+            }
+        }
+        val arityError = allErrors.find { it is TypeError.ArityMismatch }
+        arityError should beInstanceOf<TypeError.ArityMismatch>()
     }
 
     "should handle match expressions with different case result types" {

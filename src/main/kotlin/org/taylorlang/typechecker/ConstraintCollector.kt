@@ -665,8 +665,8 @@ class ConstraintCollector {
                     val freshVar = TypeVar.fresh()
                     val unifiedType = Type.NamedType(freshVar.id)
                     
-                    val thenConstraint = Constraint.Equality(thenResult.type, unifiedType, ifExpr.thenExpression.sourceLocation)
-                    val elseConstraint = Constraint.Equality(elseResult.type, unifiedType, ifExpr.elseExpression.sourceLocation)
+                    val thenConstraint = Constraint.Subtype(thenResult.type, unifiedType, ifExpr.thenExpression.sourceLocation)
+                    val elseConstraint = Constraint.Subtype(elseResult.type, unifiedType, ifExpr.elseExpression.sourceLocation)
                     
                     return ConstraintResult(
                         unifiedType, 
@@ -888,6 +888,27 @@ class ConstraintCollector {
     // =============================================================================
     
     /**
+     * Check if a type is a numeric type (INT or DOUBLE).
+     */
+    private fun isNumericType(type: Type): Boolean {
+        return type == BuiltinTypes.INT || type == BuiltinTypes.DOUBLE
+    }
+    
+    /**
+     * Promote a type to appropriate numeric type for arithmetic operations.
+     * INT -> DOUBLE for arithmetic promotion
+     * DOUBLE -> DOUBLE (already promoted)
+     * Other types -> Original type (will generate constraints that may fail)
+     */
+    private fun promoteToNumericType(type: Type): Type {
+        return when (type) {
+            BuiltinTypes.INT -> BuiltinTypes.DOUBLE
+            BuiltinTypes.DOUBLE -> BuiltinTypes.DOUBLE
+            else -> type // Keep original type, constraint solving will handle compatibility
+        }
+    }
+    
+    /**
      * Check if two types are structurally equal (ignoring source locations).
      */
     private fun typesAreEqual(type1: Type, type2: Type): Boolean {
@@ -957,21 +978,36 @@ class ConstraintCollector {
         return when (operator) {
             BinaryOperator.PLUS, BinaryOperator.MINUS, 
             BinaryOperator.MULTIPLY, BinaryOperator.DIVIDE, BinaryOperator.MODULO -> {
-                // Arithmetic operations: operands should be numeric, result is same type
-                val numericConstraint1 = Constraint.Subtype(leftType, BuiltinTypes.DOUBLE, location)
-                val numericConstraint2 = Constraint.Subtype(rightType, BuiltinTypes.DOUBLE, location)
-                val resultType = BuiltinTypes.DOUBLE // Simplified - would be more sophisticated
+                // Arithmetic operations: require numeric types and return DOUBLE
+                // We generate explicit numeric type constraints for operands
+                val constraints = mutableListOf<Constraint>()
                 
-                Pair(resultType, ConstraintSet.of(numericConstraint1, numericConstraint2))
+                // For INT literals, we can directly promote without constraints
+                // For other types, we add constraints that they must be numeric
+                if (!isNumericType(leftType)) {
+                    constraints.add(Constraint.Subtype(leftType, BuiltinTypes.DOUBLE, location))
+                }
+                if (!isNumericType(rightType)) {
+                    constraints.add(Constraint.Subtype(rightType, BuiltinTypes.DOUBLE, location))
+                }
+                
+                val resultType = BuiltinTypes.DOUBLE // All arithmetic results are DOUBLE
+                Pair(resultType, ConstraintSet.fromCollection(constraints))
             }
             
             BinaryOperator.LESS_THAN, BinaryOperator.LESS_EQUAL,
             BinaryOperator.GREATER_THAN, BinaryOperator.GREATER_EQUAL -> {
-                // Comparison operations: operands should be comparable, result is Boolean
-                val comparableConstraint1 = Constraint.Subtype(leftType, BuiltinTypes.DOUBLE, location)
-                val comparableConstraint2 = Constraint.Subtype(rightType, BuiltinTypes.DOUBLE, location)
+                // Comparison operations: require numeric types, result is Boolean
+                val constraints = mutableListOf<Constraint>()
                 
-                Pair(BuiltinTypes.BOOLEAN, ConstraintSet.of(comparableConstraint1, comparableConstraint2))
+                if (!isNumericType(leftType)) {
+                    constraints.add(Constraint.Subtype(leftType, BuiltinTypes.DOUBLE, location))
+                }
+                if (!isNumericType(rightType)) {
+                    constraints.add(Constraint.Subtype(rightType, BuiltinTypes.DOUBLE, location))
+                }
+                
+                Pair(BuiltinTypes.BOOLEAN, ConstraintSet.fromCollection(constraints))
             }
             
             BinaryOperator.EQUAL, BinaryOperator.NOT_EQUAL -> {

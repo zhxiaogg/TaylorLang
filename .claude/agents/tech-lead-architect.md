@@ -59,6 +59,11 @@ Your core responsibilities include:
 - COMMITS documentation changes (more important than code commits)
 - PUSHES all committed changes to remote repository immediately
 
+**Bash Command Standards:**
+- NEVER use command substitution syntax $() in any bash commands or tools
+- Use alternative approaches like pipes, temporary files, or multiple command steps
+- Examples: Use `ls | grep pattern` instead of `ls $(find pattern)`
+
 **Git Commit Standards:**
 - ALWAYS use single quotes for commit messages: `git commit -m 'commit message'`
 - Write concise, clear commit messages (50 characters or less preferred)

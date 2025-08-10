@@ -183,9 +183,8 @@ class Unifier {
             }
             
             is Constraint.Subtype -> {
-                // For subtype constraints, we need more advanced handling
-                // For now, treat as equality (this is a simplification)
-                unifyTypes(constraint.subtype, constraint.supertype, currentSubst)
+                // For subtype constraints, handle numeric promotion and other subtyping relations
+                handleSubtypeConstraint(constraint.subtype, constraint.supertype, currentSubst)
             }
             
             is Constraint.Instance -> {
@@ -565,6 +564,98 @@ class Unifier {
         // Apply instantiation substitution to the scheme type
         return instantiationSubst.entries.fold(scheme.type) { type, (quantifiedVar, freshType) ->
             Substitution.single(quantifiedVar, freshType).apply(type)
+        }
+    }
+    
+    /**
+     * Handle subtype constraints, including numeric promotion.
+     * 
+     * @param subtype The subtype (left side of <:)
+     * @param supertype The supertype (right side of <:)  
+     * @param currentSubst The current substitution context
+     * @return A substitution that satisfies the subtype constraint
+     * @throws UnificationError if the subtype relation cannot be established
+     */
+    private fun handleSubtypeConstraint(subtype: Type, supertype: Type, currentSubst: Substitution): Substitution {
+        // Apply current substitution to both types
+        val substSubtype = currentSubst.apply(subtype)
+        val substSupertype = currentSubst.apply(supertype)
+        
+        return when {
+            // Reflexivity: T <: T
+            typesEqual(substSubtype, substSupertype) -> Substitution.empty()
+            
+            // Numeric promotion: INT <: DOUBLE
+            substSubtype == BuiltinTypes.INT && substSupertype == BuiltinTypes.DOUBLE -> {
+                Substitution.empty() // This is always valid
+            }
+            
+            // Type variables can be made subtypes through substitution
+            substSubtype is Type.NamedType && substSupertype != substSubtype -> {
+                // If subtype is a type variable, substitute it with supertype
+                if (isTypeVariable(substSubtype)) {
+                    Substitution.single(TypeVar.named(substSubtype.name), substSupertype)
+                } else {
+                    // Non-variable types must have their subtype relation checked
+                    // For now, fall back to equality for other cases
+                    unifyTypes(substSubtype, substSupertype, currentSubst)
+                }
+            }
+            
+            substSupertype is Type.NamedType && isTypeVariable(substSupertype) -> {
+                // If supertype is a type variable, this is more complex
+                // For numeric types, we can constrain the supertype variable
+                if (substSubtype == BuiltinTypes.INT) {
+                    // T1 where INT <: T1, so T1 should be at least DOUBLE
+                    Substitution.single(TypeVar.named(substSupertype.name), BuiltinTypes.DOUBLE)
+                } else {
+                    // General case: make supertype equal to subtype (conservative)
+                    Substitution.single(TypeVar.named(substSupertype.name), substSubtype)
+                }
+            }
+            
+            else -> {
+                // No subtype relation can be established - this should fail
+                throw UnificationError.TypeMismatch(
+                    substSubtype, 
+                    substSupertype
+                )
+            }
+        }
+    }
+    
+    /**
+     * Check if a type represents a type variable (used for substitution).
+     */
+    private fun isTypeVariable(type: Type): Boolean {
+        return type is Type.NamedType && type.name.matches(Regex("T\\d+"))
+    }
+    
+    /**
+     * Check if two types are structurally equal.
+     */
+    private fun typesEqual(type1: Type, type2: Type): Boolean {
+        return when {
+            type1 is Type.PrimitiveType && type2 is Type.PrimitiveType -> 
+                type1.name == type2.name
+            type1 is Type.NamedType && type2 is Type.NamedType -> 
+                type1.name == type2.name
+            type1 is Type.GenericType && type2 is Type.GenericType -> 
+                type1.name == type2.name && type1.arguments.size == type2.arguments.size &&
+                type1.arguments.zip(type2.arguments).all { (a1, a2) -> typesEqual(a1, a2) }
+            type1 is Type.TupleType && type2 is Type.TupleType -> 
+                type1.elementTypes.size == type2.elementTypes.size &&
+                type1.elementTypes.zip(type2.elementTypes).all { (t1, t2) -> typesEqual(t1, t2) }
+            type1 is Type.NullableType && type2 is Type.NullableType ->
+                typesEqual(type1.baseType, type2.baseType)
+            type1 is Type.UnionType && type2 is Type.UnionType ->
+                type1.name == type2.name && type1.typeArguments.size == type2.typeArguments.size &&
+                type1.typeArguments.zip(type2.typeArguments).all { (a1, a2) -> typesEqual(a1, a2) }
+            type1 is Type.FunctionType && type2 is Type.FunctionType ->
+                typesEqual(type1.returnType, type2.returnType) &&
+                type1.parameterTypes.size == type2.parameterTypes.size &&
+                type1.parameterTypes.zip(type2.parameterTypes).all { (p1, p2) -> typesEqual(p1, p2) }
+            else -> type1 == type2
         }
     }
 }

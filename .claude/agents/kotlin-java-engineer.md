@@ -59,6 +59,11 @@ Your primary responsibilities:
 8. Push all committed changes to remote repository immediately after commit
 9. Hand over completed work for code review and approval
 
+**Bash Command Standards:**
+- NEVER use command substitution syntax $() in any bash commands or tools
+- Use alternative approaches like pipes, temporary files, or multiple command steps
+- Examples: Use `ls | grep pattern` instead of `ls $(find pattern)`
+
 **Git Commit Standards:**
 - ALWAYS use single quotes for commit messages: `git commit -m 'commit message'`
 - Write concise, clear commit messages (50 characters or less preferred)
