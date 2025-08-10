@@ -140,20 +140,25 @@ class TypeChecker {
         val contextWithDeclarations = program.statements.fold(context) { ctx, statement ->
             when (statement) {
                 is TypeDecl -> {
-                    val typeDef = createTypeDefinition(statement)
-                    val newCtx = ctx.withType(statement.name, typeDef)
+                    try {
+                        val typeDef = createTypeDefinition(statement)
+                        val newCtx = ctx.withType(statement.name, typeDef)
                     
-                    // Also add each variant constructor as a function signature
-                    typeDef.variants.fold(newCtx) { acc, variant ->
-                        val signature = FunctionSignature(
-                            typeParameters = statement.typeParams.toList(),
-                            parameterTypes = variant.fields,
-                            returnType = Type.UnionType(
-                                name = statement.name,
-                                typeArguments = statement.typeParams.map { Type.NamedType(it) }.toPersistentList()
+                        // Also add each variant constructor as a function signature
+                        typeDef.variants.fold(newCtx) { acc, variant ->
+                            val signature = FunctionSignature(
+                                typeParameters = statement.typeParams.toList(),
+                                parameterTypes = variant.fields,
+                                returnType = Type.UnionType(
+                                    name = statement.name,
+                                    typeArguments = statement.typeParams.map { Type.NamedType(it) }.toPersistentList()
+                                )
                             )
-                        )
-                        acc.withFunction(variant.name, signature)
+                            acc.withFunction(variant.name, signature)
+                        }
+                    } catch (e: TypeError) {
+                        errors.add(e)
+                        ctx  // Return unchanged context on error
                     }
                 }
                 is FunctionDecl -> {
@@ -178,10 +183,21 @@ class TypeChecker {
             }
         }
         
-        // Second pass: type check all statements
+        // Second pass: type check all statements with context accumulation
+        var currentContext = contextWithDeclarations
         val typedStatements = program.statements.mapNotNull { statement ->
-            typeCheckStatement(statement, contextWithDeclarations).fold(
-                onSuccess = { it },
+            val result = typeCheckStatement(statement, currentContext)
+            result.fold(
+                onSuccess = { typedStatement ->
+                    // Update context with new variable bindings from val declarations
+                    if (typedStatement is TypedStatement.VariableDeclaration) {
+                        currentContext = currentContext.withVariable(
+                            typedStatement.declaration.name,
+                            typedStatement.inferredType
+                        )
+                    }
+                    typedStatement
+                },
                 onFailure = { error ->
                     errors.add(when (error) {
                         is TypeError -> error
@@ -338,6 +354,7 @@ class TypeChecker {
             is UnaryOp -> typeCheckUnaryOp(expression, context)
             is FunctionCall -> typeCheckFunctionCall(expression, context)
             is ConstructorCall -> typeCheckConstructorCall(expression, context)
+            is MatchExpression -> typeCheckMatchExpression(expression, context)
             
             is Literal.TupleLiteral -> typeCheckTupleLiteral(expression, context)
             is BlockExpression -> typeCheckBlockExpression(expression, context)
@@ -803,6 +820,339 @@ class TypeChecker {
         return Result.success(TypedExpression(ifExpression, unifiedType))
     }
     
+    /**
+     * Type check a match expression with exhaustiveness checking
+     */
+    private fun typeCheckMatchExpression(
+        matchExpression: MatchExpression,
+        context: TypeContext
+    ): Result<TypedExpression> {
+        val errors = mutableListOf<TypeError>()
+        
+        // Type check the target expression
+        val targetResult = typeCheckExpression(matchExpression.target, context)
+        val targetType = targetResult.fold(
+            onSuccess = { it.type },
+            onFailure = { error ->
+                errors.add(when (error) {
+                    is TypeError -> error
+                    else -> TypeError.InvalidOperation(
+                        error.message ?: "Unknown error",
+                        emptyList(),
+                        matchExpression.target.sourceLocation
+                    )
+                })
+                return Result.failure(
+                    if (errors.size == 1) errors.first()
+                    else TypeError.MultipleErrors(errors)
+                )
+            }
+        )
+        
+        // Handle different target types
+        val (unionTypeDef, allVariantNames) = when (targetType) {
+            is Type.UnionType -> {
+                // Find the union type definition to get available variants
+                val unionTypeDef = context.lookupType(targetType.name) as? TypeDefinition.UnionTypeDef
+                    ?: return Result.failure(TypeError.UndefinedType(
+                        targetType.name,
+                        matchExpression.target.sourceLocation
+                    ))
+                Pair(unionTypeDef, unionTypeDef.variants.map { it.name }.toSet())
+            }
+            is Type.GenericType -> {
+                // For generic types, check if the base type is a union type
+                val unionTypeDef = context.lookupType(targetType.name) as? TypeDefinition.UnionTypeDef
+                    ?: return Result.failure(TypeError.UndefinedType(
+                        targetType.name,
+                        matchExpression.target.sourceLocation
+                    ))
+                Pair(unionTypeDef, unionTypeDef.variants.map { it.name }.toSet())
+            }
+            is Type.PrimitiveType, is Type.NamedType -> {
+                // For primitive types, we can't enumerate all variants, so no exhaustiveness checking
+                Pair(null, emptySet<String>())
+            }
+            else -> {
+                return Result.failure(TypeError.InvalidOperation(
+                    "Match expressions currently only support union types and primitive types, got ${targetType}",
+                    listOf(targetType),
+                    matchExpression.target.sourceLocation
+                ))
+            }
+        }
+        
+        // Type check each case and collect their result types
+        val caseTypes = mutableListOf<Type>()
+        val coveredVariants = mutableSetOf<String>()
+        
+        for (case in matchExpression.cases) {
+            // Type check the pattern against the target type
+            val patternResult = typeCheckPattern(case.pattern, targetType, context)
+            patternResult.fold(
+                onSuccess = { patternInfo ->
+                    coveredVariants.addAll(patternInfo.coveredVariants)
+                    
+                    // Create a new context with pattern bindings for the case expression
+                    val caseContext = patternInfo.bindings.entries.fold(context) { ctx, entry ->
+                        ctx.withVariable(entry.key, entry.value)
+                    }
+                    
+                    // Type check the case expression
+                    val caseExprResult = typeCheckExpression(case.expression, caseContext)
+                    caseExprResult.fold(
+                        onSuccess = { typedExpr ->
+                            caseTypes.add(typedExpr.type)
+                        },
+                        onFailure = { error ->
+                            errors.add(when (error) {
+                                is TypeError -> error
+                                else -> TypeError.InvalidOperation(
+                                    error.message ?: "Unknown error",
+                                    emptyList(),
+                                    case.expression.sourceLocation
+                                )
+                            })
+                        }
+                    )
+                },
+                onFailure = { error ->
+                    errors.add(when (error) {
+                        is TypeError -> error
+                        else -> TypeError.InvalidOperation(
+                            error.message ?: "Unknown error",
+                            emptyList(),
+                            case.pattern.sourceLocation
+                        )
+                    })
+                }
+            )
+        }
+        
+        // Check for exhaustiveness - all variants must be covered (only for union types)
+        if (allVariantNames.isNotEmpty()) {
+            val missingVariants = allVariantNames - coveredVariants
+            if (missingVariants.isNotEmpty()) {
+                errors.add(TypeError.NonExhaustiveMatch(
+                    missingVariants.toList(),
+                    matchExpression.sourceLocation
+                ))
+            }
+        }
+        // For primitive types, exhaustiveness checking is not enforced
+        
+        // Return errors if any occurred
+        if (errors.isNotEmpty()) {
+            return Result.failure(
+                if (errors.size == 1) errors.first()
+                else TypeError.MultipleErrors(errors)
+            )
+        }
+        
+        // Determine the unified result type from all case expressions
+        val unifiedType = if (caseTypes.isEmpty()) {
+            BuiltinTypes.UNIT
+        } else {
+            caseTypes.drop(1).fold(caseTypes.first()) { acc, caseType ->
+                unifyTypes(acc, caseType) ?: return Result.failure(TypeError.TypeMismatch(
+                    expected = acc,
+                    actual = caseType,
+                    location = matchExpression.sourceLocation
+                ))
+            }
+        }
+        
+        return Result.success(TypedExpression(matchExpression, unifiedType))
+    }
+    
+    /**
+     * Information about a pattern match including variable bindings and covered variants
+     */
+    private data class PatternInfo(
+        val bindings: Map<String, Type>,
+        val coveredVariants: Set<String>
+    )
+    
+    /**
+     * Type check a pattern against a target type
+     */
+    private fun typeCheckPattern(
+        pattern: Pattern,
+        targetType: Type,
+        context: TypeContext
+    ): Result<PatternInfo> {
+        return when (pattern) {
+            is Pattern.WildcardPattern -> {
+                // Wildcard matches anything and covers all variants for the target type
+                val coveredVariants = if (targetType is Type.UnionType) {
+                    val unionTypeDef = context.lookupType(targetType.name) as? TypeDefinition.UnionTypeDef
+                    unionTypeDef?.variants?.map { it.name }?.toSet() ?: emptySet()
+                } else {
+                    emptySet()
+                }
+                Result.success(PatternInfo(
+                    bindings = emptyMap(),
+                    coveredVariants = coveredVariants
+                ))
+            }
+            
+            is Pattern.IdentifierPattern -> {
+                // Identifier pattern binds the entire value to a variable
+                val coveredVariants = if (targetType is Type.UnionType) {
+                    val unionTypeDef = context.lookupType(targetType.name) as? TypeDefinition.UnionTypeDef
+                    unionTypeDef?.variants?.map { it.name }?.toSet() ?: emptySet()
+                } else {
+                    emptySet()
+                }
+                Result.success(PatternInfo(
+                    bindings = mapOf(pattern.name to targetType),
+                    coveredVariants = coveredVariants
+                ))
+            }
+            
+            is Pattern.LiteralPattern -> {
+                // Literal patterns must match the target type exactly
+                val literalResult = typeCheckExpression(pattern.literal, context)
+                literalResult.fold(
+                    onSuccess = { typedLiteral ->
+                        if (typesCompatible(typedLiteral.type, targetType)) {
+                            Result.success(PatternInfo(
+                                bindings = emptyMap(),
+                                coveredVariants = emptySet() // Literals don't cover union variants
+                            ))
+                        } else {
+                            Result.failure(TypeError.TypeMismatch(
+                                expected = targetType,
+                                actual = typedLiteral.type,
+                                location = pattern.literal.sourceLocation
+                            ))
+                        }
+                    },
+                    onFailure = { error -> Result.failure(error) }
+                )
+            }
+            
+            is Pattern.ConstructorPattern -> {
+                // Constructor patterns must match a specific variant of a union type
+                val typeName = when (targetType) {
+                    is Type.UnionType -> targetType.name
+                    is Type.GenericType -> targetType.name
+                    else -> {
+                        return Result.failure(TypeError.InvalidOperation(
+                            "Constructor pattern can only be used with union types",
+                            listOf(targetType),
+                            pattern.sourceLocation
+                        ))
+                    }
+                }
+                
+                val unionTypeDef = context.lookupType(typeName) as? TypeDefinition.UnionTypeDef
+                    ?: return Result.failure(TypeError.UndefinedType(
+                        typeName,
+                        pattern.sourceLocation
+                    ))
+                
+                val matchingVariant = unionTypeDef.variants.find { it.name == pattern.constructor }
+                    ?: return Result.failure(TypeError.UnresolvedSymbol(
+                        pattern.constructor,
+                        pattern.sourceLocation
+                    ))
+                
+                // Check that pattern arity matches variant arity
+                if (pattern.patterns.size != matchingVariant.fields.size) {
+                    return Result.failure(TypeError.ArityMismatch(
+                        expected = matchingVariant.fields.size,
+                        actual = pattern.patterns.size,
+                        location = pattern.sourceLocation
+                    ))
+                }
+                
+                // Type check nested patterns and collect bindings
+                val allBindings = mutableMapOf<String, Type>()
+                val errors = mutableListOf<TypeError>()
+                
+                for (i in pattern.patterns.indices) {
+                    val nestedPattern = pattern.patterns[i]
+                    val expectedFieldType = if (unionTypeDef.typeParameters.isNotEmpty()) {
+                        // Substitute type parameters with concrete types from the target
+                        val typeArguments = when (targetType) {
+                            is Type.UnionType -> targetType.typeArguments.toList()
+                            is Type.GenericType -> targetType.arguments.toList()
+                            else -> emptyList()
+                        }
+                        substituteTypeParameters(
+                            matchingVariant.fields[i],
+                            unionTypeDef.typeParameters,
+                            typeArguments
+                        )
+                    } else {
+                        matchingVariant.fields[i]
+                    }
+                    
+                    val nestedResult = typeCheckPattern(nestedPattern, expectedFieldType, context)
+                    nestedResult.fold(
+                        onSuccess = { nestedInfo ->
+                            allBindings.putAll(nestedInfo.bindings)
+                        },
+                        onFailure = { error ->
+                            errors.add(when (error) {
+                                is TypeError -> error
+                                else -> TypeError.InvalidOperation(
+                                    error.message ?: "Unknown error",
+                                    emptyList(),
+                                    nestedPattern.sourceLocation
+                                )
+                            })
+                        }
+                    )
+                }
+                
+                if (errors.isNotEmpty()) {
+                    Result.failure(
+                        if (errors.size == 1) errors.first()
+                        else TypeError.MultipleErrors(errors)
+                    )
+                } else {
+                    Result.success(PatternInfo(
+                        bindings = allBindings,
+                        coveredVariants = setOf(pattern.constructor)
+                    ))
+                }
+            }
+            
+            is Pattern.GuardPattern -> {
+                // Type check the inner pattern first
+                val innerResult = typeCheckPattern(pattern.pattern, targetType, context)
+                innerResult.fold(
+                    onSuccess = { innerInfo ->
+                        // Create context with pattern bindings for guard expression
+                        val guardContext = innerInfo.bindings.entries.fold(context) { ctx, entry ->
+                            ctx.withVariable(entry.key, entry.value)
+                        }
+                        
+                        // Type check the guard expression - must be Boolean
+                        val guardResult = typeCheckExpression(pattern.guard, guardContext)
+                        guardResult.fold(
+                            onSuccess = { typedGuard ->
+                                if (typesCompatible(typedGuard.type, BuiltinTypes.BOOLEAN)) {
+                                    Result.success(innerInfo) // Return inner pattern info
+                                } else {
+                                    Result.failure(TypeError.TypeMismatch(
+                                        expected = BuiltinTypes.BOOLEAN,
+                                        actual = typedGuard.type,
+                                        location = pattern.guard.sourceLocation
+                                    ))
+                                }
+                            },
+                            onFailure = { error -> Result.failure(error) }
+                        )
+                    },
+                    onFailure = { error -> Result.failure(error) }
+                )
+            }
+        }
+    }
+    
     // Helper functions
     
     /**
@@ -949,6 +1299,23 @@ class TypeChecker {
     }
     
     private fun createTypeDefinition(typeDecl: TypeDecl): TypeDefinition.UnionTypeDef {
+        // Validate that variant names are unique within the union
+        val variantNames = mutableSetOf<String>()
+        val duplicateVariants = mutableListOf<String>()
+        
+        typeDecl.unionType.variants.forEach { variant ->
+            if (!variantNames.add(variant.name)) {
+                duplicateVariants.add(variant.name)
+            }
+        }
+        
+        if (duplicateVariants.isNotEmpty()) {
+            throw TypeError.DuplicateDefinition(
+                "Duplicate variant names in union type '${typeDecl.name}': ${duplicateVariants.joinToString(", ")}",
+                typeDecl.sourceLocation
+            )
+        }
+        
         val variants = typeDecl.unionType.variants.map { variant ->
             val types = when (variant) {
                 is ProductType.Positioned -> variant.types

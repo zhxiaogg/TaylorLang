@@ -4,6 +4,7 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.beInstanceOf
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.assertions.fail
 import org.taylorlang.ast.*
 import org.taylorlang.parser.TaylorLangParser
@@ -705,5 +706,268 @@ class TypeCheckerTest : StringSpec({
         
         // Should fail because x is not in scope
         result.isFailure shouldBe true
+    }
+
+    // =============================================================================
+    // Pattern Matching and Exhaustiveness Tests
+    // =============================================================================
+
+    "should type check simple match expressions with union types" {
+        val source = """
+            type Option<T> = Some(T) | None
+            fn unwrap<T>(opt: Option<T>, default: T): T => match opt {
+                case Some(value) => value
+                case None => default
+            }
+        """.trimIndent()
+        val program = parser.parse(source)
+            .getOrThrow()
+        
+        val result = typeChecker.typeCheck(program)
+            .getOrThrow()
+        
+        result.statements.size shouldBe 2
+    }
+
+    "should detect non-exhaustive match expressions" {
+        val source = """
+            type Option<T> = Some(T) | None
+            val x = Some(42)
+            val result = match x {
+                case Some(value) => value
+                // Missing None case - should fail exhaustiveness check
+            }
+        """.trimIndent()
+        val program = parser.parse(source)
+            .getOrThrow()
+        
+        val result = typeChecker.typeCheck(program)
+        
+        result.isFailure shouldBe true
+        result.exceptionOrNull() should beInstanceOf<TypeError.MultipleErrors>()
+        val errors = (result.exceptionOrNull() as TypeError.MultipleErrors).errors
+        
+        // Should contain a NonExhaustiveMatch error
+        val nonExhaustiveError = errors.find { it is TypeError.NonExhaustiveMatch }
+        nonExhaustiveError shouldBe beInstanceOf<TypeError.NonExhaustiveMatch>()
+        
+        val exhaustivenessError = nonExhaustiveError as TypeError.NonExhaustiveMatch
+        exhaustivenessError.missingPatterns shouldContain "None"
+    }
+
+    "should handle wildcard patterns correctly" {
+        val source = """
+            type Option<T> = Some(T) | None
+            val x = Some(42)
+            val result = match x {
+                case _ => 0
+            }
+        """.trimIndent()
+        val program = parser.parse(source)
+            .getOrThrow()
+        
+        val result = typeChecker.typeCheck(program)
+            .getOrThrow()
+        
+        result.statements.size shouldBe 3
+        val matchResult = result.statements.last() as TypedStatement.VariableDeclaration
+        matchResult.inferredType shouldBe BuiltinTypes.INT
+    }
+
+    "should handle identifier patterns with variable binding" {
+        val source = """
+            type Option<T> = Some(T) | None
+            val x = Some(42)
+            val result = match x {
+                case opt => match opt {
+                    case Some(value) => value
+                    case None => 0
+                }
+            }
+        """.trimIndent()
+        val program = parser.parse(source)
+            .getOrThrow()
+        
+        val result = typeChecker.typeCheck(program)
+            .getOrThrow()
+        
+        result.statements.size shouldBe 3
+    }
+
+    "should type check nested constructor patterns" {
+        val source = """
+            type Result<T, E> = Ok(T) | Error(E)
+            type Option<T> = Some(T) | None
+            val x = Ok(Some(42))
+            val result = match x {
+                case Ok(Some(value)) => value
+                case Ok(None) => 0
+                case Error(_) => -1
+            }
+        """.trimIndent()
+        val program = parser.parse(source)
+            .getOrThrow()
+        
+        val result = typeChecker.typeCheck(program)
+            .getOrThrow()
+        
+        result.statements.size shouldBe 4
+        val matchResult = result.statements.last() as TypedStatement.VariableDeclaration
+        matchResult.inferredType shouldBe BuiltinTypes.INT
+    }
+
+    "should detect pattern type mismatches" {
+        val source = """
+            type Option<T> = Some(T) | None
+            val x = Some(42)
+            val result = match x {
+                case Some("hello") => 1  // String literal doesn't match Int type parameter
+                case None => 0
+            }
+        """.trimIndent()
+        val program = parser.parse(source)
+            .getOrThrow()
+        
+        val result = typeChecker.typeCheck(program)
+        
+        result.isFailure shouldBe true
+        result.exceptionOrNull() should beInstanceOf<TypeError.MultipleErrors>()
+    }
+
+    "should handle pattern matching with literal patterns" {
+        val source = """
+            val x = 42
+            val result = match x {
+                case 42 => "found forty-two"
+                case _ => "something else"
+            }
+        """.trimIndent()
+        val program = parser.parse(source)
+            .getOrThrow()
+        
+        val result = typeChecker.typeCheck(program)
+            .getOrThrow()
+        
+        result.statements.size shouldBe 2
+        val matchResult = result.statements.last() as TypedStatement.VariableDeclaration
+        matchResult.inferredType shouldBe BuiltinTypes.STRING
+    }
+
+    "should validate constructor pattern arity" {
+        val source = """
+            type Result<T, E> = Ok(T) | Error(E)
+            val x = Ok(42)
+            val result = match x {
+                case Ok(value, extra) => value  // Too many arguments for Ok constructor
+                case Error(_) => 0
+            }
+        """.trimIndent()
+        val program = parser.parse(source)
+            .getOrThrow()
+        
+        val result = typeChecker.typeCheck(program)
+        
+        result.isFailure shouldBe true
+        result.exceptionOrNull() should beInstanceOf<TypeError.MultipleErrors>()
+        val errors = (result.exceptionOrNull() as TypeError.MultipleErrors).errors
+        
+        // Should contain an ArityMismatch error
+        val arityError = errors.find { it is TypeError.ArityMismatch }
+        arityError shouldBe beInstanceOf<TypeError.ArityMismatch>()
+    }
+
+    "should handle match expressions with different case result types" {
+        val source = """
+            type Option<T> = Some(T) | None
+            val x = Some(42)
+            val result = match x {
+                case Some(value) => value.toString()  // Returns String
+                case None => "empty"                  // Returns String
+            }
+        """.trimIndent()
+        val program = parser.parse(source)
+            .getOrThrow()
+        
+        val result = typeChecker.typeCheck(program)
+            .getOrThrow()
+        
+        result.statements.size shouldBe 3
+        val matchResult = result.statements.last() as TypedStatement.VariableDeclaration
+        matchResult.inferredType shouldBe BuiltinTypes.STRING
+    }
+
+    "should reject match expressions with incompatible case result types" {
+        val source = """
+            type Option<T> = Some(T) | None
+            val x = Some(42)
+            val result = match x {
+                case Some(value) => value     // Returns Int
+                case None => "empty"         // Returns String - incompatible!
+            }
+        """.trimIndent()
+        val program = parser.parse(source)
+            .getOrThrow()
+        
+        val result = typeChecker.typeCheck(program)
+        
+        result.isFailure shouldBe true
+        result.exceptionOrNull() should beInstanceOf<TypeError.MultipleErrors>()
+    }
+
+    "should handle generic union types in match expressions" {
+        val source = """
+            type Result<T, E> = Ok(T) | Error(E)
+            val x = Ok(42)
+            val result = match x {
+                case Ok(value) => value + 1
+                case Error(_) => 0
+            }
+        """.trimIndent()
+        val program = parser.parse(source)
+            .getOrThrow()
+        
+        val result = typeChecker.typeCheck(program)
+            .getOrThrow()
+        
+        result.statements.size shouldBe 3
+        val matchResult = result.statements.last() as TypedStatement.VariableDeclaration
+        matchResult.inferredType shouldBe BuiltinTypes.INT
+    }
+
+    "should detect duplicate variant names in union declarations" {
+        val source = "type Bad = A | B | A"  // Duplicate variant A
+        val program = parser.parse(source)
+            .getOrThrow()
+        
+        val result = typeChecker.typeCheck(program)
+        
+        result.isFailure shouldBe true
+        result.exceptionOrNull() should beInstanceOf<TypeError.MultipleErrors>()
+        val errors = (result.exceptionOrNull() as TypeError.MultipleErrors).errors
+        
+        // Should contain a DuplicateDefinition error
+        val duplicateError = errors.find { it is TypeError.DuplicateDefinition }
+        duplicateError shouldBe beInstanceOf<TypeError.DuplicateDefinition>()
+    }
+
+    "should type check multi-argument variant constructors" {
+        val source = """
+            type Point = Point2D(Int, Int) | Point3D(Int, Int, Int)
+            val p2 = Point2D(1, 2)
+            val p3 = Point3D(1, 2, 3)
+            val result = match p2 {
+                case Point2D(x, y) => x + y
+                case Point3D(x, y, z) => x + y + z
+            }
+        """.trimIndent()
+        val program = parser.parse(source)
+            .getOrThrow()
+        
+        val result = typeChecker.typeCheck(program)
+            .getOrThrow()
+        
+        result.statements.size shouldBe 4
+        val matchResult = result.statements.last() as TypedStatement.VariableDeclaration
+        matchResult.inferredType shouldBe BuiltinTypes.INT
     }
 })
