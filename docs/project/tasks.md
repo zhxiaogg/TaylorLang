@@ -158,6 +158,309 @@
 
 ---
 
+## Code Quality & Refactoring Sprint (Critical)
+
+### Priority 1: Critical Structure Issues
+
+#### Task: Implement AST Visitor Pattern Infrastructure
+**Status**: Planned  
+**Component**: AST Package  
+**Effort**: Medium (2-3 days)  
+**Design Doc**: To be created at docs/designs/visitor-pattern.md
+
+**WHY**: Multiple components (TypeChecker, ConstraintCollector, future BytecodeGenerator) duplicate AST traversal logic, violating DRY principle and making maintenance difficult.
+
+**WHAT**: Create a comprehensive visitor pattern implementation for AST traversal that all components can leverage.
+
+**HOW**: 
+- Research classic Visitor pattern implementations in compilers (LLVM, Roslyn, javac)
+- Study double dispatch pattern for type-safe traversal
+- Look into Kotlin's sealed class capabilities for exhaustive when expressions
+- Reference "Design Patterns" by Gang of Four for visitor pattern
+- Examine ANTLR's visitor generation for inspiration
+
+**SCOPE**: 
+- Day 1: Design visitor interfaces and base implementation
+- Day 2: Implement visitor for all AST node types
+- Day 3: Migrate one component (start with simpler ASTBuilder) to use visitor
+
+**SUCCESS CRITERIA**:
+- Visitor interface covers all AST node types
+- BaseVisitor provides default traversal implementation
+- At least one component successfully migrated to use visitor
+- Zero duplicate traversal code in migrated component
+- All existing tests still pass
+- Performance benchmarks show no regression
+
+**RESOURCES**:
+- ANTLR Visitor Pattern docs: https://www.antlr.org/api/Java/org/antlr/v4/runtime/tree/ParseTreeVisitor.html
+- Kotlin Visitor Pattern: https://kotlinlang.org/docs/design-patterns.html
+- Compiler Design books focusing on AST traversal
+- Similar implementations: Roslyn's SyntaxWalker, LLVM's RecursiveASTVisitor
+
+---
+
+#### Task: Refactor TypeChecker - Extract Type Definitions and Errors
+**Status**: Planned  
+**Component**: Type System  
+**Effort**: Medium (2 days)  
+**Dependencies**: None
+
+**WHY**: TypeChecker.kt is 1773 lines (3x recommended size) with multiple responsibilities, making it difficult to maintain, test, and extend.
+
+**WHAT**: Extract type definitions, error types, and context management into separate focused modules.
+
+**HOW**:
+- Apply Single Responsibility Principle (SRP)
+- Research package-by-feature vs package-by-layer organization
+- Study Spring Framework's separation of concerns patterns
+- Look into Domain-Driven Design for bounded contexts
+
+**SCOPE**:
+- Day 1: Extract error types and context management
+- Day 2: Extract type definitions and builtin types
+
+**SUCCESS CRITERIA**:
+- TypeChecker.kt reduced to <600 lines
+- New files: TypeError.kt, TypeContext.kt, TypeDefinitions.kt, BuiltinTypes.kt
+- Each new file has single, clear responsibility
+- All existing tests pass without modification
+- New unit tests for extracted components
+- Improved code coverage (target 90%+)
+
+**RESOURCES**:
+- Clean Code by Robert Martin (chapter on classes)
+- Domain-Driven Design by Eric Evans
+- Kotlin coding conventions for file organization
+- Examples: Kotlin compiler's type system organization
+
+---
+
+#### Task: Refactor TypeChecker - Implement Strategy Pattern for Checking Modes
+**Status**: Planned  
+**Component**: Type System  
+**Effort**: Medium (2-3 days)  
+**Dependencies**: TypeChecker extraction task
+
+**WHY**: Current enum-based mode switching violates Open/Closed Principle and makes testing individual strategies difficult.
+
+**WHAT**: Replace enum-based type checking modes with Strategy pattern implementation.
+
+**HOW**:
+- Research Strategy pattern implementations in type systems
+- Study polymorphic dispatch in object-oriented design
+- Look into Kotlin's delegation pattern capabilities
+- Examine how other compilers handle multiple analysis passes
+
+**SCOPE**:
+- Day 1: Design TypeCheckingStrategy interface and implementations
+- Day 2: Refactor TypeChecker to use strategies
+- Day 3: Update tests and add strategy-specific tests
+
+**SUCCESS CRITERIA**:
+- TypeCheckingStrategy interface defined
+- AlgorithmicStrategy and ConstraintBasedStrategy implementations
+- TypeChecker delegates to strategies without if/else branching
+- Each strategy independently testable
+- Easy to add new strategies without modifying TypeChecker
+- Performance benchmarks show no regression
+
+**RESOURCES**:
+- Design Patterns by Gang of Four (Strategy pattern)
+- Effective Java by Joshua Bloch (composition over inheritance)
+- Kotlin delegation documentation
+- TypeScript compiler's multiple checking modes
+
+---
+
+### Priority 2: Pattern Applications
+
+#### Task: Implement Type Factory Pattern
+**Status**: Planned  
+**Component**: Type System  
+**Effort**: Small (1-2 days)  
+**Dependencies**: None
+
+**WHY**: Type creation is scattered throughout codebase with no validation or caching, leading to inconsistencies and memory inefficiency.
+
+**WHAT**: Centralize all type creation through a TypeFactory with validation and caching.
+
+**HOW**:
+- Research Factory and Flyweight patterns
+- Study type interning in Java/Kotlin compilers
+- Look into builder pattern for complex type construction
+- Examine caching strategies for immutable objects
+
+**SCOPE**:
+- Day 1: Implement TypeFactory with basic creation methods
+- Day 2: Add caching for common types and migrate existing code
+
+**SUCCESS CRITERIA**:
+- All type creation goes through TypeFactory
+- Common types (primitives) are cached and reused
+- Type validation happens at creation time
+- Memory usage reduced for type-heavy programs
+- Builder pattern available for complex types
+- All tests pass with new factory
+
+**RESOURCES**:
+- Effective Java (static factory methods)
+- Java's Integer cache implementation
+- Kotlin compiler's type caching
+- Google Guava's caching utilities
+
+---
+
+#### Task: Refactor ConstraintCollector with Visitor Pattern
+**Status**: Planned  
+**Component**: Type System - Inference  
+**Effort**: Medium (3 days)  
+**Dependencies**: AST Visitor Pattern Infrastructure
+
+**WHY**: ConstraintCollector has 50+ methods (1298 lines) with repetitive handler pattern, violating DRY and making maintenance difficult.
+
+**WHAT**: Refactor ConstraintCollector to use visitor pattern, separating traversal from constraint generation.
+
+**HOW**:
+- Apply visitor pattern to eliminate handler methods
+- Research constraint generation patterns in type inference systems
+- Study separation of concerns in compiler design
+- Look into functional programming approaches to tree traversal
+
+**SCOPE**:
+- Day 1: Implement ConstraintVisitor extending BaseASTVisitor
+- Day 2: Migrate constraint generation logic to visitor methods
+- Day 3: Refactor and optimize, ensure all tests pass
+
+**SUCCESS CRITERIA**:
+- ConstraintCollector reduced to <400 lines
+- Clear separation between traversal and constraint generation
+- No duplicate traversal logic
+- All 51 existing tests still pass
+- Improved readability and maintainability
+- Easy to add constraints for new expression types
+
+**RESOURCES**:
+- Types and Programming Languages by Pierce (constraint generation)
+- Visitor pattern in functional languages
+- OCaml's type inference implementation
+- Hindley-Milner algorithm papers
+
+---
+
+### Priority 3: Code Organization
+
+#### Task: Split Test Files by Concern
+**Status**: Planned  
+**Component**: Testing  
+**Effort**: Small (1-2 days)  
+**Dependencies**: None
+
+**WHY**: Test files are too large (TypeCheckerTest: 972 lines) making it hard to find and maintain specific tests.
+
+**WHAT**: Organize tests by feature/concern into focused test files.
+
+**HOW**:
+- Research test organization best practices
+- Study BDD and feature-based test organization
+- Look into Kotlin test conventions
+- Apply single responsibility to test files
+
+**SCOPE**:
+- Day 1: Plan new test structure and create files
+- Day 2: Migrate tests to appropriate files
+
+**SUCCESS CRITERIA**:
+- No test file exceeds 300 lines
+- Tests organized by feature (e.g., UnionTypeTest, PatternMatchingTest)
+- Test names clearly indicate what they test
+- All tests still run and pass
+- Easier to find relevant tests
+- CI/CD still works correctly
+
+**RESOURCES**:
+- JUnit 5 best practices
+- Kotlin test organization guidelines
+- Test-Driven Development by Kent Beck
+- Examples from successful Kotlin projects
+
+---
+
+#### Task: Create Centralized Error Management System
+**Status**: Planned  
+**Component**: Error Handling  
+**Effort**: Small (2 days)  
+**Dependencies**: TypeChecker error extraction
+
+**WHY**: Error handling is scattered across components with inconsistent reporting and no central error collection.
+
+**WHAT**: Create ErrorCollector service for aggregating and reporting errors consistently.
+
+**HOW**:
+- Research error handling patterns in compilers
+- Study error recovery strategies
+- Look into error aggregation patterns
+- Examine user-friendly error reporting (Rust, Elm)
+
+**SCOPE**:
+- Day 1: Design and implement ErrorCollector
+- Day 2: Integrate with existing components
+
+**SUCCESS CRITERIA**:
+- Single ErrorCollector manages all compilation errors
+- Consistent error format across all components
+- Support for error recovery (continue after error)
+- Rich error messages with suggestions
+- Source location tracking for all errors
+- Easy to add new error types
+
+**RESOURCES**:
+- Rust compiler's error handling
+- Elm's friendly error messages
+- Compiler Construction books (error recovery)
+- Google's error handling guidelines
+
+---
+
+### Priority 4: Future-Proofing
+
+#### Task: Design AST Transformer Framework
+**Status**: Planned  
+**Component**: AST  
+**Effort**: Medium (2-3 days)  
+**Dependencies**: Visitor Pattern Infrastructure
+
+**WHY**: Future optimization passes will need to transform AST; having framework ready will accelerate development.
+
+**WHAT**: Create framework for AST transformation passes (optimization, desugaring, etc.).
+
+**HOW**:
+- Research AST transformation in modern compilers
+- Study immutable tree transformation patterns
+- Look into lens/optics for functional updates
+- Examine LLVM's pass infrastructure
+
+**SCOPE**:
+- Day 1: Design transformer interface and base implementation
+- Day 2: Implement example transformer (e.g., constant folding)
+- Day 3: Create transformation pipeline infrastructure
+
+**SUCCESS CRITERIA**:
+- ASTTransformer interface defined
+- At least one example transformer implemented
+- Transformation pipeline can chain multiple passes
+- Immutability preserved throughout transformations
+- Easy to add new transformation passes
+- Performance acceptable for large ASTs
+
+**RESOURCES**:
+- LLVM Pass infrastructure documentation
+- Functional programming tree transformations
+- Kotlin Arrow library (optics)
+- Compiler optimization books
+
+---
+
 ### Medium Priority
 
 #### Task: JVM Bytecode Generation Foundation
