@@ -64,9 +64,25 @@ data class UnionType(
     override val sourceLocation: SourceLocation? = null
 ) : ASTNode
 
-data class ProductType(
+sealed class ProductType : ASTNode {
+    abstract val name: String
+    
+    data class Positioned(
+        override val name: String,
+        val types: PersistentList<Type> = persistentListOf(),
+        override val sourceLocation: SourceLocation? = null
+    ) : ProductType()
+    
+    data class Named(
+        override val name: String,
+        val fields: PersistentList<NamedField> = persistentListOf(),
+        override val sourceLocation: SourceLocation? = null
+    ) : ProductType()
+}
+
+data class NamedField(
     val name: String,
-    val fields: PersistentList<Field> = persistentListOf(),
+    val type: Type,
     override val sourceLocation: SourceLocation? = null
 ) : ASTNode
 
@@ -160,9 +176,29 @@ data class LambdaExpression(
     override val sourceLocation: SourceLocation? = null
 ) : Expression
 
+data class IfExpression(
+    val condition: Expression,
+    val thenExpression: Expression,
+    val elseExpression: Expression?,
+    override val sourceLocation: SourceLocation? = null
+) : Expression
+
+data class ForExpression(
+    val variable: String,
+    val iterable: Expression,
+    val body: Expression,
+    override val sourceLocation: SourceLocation? = null
+) : Expression
+
 data class ConstructorCall(
     val constructor: String,
     val arguments: PersistentList<Expression> = persistentListOf(),
+    override val sourceLocation: SourceLocation? = null
+) : Expression
+
+data class BlockExpression(
+    val statements: PersistentList<Statement>,
+    val expression: Expression?,
     override val sourceLocation: SourceLocation? = null
 ) : Expression
 
@@ -191,16 +227,6 @@ sealed class Literal : Expression {
         override val sourceLocation: SourceLocation? = null
     ) : Literal()
     
-    data class ListLiteral(
-        val elements: PersistentList<Expression>,
-        override val sourceLocation: SourceLocation? = null
-    ) : Literal()
-    
-    data class MapLiteral(
-        val entries: PersistentList<MapEntry>,
-        override val sourceLocation: SourceLocation? = null
-    ) : Literal()
-    
     data class TupleLiteral(
         val elements: PersistentList<Expression>,
         override val sourceLocation: SourceLocation? = null
@@ -211,11 +237,6 @@ sealed class Literal : Expression {
     }
 }
 
-data class MapEntry(
-    val key: Expression,
-    val value: Expression,
-    override val sourceLocation: SourceLocation? = null
-) : ASTNode
 
 // =============================================================================
 // Patterns

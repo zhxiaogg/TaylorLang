@@ -298,8 +298,6 @@ class TypeChecker {
             is FunctionCall -> typeCheckFunctionCall(expression, context)
             is ConstructorCall -> typeCheckConstructorCall(expression, context)
             
-            is Literal.ListLiteral -> typeCheckListLiteral(expression, context)
-            is Literal.MapLiteral -> typeCheckMapLiteral(expression, context)
             is Literal.TupleLiteral -> typeCheckTupleLiteral(expression, context)
             
             else -> TypeError.InvalidOperation(
@@ -386,46 +384,27 @@ class TypeChecker {
         return TypedExpression(call, BuiltinTypes.UNIT).right()
     }
     
-    private fun typeCheckListLiteral(
-        listLiteral: Literal.ListLiteral,
-        context: TypeContext
-    ): Either<TypeError, TypedExpression> {
-        if (listLiteral.elements.isEmpty()) {
-            // Empty list - infer as List<Unit> for now
-            val listType = Type.GenericType("List", listOf(BuiltinTypes.UNIT).toPersistentList())
-            return TypedExpression(listLiteral, listType).right()
-        }
-        
-        // Type check first element to determine list element type
-        return typeCheckExpression(listLiteral.elements[0], context)
-            .map { firstTyped ->
-                // TODO: Check all elements have compatible types
-                val elementType = firstTyped.type
-                val listType = Type.GenericType("List", listOf(elementType).toPersistentList())
-                TypedExpression(listLiteral, listType)
-            }
-    }
-    
-    private fun typeCheckMapLiteral(
-        mapLiteral: Literal.MapLiteral,
-        context: TypeContext
-    ): Either<TypeError, TypedExpression> {
-        // TODO: Implement proper map type checking
-        val mapType = Type.GenericType(
-            "Map", 
-            listOf(BuiltinTypes.STRING, BuiltinTypes.UNIT).toPersistentList()
-        )
-        return TypedExpression(mapLiteral, mapType).right()
-    }
-    
     private fun typeCheckTupleLiteral(
         tupleLiteral: Literal.TupleLiteral,
         context: TypeContext
     ): Either<TypeError, TypedExpression> {
-        // TODO: Implement proper tuple type checking
-        val tupleType = Type.TupleType(
-            listOf(BuiltinTypes.UNIT, BuiltinTypes.UNIT).toPersistentList()
-        )
+        // Type check each element of the tuple
+        val elementResults = tupleLiteral.elements.map { element ->
+            typeCheckExpression(element, context)
+        }
+        
+        // Check if all elements type-checked successfully
+        val errors = elementResults.mapNotNull { it.leftOrNull() }
+        if (errors.isNotEmpty()) {
+            return errors.first().left() // Return first error
+        }
+        
+        // Extract types from successful results
+        val elementTypes = elementResults.map { 
+            it.getOrNull()!!.type 
+        }.toPersistentList()
+        
+        val tupleType = Type.TupleType(elementTypes)
         return TypedExpression(tupleLiteral, tupleType).right()
     }
     
@@ -441,7 +420,11 @@ class TypeChecker {
     
     private fun createTypeDefinition(typeDecl: TypeDecl): TypeDefinition.UnionTypeDef {
         val variants = typeDecl.unionType.variants.map { variant ->
-            TypeDefinition.VariantDef(variant.name, variant.fields.map { field -> field.type })
+            val types = when (variant) {
+                is ProductType.Positioned -> variant.types
+                is ProductType.Named -> variant.fields.map { it.type }
+            }
+            TypeDefinition.VariantDef(variant.name, types)
         }
         return TypeDefinition.UnionTypeDef(typeDecl.typeParams.toList(), variants)
     }

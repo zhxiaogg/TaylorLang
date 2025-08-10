@@ -26,6 +26,16 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
     // Statements
     // =============================================================================
 
+    override fun visitStatement(ctx: TaylorLangParser.StatementContext): Statement {
+        return when {
+            ctx.functionDecl() != null -> visit(ctx.functionDecl()) as Statement
+            ctx.typeDecl() != null -> visit(ctx.typeDecl()) as Statement
+            ctx.valDecl() != null -> visit(ctx.valDecl()) as Statement
+            ctx.expression() != null -> visit(ctx.expression()) as Statement
+            else -> throw IllegalStateException("Unknown statement type")
+        }
+    }
+
     override fun visitFunctionDecl(ctx: TaylorLangParser.FunctionDeclContext): FunctionDecl {
         val name = ctx.IDENTIFIER().text
         val typeParams = ctx.typeParams()?.typeParam()
@@ -107,19 +117,40 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
     }
 
     override fun visitProductType(ctx: TaylorLangParser.ProductTypeContext): ProductType {
+        return when {
+            ctx.positionedProductType() != null -> visit(ctx.positionedProductType()) as ProductType
+            ctx.namedProductType() != null -> visit(ctx.namedProductType()) as ProductType
+            else -> throw IllegalStateException("Unknown product type structure")
+        }
+    }
+
+    override fun visitPositionedProductType(ctx: TaylorLangParser.PositionedProductTypeContext): ProductType.Positioned {
         val name = ctx.IDENTIFIER().text
-        val fields = ctx.fieldList()?.field()
-            ?.map { fieldCtx ->
-                Field(
+        val types = ctx.positionedFieldList()?.type()
+            ?.map { visit(it) as Type }
+            ?.toPersistentList()
+            ?: persistentListOf()
+        
+        return ProductType.Positioned(
+            name = name,
+            types = types,
+            sourceLocation = ctx.toSourceLocation()
+        )
+    }
+
+    override fun visitNamedProductType(ctx: TaylorLangParser.NamedProductTypeContext): ProductType.Named {
+        val name = ctx.IDENTIFIER().text
+        val fields = ctx.namedFieldList().namedField()
+            .map { fieldCtx ->
+                NamedField(
                     name = fieldCtx.IDENTIFIER().text,
                     type = visit(fieldCtx.type()) as Type,
                     sourceLocation = fieldCtx.toSourceLocation()
                 )
             }
-            ?.toPersistentList()
-            ?: persistentListOf()
+            .toPersistentList()
         
-        return ProductType(
+        return ProductType.Named(
             name = name,
             fields = fields,
             sourceLocation = ctx.toSourceLocation()
@@ -225,6 +256,8 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
             
             ctx.matchExpr() != null -> visit(ctx.matchExpr()) as Expression
             ctx.lambdaExpr() != null -> visit(ctx.lambdaExpr()) as Expression
+            ctx.ifExpr() != null -> visit(ctx.ifExpr()) as Expression
+            ctx.forExpr() != null -> visit(ctx.forExpr()) as Expression
             
             else -> throw IllegalStateException("Unknown expression type: ${ctx.text}")
         }
@@ -241,6 +274,7 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
             ctx.literal() != null -> visit(ctx.literal()) as Literal
             ctx.expression() != null -> visit(ctx.expression()) as Expression
             ctx.constructorCall() != null -> visit(ctx.constructorCall()) as Expression
+            ctx.blockExpr() != null -> visit(ctx.blockExpr()) as Expression
             else -> throw IllegalStateException("Unknown primary expression")
         }
     }
@@ -255,6 +289,25 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
         return ConstructorCall(
             constructor = constructor,
             arguments = arguments,
+            sourceLocation = ctx.toSourceLocation()
+        )
+    }
+
+    override fun visitBlockExpr(ctx: TaylorLangParser.BlockExprContext): BlockExpression {
+        return visit(ctx.blockContent()) as BlockExpression
+    }
+
+    override fun visitBlockContent(ctx: TaylorLangParser.BlockContentContext): BlockExpression {
+        val statements = ctx.statement()
+            ?.map { visit(it) as Statement }
+            ?.toPersistentList()
+            ?: persistentListOf()
+        
+        val expression = ctx.expression()?.let { visit(it) as Expression }
+        
+        return BlockExpression(
+            statements = statements,
+            expression = expression,
             sourceLocation = ctx.toSourceLocation()
         )
     }
@@ -281,7 +334,12 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
                 // Remove quotes and handle escape sequences
                 val text = ctx.StringLiteral().text
                 val unquoted = text.substring(1, text.length - 1)
-                val unescaped = unquoted.replace("\\\"", "\"").replace("\\\\", "\\")
+                val unescaped = unquoted
+                    .replace("\\n", "\n")
+                    .replace("\\t", "\t")
+                    .replace("\\r", "\r")
+                    .replace("\\\"", "\"")
+                    .replace("\\\\", "\\")
                 
                 Literal.StringLiteral(
                     value = unescaped,
@@ -294,42 +352,10 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
                     sourceLocation = ctx.toSourceLocation()
                 )
             }
-            ctx.listLiteral() != null -> visit(ctx.listLiteral()) as Literal.ListLiteral
-            ctx.mapLiteral() != null -> visit(ctx.mapLiteral()) as Literal.MapLiteral
             ctx.tupleLiteral() != null -> visit(ctx.tupleLiteral()) as Literal.TupleLiteral
             ctx.text == "null" -> Literal.NullLiteral
             else -> throw IllegalStateException("Unknown literal type")
         }
-    }
-
-    override fun visitListLiteral(ctx: TaylorLangParser.ListLiteralContext): Literal.ListLiteral {
-        val elements = ctx.expression()
-            ?.map { visit(it) as Expression }
-            ?.toPersistentList()
-            ?: persistentListOf()
-        
-        return Literal.ListLiteral(
-            elements = elements,
-            sourceLocation = ctx.toSourceLocation()
-        )
-    }
-
-    override fun visitMapLiteral(ctx: TaylorLangParser.MapLiteralContext): Literal.MapLiteral {
-        val entries = ctx.mapEntry()
-            ?.map { entryCtx ->
-                MapEntry(
-                    key = visit(entryCtx.expression(0)) as Expression,
-                    value = visit(entryCtx.expression(1)) as Expression,
-                    sourceLocation = entryCtx.toSourceLocation()
-                )
-            }
-            ?.toPersistentList()
-            ?: persistentListOf()
-        
-        return Literal.MapLiteral(
-            entries = entries,
-            sourceLocation = ctx.toSourceLocation()
-        )
     }
 
     override fun visitTupleLiteral(ctx: TaylorLangParser.TupleLiteralContext): Literal.TupleLiteral {
@@ -421,6 +447,34 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
         
         return LambdaExpression(
             parameters = parameters,
+            body = body,
+            sourceLocation = ctx.toSourceLocation()
+        )
+    }
+
+    override fun visitIfExpr(ctx: TaylorLangParser.IfExprContext): IfExpression {
+        val condition = visit(ctx.expression(0)) as Expression
+        val thenExpression = visit(ctx.expression(1)) as Expression
+        val elseExpression = if (ctx.expression().size > 2) {
+            visit(ctx.expression(2)) as Expression
+        } else null
+        
+        return IfExpression(
+            condition = condition,
+            thenExpression = thenExpression,
+            elseExpression = elseExpression,
+            sourceLocation = ctx.toSourceLocation()
+        )
+    }
+
+    override fun visitForExpr(ctx: TaylorLangParser.ForExprContext): ForExpression {
+        val variable = ctx.IDENTIFIER().text
+        val iterable = visit(ctx.expression(0)) as Expression
+        val body = visit(ctx.expression(1)) as Expression
+        
+        return ForExpression(
+            variable = variable,
+            iterable = iterable,
             body = body,
             sourceLocation = ctx.toSourceLocation()
         )

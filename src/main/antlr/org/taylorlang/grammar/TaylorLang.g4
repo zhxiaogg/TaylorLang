@@ -34,10 +34,13 @@ typeDecl
     ;
 
 unionType: productType ('|' productType)*;
-productType: IDENTIFIER ('(' fieldList ')')?;
+productType: positionedProductType | namedProductType;
+positionedProductType: IDENTIFIER ('(' positionedFieldList ')')?;
+namedProductType: IDENTIFIER '(' namedFieldList ')';
 
-fieldList: field (',' field)*;
-field: IDENTIFIER ':' type;
+namedFieldList: namedField (',' namedField)*;
+namedField: IDENTIFIER ':' type;
+positionedFieldList: type (',' type)*;
 
 // Variable declarations: val x = 42
 valDecl: 'val' IDENTIFIER (':' type)? '=' expression;
@@ -81,6 +84,8 @@ expression
     | expression '&&' expression          // Logical and
     | expression '||' expression          // Logical or
     | expression '?:' expression          // Null coalescing
+    | ifExpr                             // If expression
+    | forExpr                            // For loop
     | matchExpr                           // Pattern matching
     | lambdaExpr                          // Lambda expression
     ;
@@ -91,7 +96,14 @@ primary
     | literal                             // Literals
     | '(' expression ')'                  // Parentheses
     | constructorCall                     // Type constructor
+    | blockExpr                           // Block expression
     ;
+
+// Block expressions: { expr1; expr2; ... }  
+blockExpr: '{' blockContent '}';
+
+// Block content - statements with semicolons or final expression
+blockContent: (statement ';')* expression?;
 
 // Literals
 literal
@@ -99,15 +111,10 @@ literal
     | FloatLiteral
     | StringLiteral
     | BooleanLiteral
-    | listLiteral
-    | mapLiteral
     | tupleLiteral
     | 'null'
     ;
 
-listLiteral: '[' (expression (',' expression)*)? ']';
-mapLiteral: '{' (mapEntry (',' mapEntry)*)? '}';
-mapEntry: expression ':' expression;
 tupleLiteral: '(' expression (',' expression)+ ')';
 
 // Constructor calls: Ok(value)
@@ -115,6 +122,13 @@ constructorCall: IDENTIFIER '(' argList? ')';
 
 // Function arguments
 argList: expression (',' expression)*;
+
+// If expressions: if (condition) expr else expr
+// Supports both single expressions and block expressions
+ifExpr: 'if' '(' expression ')' expression ('else' expression)?;
+
+// For loops: for (item in collection) { body }
+forExpr: 'for' '(' IDENTIFIER 'in' expression ')' expression;
 
 // Pattern matching: match expr { case pattern => expr }
 matchExpr: 'match' expression '{' matchCase+ '}';
@@ -136,13 +150,12 @@ lambdaExpr
     | '(' (IDENTIFIER (',' IDENTIFIER)*)? ')' '=>' expression
     ;
 
-// Lexer rules
-IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;
-
+// Lexer rules (keywords first, then identifiers)
+BooleanLiteral: 'true' | 'false';
 IntLiteral: [0-9]+;
 FloatLiteral: [0-9]+ '.' [0-9]+;
 StringLiteral: '"' (~["\r\n] | '\\' .)* '"';
-BooleanLiteral: 'true' | 'false';
+IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;
 
 // Comments
 LineComment: '//' ~[\r\n]* -> skip;

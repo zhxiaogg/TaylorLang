@@ -43,3 +43,12 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+.idea/
+
+### ANTLR Generated Files ###
+src/main/generated/
+src/test/generated/
+
+### Temporary Files ###
+test-syntax.tl
+debug_test.kt

@@ -30,12 +30,25 @@ async fn printNumbers(numbers: List<Int>) => Unit {
     println(num)
   }
 }
+
+// For loops with single expressions
+for (item in items) processItem(item)
+
+// For loops with blocks  
+for (num in numbers) {
+  val processed = transform(num)
+  println(processed)
+}
 ```
 
 ### Functional Iteration
 ```kotlin
-// Functional iteration
+// Functional iteration (recommended approach)
 numbers.forEach(println)
 numbers.map(x => x * 2).filter(x => x > 10)
+
+// Creating lists using stdlib
+val numbers = List.of(1, 2, 3, 4, 5)
+val processed = numbers.map(x => x * 2)
 ```
 
