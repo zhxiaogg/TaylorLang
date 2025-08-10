@@ -18,3 +18,4 @@ A minimal, pure functional programming language for the JVM with immutability by
 
 ### Project Development
 - [Project Index](docs/project/index.md) - Tasks, status, and workflow
+- [Design Documents](docs/designs/index.md) - Technical design documents

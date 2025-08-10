@@ -1,59 +1,76 @@
 # Two-Agent Development Workflow
 
 ## Overview
-This command initiates a continuous development workflow between two specialized agents:
-- **@agent-tech-lead-architect**: Project owner and task manager
+This command creates a continuous development workflow with Claude orchestrating between two agents:
+- **@agent-tech-lead-architect**: Project owner and task manager  
 - **@agent-kotlin-java-engineer**: Implementation engineer
 
-## Workflow Process
+## Claude's Orchestration Process
 
-### 1. Tech Lead Initialization
-- **@agent-tech-lead-architect** reads README.md to understand current project status
-- Reviews project documentation in docs/project/
-- Conducts research (codebase analysis, industry best practices, language design patterns)
-- De-ambiguates unclear tasks or project issues through analysis
-- Identifies next priority task from available work
+Claude drives the entire workflow by coordinating between the agents:
 
-### 2. Task Assignment 
-- **@agent-tech-lead-architect** creates a specific, scoped task for **@agent-kotlin-java-engineer**
-- Task must be:
-  - **Specific**: Clear scope and boundaries
-  - **Straightforward**: No ambiguous requirements  
-  - **Scoped**: Single feature/component focus
-  - **Unambiguous**: Clear acceptance criteria
+### 1. Get Task from Tech Lead
+```
+Claude → Launch @agent-tech-lead-architect:
+- Read README.md and docs/project/ for current status
+- Identify next priority task from available work
+- Create specific task assignment with clear requirements
+- Return structured task specification
+```
 
-### 3. Implementation Phase
-- **@agent-kotlin-java-engineer** receives task and starts implementation
-- Writes high-quality Kotlin/Java code following project standards
-- Includes comprehensive tests and documentation
-- Commits changes when implementation is complete
+### 2. Assign Task to Engineer
+```
+Claude → Launch @agent-kotlin-java-engineer with task from step 1:
+- Pass complete task specification from tech lead
+- Engineer implements code following project standards
+- Engineer commits changes when complete
+- Return implementation completion status
+```
 
-### 4. Code Review Phase
-- **@agent-tech-lead-architect** reviews the committed code
-- Provides specific feedback if improvements needed
-- **@agent-kotlin-java-engineer** addresses feedback and recommits
-- Loop continues until code meets quality standards
+### 3. Get Code Review from Tech Lead
+```
+Claude → Launch @agent-tech-lead-architect for code review:
+- Review the committed code with high standards
+- Provide specific feedback if changes needed
+- Return review decision (approved/needs-changes)
+```
 
-### 5. Project Update Phase
-- **@agent-tech-lead-architect** updates project documentation
-- Updates task status in docs/project/tasks.md
-- Updates project status in docs/project/index.md
-- Commits documentation changes
+### 4. Handle Review Feedback (if needed)
+```
+IF review shows issues:
+Claude → Launch @agent-kotlin-java-engineer with feedback:
+- Address specific review comments
+- Commit fixes and return status
+Claude → Repeat step 3 until approved
+```
 
-### 6. Next Iteration
-- **@agent-tech-lead-architect** identifies next priority task
-- Process repeats from step 2
+### 5. Update Documentation & Continue
+```
+Claude → Launch @agent-tech-lead-architect for documentation:
+- Update project documentation for completed work
+- Commit documentation changes
+- Check if more tasks remain in docs/project/tasks.md
+- Return next task or completion status
+```
+
+## Continuous Loop
+Claude executes this loop until all tasks complete:
+```
+REPEAT:
+  1. Claude gets task from tech-lead-architect
+  2. Claude assigns task to kotlin-java-engineer
+  3. Claude gets code review from tech-lead-architect
+  4. IF needs fixes: Claude sends feedback to engineer, GOTO 3
+  5. Claude gets documentation update from tech-lead-architect  
+  6. IF more tasks exist: GOTO 1
+  7. ELSE: Workflow complete
+```
 
 ## Agent Responsibilities
 
 ### @agent-tech-lead-architect
-- Project status analysis and planning
-- Research (codebase, industry best practices, language design)
-- Task breakdown and prioritization
-- De-ambiguating unclear requirements or project issues
-- Code review and quality assurance
-- Project documentation maintenance (docs/project/ and docs/language/)
-- Strategic decision making
+- Follow responsibilities defined in agent configuration
+- Focus on intention-based task assignment with research guidance
 
 ### @agent-kotlin-java-engineer  
 - High-quality code implementation
@@ -64,8 +81,7 @@ This command initiates a continuous development workflow between two specialized
 
 ## Communication Rules
 - Both agents can ask clarifying questions when requirements are unclear
-- All task assignments must include acceptance criteria
-- All feedback must be specific and actionable
+- Follow communication guidelines defined in agent configurations
 - Agents should confirm understanding before proceeding
 
 ## Termination Condition
