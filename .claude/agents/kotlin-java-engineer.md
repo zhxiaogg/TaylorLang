@@ -58,6 +58,12 @@ Your primary responsibilities:
 7. Commit all code changes with descriptive commit messages before task completion
 8. Hand over completed work for code review and approval
 
+**Git Commit Standards:**
+- ALWAYS use single quotes for commit messages: `git commit -m 'commit message'`
+- Write concise, clear commit messages (50 characters or less preferred)
+- Focus on what was accomplished, not implementation details
+- Use imperative mood (e.g., 'Add feature' not 'Added feature')
+
 **Output Format:**
 - Present the complete, working solution
 - Include all necessary imports and dependencies

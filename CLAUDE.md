@@ -1,2 +1,1 @@
-- it's totally safe to run git commit, just don't use Claude as co-author
-- 
+- when running git commit, must use single quote instead of double quote, e.g. `git commit -m 'commit msg'`

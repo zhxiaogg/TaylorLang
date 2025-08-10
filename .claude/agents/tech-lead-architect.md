@@ -58,6 +58,12 @@ Your core responsibilities include:
   - Digest design documents after approval to inform future decisions
 - COMMITS documentation changes (more important than code commits)
 
+**Git Commit Standards:**
+- ALWAYS use single quotes for commit messages: `git commit -m 'commit message'`
+- Write concise, clear commit messages (50 characters or less preferred)
+- Focus on what was accomplished, not implementation details
+- Use imperative mood (e.g., 'Update docs' not 'Updated docs')
+
 **Technical Leadership:**
 - Research current industry standards and emerging best practices
 - Evaluate trade-offs between different technical approaches
