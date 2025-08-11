@@ -214,6 +214,17 @@ class BytecodeGenerator {
                     val storeInstruction = variableSlotManager.getStoreInstruction(statement.value.type)
                     methodVisitor!!.visitVarInsn(storeInstruction, slot)
                 }
+                is TypedStatement.ReturnStatement -> {
+                    // Generate return statement
+                    if (statement.expression != null) {
+                        generateExpression(statement.expression)
+                        generateReturn(statement.expression.type)
+                    } else {
+                        methodVisitor!!.visitInsn(RETURN)
+                    }
+                    // Return statements terminate execution, so break out of loop
+                    break
+                }
                 is TypedStatement.TypeDeclaration -> {
                     // Type declarations don't generate runtime code
                 }
@@ -245,6 +256,9 @@ class BytecodeGenerator {
             is TypedStatement.Assignment -> {
                 // Assignments are handled in main method
             }
+            is TypedStatement.ReturnStatement -> {
+                // Return statements are handled in main method
+            }
             is TypedStatement.TypeDeclaration -> {
                 // Type declarations don't generate runtime code
             }
@@ -272,6 +286,11 @@ class BytecodeGenerator {
             null
         )
         methodVisitor!!.visitCode()
+        
+        // Set up parameter slots for user-defined functions (not main)
+        if (!isMainFunction) {
+            setupFunctionParameterSlots(funcDecl.declaration)
+        }
         
         when (val body = funcDecl.body) {
             is TypedFunctionBody.Expression -> {
@@ -308,6 +327,52 @@ class BytecodeGenerator {
         
         methodVisitor!!.visitMaxs(10, 10) // Conservative estimates
         methodVisitor!!.visitEnd()
+    }
+    
+    /**
+     * Set up variable slots for function parameters
+     */
+    private fun setupFunctionParameterSlots(functionDecl: FunctionDecl) {
+        // Clear existing slots since we're starting a new function
+        variableSlotManager.clear()
+        
+        // For static methods, parameters start at slot 0 (no 'this' parameter)
+        var currentSlot = 0
+        
+        // Create a custom variable slot manager that handles parameters correctly
+        val paramSlotManager = VariableSlotManager()
+        paramSlotManager.clear()
+        
+        for (param in functionDecl.parameters) {
+            val paramType = param.type ?: BuiltinTypes.UNIT
+            
+            // Manually assign parameter to its slot (parameters are pre-allocated by JVM)
+            // We simulate this by directly setting the slot mapping
+            paramSlotManager.allocateSlot(param.name, paramType)
+            
+            currentSlot += getSlotCount(paramType)
+        }
+        
+        // Replace the current variable slot manager for this function
+        // This is a bit of a hack, but it allows us to handle parameters correctly
+        this.variableSlotManager.clear()
+        for (param in functionDecl.parameters) {
+            val paramType = param.type ?: BuiltinTypes.UNIT
+            variableSlotManager.allocateSlot(param.name, paramType)
+        }
+    }
+    
+    /**
+     * Get the number of JVM slots required for a given type.
+     */
+    private fun getSlotCount(type: Type): Int {
+        return when (type) {
+            is Type.PrimitiveType -> when (type.name) {
+                "Double", "Long" -> 2
+                else -> 1
+            }
+            else -> 1 // Objects, arrays, etc. use 1 slot
+        }
     }
     
     /**
@@ -696,10 +761,50 @@ class BytecodeGenerator {
         when (functionName) {
             "println" -> generatePrintlnCall(call)
             else -> {
-                // Regular function call - simplified for now
-                methodVisitor!!.visitLdcInsn(0) // Placeholder return value
+                // User-defined function call
+                generateUserFunctionCall(call, functionName, resultType)
             }
         }
+    }
+    
+    /**
+     * Generate code for user-defined function calls
+     */
+    private fun generateUserFunctionCall(call: FunctionCall, functionName: String?, resultType: Type) {
+        if (functionName == null) {
+            // Complex function expressions not supported yet
+            when (getJvmType(resultType)) {
+                "I", "Z" -> methodVisitor!!.visitLdcInsn(0)
+                "D" -> methodVisitor!!.visitLdcInsn(0.0)
+                "Ljava/lang/String;" -> methodVisitor!!.visitLdcInsn("")
+                "V" -> { /* No value to push for void */ }
+                else -> methodVisitor!!.visitInsn(ACONST_NULL)
+            }
+            return
+        }
+        
+        // Generate arguments in order
+        for (argument in call.arguments) {
+            val argType = inferExpressionType(argument)
+            generateExpression(TypedExpression(argument, argType))
+        }
+        
+        // Build method descriptor for the user function call
+        val paramTypes = call.arguments.map { arg ->
+            val argType = inferExpressionType(arg)
+            getJvmType(argType)
+        }
+        val returnType = getJvmType(resultType)
+        val methodDescriptor = "(${paramTypes.joinToString("")})$returnType"
+        
+        // Generate static method call to the user function
+        methodVisitor!!.visitMethodInsn(
+            INVOKESTATIC,
+            currentClassName,
+            functionName,
+            methodDescriptor,
+            false
+        )
     }
     
     /**

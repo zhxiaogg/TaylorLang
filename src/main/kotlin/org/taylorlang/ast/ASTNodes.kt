@@ -150,6 +150,13 @@ data class Assignment(
     override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitAssignment(this)
 }
 
+data class ReturnStatement(
+    val expression: Expression?,
+    override val sourceLocation: SourceLocation? = null
+) : Statement {
+    override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitReturnStatement(this)
+}
+
 // =============================================================================
 // Expressions
 // =============================================================================

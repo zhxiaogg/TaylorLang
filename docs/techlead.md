@@ -1012,3 +1012,85 @@ The variable storage and retrieval system is now:
 
 With variable storage complete, the project is ready for:
 **User-Defined Functions** - Building on the solid variable foundation
+
+## User-Defined Functions Implementation Review - 2025-08-11
+
+### Current Status Assessment
+**Date**: 2025-08-11
+**Implementer**: kotlin-java-engineer
+**Task Status**: IN PROGRESS - Day 2
+**Current State**: Partial implementation with compilation errors
+
+### Work Completed So Far
+
+#### Grammar Changes ✅
+- Changed function declaration syntax from `fn` to `fun` keyword
+- Added support for block body syntax: `fun name() { statements }`
+- Added return statement support: `return expression`
+- Maintained arrow syntax for single expressions: `fun name() => expression`
+
+#### AST Changes ✅
+- Added `ReturnStatement` AST node with optional expression
+- Proper visitor pattern integration
+- Source location tracking
+
+#### Parser Integration ✅
+- ASTBuilder properly handles return statements
+- Function body parsing supports both block and expression forms
+
+### Current Issues
+
+#### Compilation Errors 🔴
+1. **BytecodeGenerator.kt:219**: Unresolved reference 'generateReturnStatement'
+   - Method referenced but not yet implemented
+2. **BytecodeGenerator.kt:238**: Missing 'is ReturnStatement' branch in when expression
+   - Statement visitor needs to handle return statements
+
+#### Implementation Gaps
+1. **Function Declaration Bytecode**: Not yet implemented
+2. **Method Descriptor Generation**: Missing
+3. **Return Statement Generation**: Referenced but not implemented
+4. **Function Call Generation**: Not started
+5. **Parameter Passing**: Not implemented
+6. **Local Variable Management**: Need separate scope for functions
+
+### Technical Analysis
+
+#### Current Approach
+The engineer is taking the correct incremental approach:
+1. First adding grammar and AST support ✅
+2. Then parser integration ✅
+3. Now working on bytecode generation (in progress)
+
+#### Architecture Observations
+- Following established patterns from previous features
+- Proper visitor pattern usage
+- Clean separation between parser and code generation
+
+### Next Steps Required
+
+#### Immediate Fix (To Compile)
+1. Implement `generateReturnStatement()` method in BytecodeGenerator
+2. Add ReturnStatement case to statement visitor
+3. Handle return type validation
+
+#### Core Implementation Tasks
+1. **Function Declaration Generation**:
+   - Generate separate JVM methods for each function
+   - Create proper method descriptors
+   - Handle parameter types and return types
+
+2. **Function Call Generation**:
+   - Resolve function names to method references
+   - Generate INVOKESTATIC instructions
+   - Handle argument evaluation and passing
+
+3. **Return Statement Handling**:
+   - Generate appropriate RETURN/IRETURN/ARETURN instructions
+   - Validate return type matches function signature
+   - Handle void functions (no return value)
+
+4. **Scope Management**:
+   - Create new scope for function body
+   - Map parameters to local variable slots
+   - Reset slot allocation for each function

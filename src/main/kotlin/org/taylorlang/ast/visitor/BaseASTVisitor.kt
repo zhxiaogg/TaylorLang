@@ -65,6 +65,7 @@ abstract class BaseASTVisitor<R> : ASTVisitor<R> {
             is ValDecl -> visitValDecl(node)
             is VarDecl -> visitVarDecl(node)
             is Assignment -> visitAssignment(node)
+            is ReturnStatement -> visitReturnStatement(node)
             is Expression -> visitExpression(node)
         }
     }
@@ -95,6 +96,10 @@ abstract class BaseASTVisitor<R> : ASTVisitor<R> {
     
     override fun visitAssignment(node: Assignment): R {
         return node.value.accept(this)
+    }
+    
+    override fun visitReturnStatement(node: ReturnStatement): R {
+        return node.expression?.accept(this) ?: defaultResult()
     }
     
     // =============================================================================

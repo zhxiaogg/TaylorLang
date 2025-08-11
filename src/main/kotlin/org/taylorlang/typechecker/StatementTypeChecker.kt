@@ -38,6 +38,11 @@ sealed class TypedStatement {
     data class ExpressionStatement(
         val expression: TypedExpression
     ) : TypedStatement()
+    
+    data class ReturnStatement(
+        val returnStatement: org.taylorlang.ast.ReturnStatement,
+        val expression: TypedExpression?
+    ) : TypedStatement()
 }
 
 /**
@@ -94,6 +99,7 @@ class StatementTypeChecker(
             is ValDecl -> visitValDecl(node)
             is VarDecl -> visitVarDecl(node)
             is org.taylorlang.ast.Assignment -> visitAssignment(node)
+            is org.taylorlang.ast.ReturnStatement -> visitReturnStatement(node)
             is Expression -> visitExpressionStatement(node)
         }
     }
@@ -345,6 +351,21 @@ class StatementTypeChecker(
                 typedValue
             )
         }
+    }
+    
+    override fun visitReturnStatement(node: org.taylorlang.ast.ReturnStatement): Result<TypedStatement> {
+        // Type check the return expression if present
+        val typedExpression = node.expression?.let { expr ->
+            val expressionChecker = ExpressionTypeChecker(context)
+            expr.accept(expressionChecker).getOrNull()
+        }
+        
+        // For now, we don't validate the return type against the function's declared return type
+        // That validation will be done during comprehensive function type checking
+        return Result.success(TypedStatement.ReturnStatement(
+            node.copy(),
+            typedExpression
+        ))
     }
     
     // =============================================================================

@@ -14,17 +14,23 @@ statement
     | valDecl
     | varDecl
     | assignment
+    | returnStatement
     | expression
     ;
 
-// Function declarations: fn add(x: Int, y: Int): Int => x + y
+// Function declarations: fun add(x: Int, y: Int): Int { return x + y }
 functionDecl
-    : 'fn' IDENTIFIER typeParams? '(' paramList? ')' (':' type)? '=>' functionBody
+    : 'fun' IDENTIFIER typeParams? '(' paramList? ')' (':' type)? functionBody
     ;
 
 functionBody
-    : expression
-    | '{' statement* '}'
+    : '{' statement* '}'
+    | '=>' expression  // Still support single expression syntax
+    ;
+
+// Return statement
+returnStatement
+    : 'return' expression?
     ;
 
 paramList: param (',' param)*;

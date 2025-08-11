@@ -33,6 +33,7 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
             ctx.valDecl() != null -> visit(ctx.valDecl()) as Statement
             ctx.varDecl() != null -> visit(ctx.varDecl()) as Statement
             ctx.assignment() != null -> visit(ctx.assignment()) as Statement
+            ctx.returnStatement() != null -> visit(ctx.returnStatement()) as Statement
             ctx.expression() != null -> visit(ctx.expression()) as Statement
             else -> throw IllegalStateException("Unknown statement type")
         }
@@ -72,12 +73,14 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
     override fun visitFunctionBody(ctx: TaylorLangParser.FunctionBodyContext): FunctionBody {
         return when {
             ctx.expression() != null -> {
+                // '=>' expression syntax
                 FunctionBody.ExpressionBody(
                     expression = visit(ctx.expression()) as Expression,
                     sourceLocation = ctx.toSourceLocation()
                 )
             }
             else -> {
+                // '{' statement* '}' syntax
                 val statements = ctx.statement()
                     .map { visit(it) as Statement }
                     .toPersistentList()
@@ -192,6 +195,15 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
         return Assignment(
             variable = variable,
             value = value,
+            sourceLocation = ctx.toSourceLocation()
+        )
+    }
+
+    override fun visitReturnStatement(ctx: TaylorLangParser.ReturnStatementContext): ReturnStatement {
+        val expression = ctx.expression()?.let { visit(it) as Expression }
+        
+        return ReturnStatement(
+            expression = expression,
             sourceLocation = ctx.toSourceLocation()
         )
     }
