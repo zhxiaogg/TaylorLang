@@ -147,6 +147,13 @@ class StatementTypeChecker(
         return visitExpressionStatement(node)
     }
     
+    override fun visitWhileExpression(node: WhileExpression): Result<TypedStatement> {
+        // CRITICAL FIX: Properly handle while expressions to preserve loop structure
+        // Instead of using the default BaseASTVisitor behavior which processes condition and body separately,
+        // we need to treat the WhileExpression as a unified expression that should be type-checked as a whole
+        return visitExpressionStatement(node)
+    }
+    
     /**
      * Visit an expression as a statement.
      * This creates an expression statement wrapper.

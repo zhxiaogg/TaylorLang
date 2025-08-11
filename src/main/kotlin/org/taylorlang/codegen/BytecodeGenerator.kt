@@ -214,6 +214,10 @@ class BytecodeGenerator {
                                 getJvmType(statement.expression.type) != "V"
                             }
                         }
+                        is WhileExpression -> {
+                            // While expressions return Unit/void, so no need to pop
+                            false
+                        }
                         else -> getJvmType(statement.expression.type) != "V"
                     }
                     

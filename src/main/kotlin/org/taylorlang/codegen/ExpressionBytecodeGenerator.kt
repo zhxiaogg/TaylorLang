@@ -281,6 +281,13 @@ class ExpressionBytecodeGenerator(
                 // While loops return Unit
                 BuiltinTypes.UNIT
             }
+            is FunctionCall -> {
+                // Infer function call return type
+                when ((expr.target as? Identifier)?.name) {
+                    "println" -> BuiltinTypes.UNIT // println returns void/unit
+                    else -> BuiltinTypes.INT // Default for unknown functions
+                }
+            }
             else -> BuiltinTypes.INT // Default fallback
         }
     }
