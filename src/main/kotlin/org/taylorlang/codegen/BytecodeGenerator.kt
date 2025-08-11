@@ -66,6 +66,7 @@ class BytecodeGenerator {
             currentClassName = className
             
             // Create a new ClassWriter for each generation to avoid reuse issues
+            // Use full automatic computation to avoid slot management issues
             val classWriter = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
             
             // Initialize class writer
@@ -280,7 +281,8 @@ class BytecodeGenerator {
         
         // Return normally from main method (no System.exit needed)
         methodVisitor!!.visitInsn(RETURN)
-        methodVisitor!!.visitMaxs(10, variableSlotManager.getMaxSlots()) // Use actual slot count
+        // Let ASM compute maxs automatically with conservative hints
+        methodVisitor!!.visitMaxs(0, 0) // ASM will compute automatically
         methodVisitor!!.visitEnd()
     }
     

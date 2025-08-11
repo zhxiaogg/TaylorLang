@@ -211,8 +211,14 @@ class PatternBytecodeCompiler(
                 // If we reach here, comparison failed and stack is empty
             }
             is Literal.FloatLiteral -> {
+                // Stack starts with: [target_double]
                 methodVisitor.visitLdcInsn(literal.value)
+                // Stack now: [target_double, literal_double]
+                // Use DCMPG for double comparison
                 methodVisitor.visitInsn(DCMPG)
+                // DCMPG consumes both doubles and pushes int result:
+                // 0 if equal, >0 if target > literal, <0 if target < literal
+                // Stack now: [comparison_result]
                 methodVisitor.visitJumpInsn(IFEQ, caseLabel)
                 // If we reach here, comparison failed and stack is empty
             }
@@ -274,6 +280,16 @@ class PatternBytecodeCompiler(
         caseLabel: org.objectweb.asm.Label,
         nextLabel: org.objectweb.asm.Label
     ) {
+        // For guard patterns, we need to store the target value first
+        // since the inner pattern test will consume it
+        val guardTargetSlot = variableSlotManager.allocateTemporarySlot(targetType)
+        val storeInstruction = variableSlotManager.getStoreInstruction(targetType)
+        val loadInstruction = variableSlotManager.getLoadInstruction(targetType)
+        
+        // Duplicate the target value and store it for guard evaluation
+        methodVisitor.visitInsn(if (getJvmType(targetType) == "D") DUP2 else DUP)
+        methodVisitor.visitVarInsn(storeInstruction, guardTargetSlot)
+        
         // Create intermediate label for guard evaluation
         val guardLabel = org.objectweb.asm.Label()
         
@@ -285,7 +301,7 @@ class PatternBytecodeCompiler(
         
         // Bind pattern variables for guard evaluation
         val savedSlotManager = variableSlotManager.createCheckpoint()
-        bindPatternVariables(pattern.pattern, targetType, variableSlotManager.getLastAllocatedSlot())
+        bindPatternVariables(pattern.pattern, targetType, guardTargetSlot)
         
         // Generate guard expression
         val guardType = expressionGenerator.inferExpressionType(pattern.guard)
@@ -293,6 +309,9 @@ class PatternBytecodeCompiler(
         
         // Restore slot manager state
         variableSlotManager.restoreCheckpoint(savedSlotManager)
+        
+        // Release temporary slot
+        variableSlotManager.releaseTemporarySlot(guardTargetSlot)
         
         // Jump to case if guard is true
         methodVisitor.visitJumpInsn(IFNE, caseLabel)
