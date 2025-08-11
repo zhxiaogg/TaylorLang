@@ -59,14 +59,17 @@ object TypeValidation {
         // Direct type equality
         if (TypeComparison.structuralEquals(sourceType, targetType)) return true
         
-        // Subtyping relationship
+        // Check nullable conversions first - these have specific conversion semantics
+        // that override general subtyping relationships
+        if (sourceType is Type.NullableType || targetType is Type.NullableType) {
+            return isValidNullableConversion(sourceType, targetType)
+        }
+        
+        // Subtyping relationship (after nullable checks)
         if (TypeComparison.isSubtype(sourceType, targetType)) return true
         
         // Numeric conversions
         if (isValidNumericConversion(sourceType, targetType)) return true
-        
-        // Nullable conversions
-        if (isValidNullableConversion(sourceType, targetType)) return true
         
         // Generic type conversions (covariance/contravariance)
         if (isValidGenericConversion(sourceType, targetType)) return true

@@ -262,13 +262,13 @@ object TypeFactory {
      * Provides convenient access to frequently used primitive types.
      */
     object Builtins {
-        val INT: Type.PrimitiveType by lazy { createPrimitive("Int") }
-        val LONG: Type.PrimitiveType by lazy { createPrimitive("Long") }
-        val FLOAT: Type.PrimitiveType by lazy { createPrimitive("Float") }
-        val DOUBLE: Type.PrimitiveType by lazy { createPrimitive("Double") }
-        val BOOLEAN: Type.PrimitiveType by lazy { createPrimitive("Boolean") }
-        val STRING: Type.PrimitiveType by lazy { createPrimitive("String") }
-        val UNIT: Type.PrimitiveType by lazy { createPrimitive("Unit") }
+        val INT: Type.PrimitiveType get() = createPrimitive("Int")
+        val LONG: Type.PrimitiveType get() = createPrimitive("Long")
+        val FLOAT: Type.PrimitiveType get() = createPrimitive("Float")
+        val DOUBLE: Type.PrimitiveType get() = createPrimitive("Double")
+        val BOOLEAN: Type.PrimitiveType get() = createPrimitive("Boolean")
+        val STRING: Type.PrimitiveType get() = createPrimitive("String")
+        val UNIT: Type.PrimitiveType get() = createPrimitive("Unit")
     }
     
     /**

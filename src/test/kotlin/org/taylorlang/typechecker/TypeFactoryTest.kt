@@ -373,9 +373,12 @@ class TypeFactoryTest : StringSpec({
     }
 
     "Builtins should be consistent with createPrimitive" {
+        // Force Builtins initialization first
         val builtinInt = TypeFactory.Builtins.INT
+        // Now create through normal API
         val createdInt = TypeFactory.createPrimitive("Int")
 
+        // Should return same cached instance since Builtins uses createPrimitive
         (builtinInt === createdInt).shouldBeTrue()
     }
 
