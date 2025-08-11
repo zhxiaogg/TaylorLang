@@ -300,7 +300,7 @@ class BytecodeGenerator {
                     VariableSlotManager(), // New slot manager for function scope
                     tempExprGen,
                     tempControlFlowGen
-                    // Don't pass callback for function declarations - they handle their own context
+                    // Don't pass callback - let function generator handle its own expression generation
                 )
                 funcGenerator.generateFunctionDeclaration(statement, classWriter)
             }

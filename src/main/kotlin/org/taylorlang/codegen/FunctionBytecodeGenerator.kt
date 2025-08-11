@@ -54,6 +54,16 @@ class FunctionBytecodeGenerator(
         )
         methodVisitor.visitCode()
         
+        // CRITICAL FIX: Set the method visitor for this function so all method calls use the correct visitor
+        this.methodVisitor = methodVisitor
+        
+        // CRITICAL FIX: Create new generators with the correct method visitor for this specific function
+        val localExpressionGenerator = ExpressionBytecodeGenerator(methodVisitor, variableSlotManager, expressionGenerator::inferExpressionType)
+        val localControlFlowGenerator = ControlFlowBytecodeGenerator(methodVisitor, localExpressionGenerator) { expr ->
+            // Use local expression generator for any expressions needed by control flow
+            localExpressionGenerator.generateExpression(expr)
+        }
+        
         // Set up parameter slots for user-defined functions (not main)
         if (!isMainFunction) {
             setupFunctionParameterSlots(funcDecl.declaration)
@@ -61,7 +71,8 @@ class FunctionBytecodeGenerator(
         
         when (val body = funcDecl.body) {
             is TypedFunctionBody.Expression -> {
-                generateExpression(body.expression)
+                // Generate the expression using the local generators with correct method visitor
+                generateExpressionWithLocalGenerators(body.expression, localExpressionGenerator, localControlFlowGenerator)
                 
                 if (isMainFunction) {
                     // Main function should not return a value, just execute and return void
@@ -81,7 +92,8 @@ class FunctionBytecodeGenerator(
                 for (stmt in body.statements) {
                     when (stmt) {
                         is TypedStatement.ExpressionStatement -> {
-                            generateExpression(stmt.expression)
+                            // Generate statement expression using local generators with correct method visitor
+                            generateExpressionWithLocalGenerators(stmt.expression, localExpressionGenerator, localControlFlowGenerator)
                             if (getJvmType(stmt.expression.type) != "V") {
                                 methodVisitor.visitInsn(POP)
                             }
@@ -304,6 +316,79 @@ class FunctionBytecodeGenerator(
             }
             else -> "Ljava/lang/Object;"
         }
+    }
+    
+    /**
+     * Generate expression using local generators with correct method visitor.
+     * This ensures the bytecode is generated into the actual function's method visitor
+     * rather than the dummy method visitor used for setup.
+     */
+    private fun generateExpressionWithLocalGenerators(
+        expr: TypedExpression,
+        localExpressionGenerator: ExpressionBytecodeGenerator,
+        localControlFlowGenerator: ControlFlowBytecodeGenerator
+    ) {
+        when (val expression = expr.expression) {
+            is IfExpression -> {
+                localControlFlowGenerator.generateIfExpression(expression, expr.type)
+            }
+            is WhileExpression -> {
+                localControlFlowGenerator.generateWhileExpression(expression, expr.type)
+            }
+            is FunctionCall -> {
+                // Handle function calls specially - need to pass local generators for argument generation
+                val functionName = (expression.target as? Identifier)?.name
+                when (functionName) {
+                    "println" -> generatePrintlnCallWithLocalGenerators(expression, localExpressionGenerator)
+                    else -> generateFunctionCall(expression, expr.type)
+                }
+            }
+            else -> {
+                // Use local expression generator for basic expressions
+                localExpressionGenerator.generateExpression(expr)
+            }
+        }
+    }
+    
+    /**
+     * Generate println call with local generators to ensure argument generation uses correct method visitor
+     */
+    private fun generatePrintlnCallWithLocalGenerators(call: FunctionCall, localExpressionGenerator: ExpressionBytecodeGenerator) {
+        methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;")
+        
+        // Generate arguments and determine the correct method signature
+        val methodDescriptor = if (call.arguments.isNotEmpty()) {
+            val arg = call.arguments[0]
+            val argType = localExpressionGenerator.inferExpressionType(arg)
+            
+            // Use local expression generator for argument generation
+            localExpressionGenerator.generateExpression(TypedExpression(arg, argType))
+            
+            // Map to appropriate PrintStream.println overload
+            when (argType) {
+                BuiltinTypes.INT -> "(I)V"
+                BuiltinTypes.DOUBLE -> "(D)V"
+                BuiltinTypes.BOOLEAN -> {
+                    // Convert boolean to string representation
+                    // TODO: This might need local control flow generator too if it becomes complex
+                    controlFlowGenerator.convertBooleanToString()
+                    "(Ljava/lang/String;)V"
+                }
+                BuiltinTypes.STRING -> "(Ljava/lang/String;)V"
+                else -> "(Ljava/lang/Object;)V"
+            }
+        } else {
+            methodVisitor.visitLdcInsn("")
+            "(Ljava/lang/String;)V"
+        }
+        
+        methodVisitor.visitMethodInsn(
+            INVOKEVIRTUAL,
+            "java/io/PrintStream",
+            "println",
+            methodDescriptor,
+            false
+        )
     }
 }
 
