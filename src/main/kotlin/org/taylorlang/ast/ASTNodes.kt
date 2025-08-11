@@ -386,6 +386,14 @@ sealed class Pattern : ASTNode {
     ) : Pattern() {
         override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitGuardPattern(this)
     }
+    
+    data class ListPattern(
+        val elements: PersistentList<Pattern> = persistentListOf(),
+        val restVariable: String? = null, // For [first, ...rest] patterns
+        override val sourceLocation: SourceLocation? = null
+    ) : Pattern() {
+        override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitListPattern(this)
+    }
 }
 
 // =============================================================================

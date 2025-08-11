@@ -66,6 +66,7 @@ class PatternTypeChecker(
             is Pattern.IdentifierPattern -> visitIdentifierPatternInternal(pattern, targetType)
             is Pattern.LiteralPattern -> visitLiteralPatternInternal(pattern, targetType)
             is Pattern.ConstructorPattern -> visitConstructorPatternInternal(pattern, targetType)
+            is Pattern.ListPattern -> visitListPatternInternal(pattern, targetType)
             is Pattern.GuardPattern -> visitGuardPatternInternal(pattern, targetType)
         }
     }
@@ -76,6 +77,7 @@ class PatternTypeChecker(
             is Pattern.IdentifierPattern -> visitIdentifierPattern(node)
             is Pattern.LiteralPattern -> visitLiteralPattern(node)
             is Pattern.ConstructorPattern -> visitConstructorPattern(node)
+            is Pattern.ListPattern -> visitListPattern(node)
             is Pattern.GuardPattern -> visitGuardPattern(node)
         }
     }
@@ -256,6 +258,26 @@ class PatternTypeChecker(
                 coveredVariants = setOf(node.constructor)
             ))
         }
+    }
+    
+    override fun visitListPattern(node: Pattern.ListPattern): Result<PatternInfo> {
+        return defaultResult()
+    }
+    
+    private fun visitListPatternInternal(node: Pattern.ListPattern, targetType: Type): Result<PatternInfo> {
+        // TODO: Implement comprehensive list pattern type checking
+        // For now, implement basic placeholder
+        // Full implementation will need:
+        // 1. Verify target type is a list type
+        // 2. Extract element type from list type
+        // 3. Type check each element pattern against element type
+        // 4. Handle rest variable binding with proper sublist type
+        
+        // Placeholder: return empty PatternInfo
+        return Result.success(PatternInfo(
+            bindings = emptyMap(),
+            coveredVariants = emptySet()
+        ))
     }
     
     override fun visitGuardPattern(node: Pattern.GuardPattern): Result<PatternInfo> {

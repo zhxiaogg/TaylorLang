@@ -155,10 +155,18 @@ pattern
     | IDENTIFIER                          // Variable binding
     | literal                            // Literal pattern
     | constructorPattern                 // Constructor pattern
+    | listPattern                        // List pattern
     | pattern 'if' expression           // Guard pattern
     ;
 
 constructorPattern: IDENTIFIER '(' (pattern (',' pattern)*)? ')';
+
+// List patterns: [], [x], [x, y], [first, ...rest]
+listPattern
+    : '[' ']'                                           // Empty list
+    | '[' pattern (',' pattern)* ']'                   // Fixed-length list
+    | '[' pattern (',' pattern)* ',' '...' IDENTIFIER ']'  // Head/tail pattern
+    ;
 
 // Lambda expressions: x => x * 2, (x, y) => x + y
 lambdaExpr

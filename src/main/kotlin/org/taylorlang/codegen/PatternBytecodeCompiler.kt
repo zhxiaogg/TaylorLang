@@ -166,6 +166,9 @@ class PatternBytecodeCompiler(
             is Pattern.ConstructorPattern -> {
                 generateConstructorPatternMatch(pattern, targetType, caseLabel, nextLabel)
             }
+            is Pattern.ListPattern -> {
+                generateListPatternMatch(pattern, targetType, caseLabel, nextLabel)
+            }
             is Pattern.IdentifierPattern -> {
                 // Check if this is a nullary constructor or a variable binding
                 if (isNullaryConstructor(pattern.name, targetType)) {
@@ -304,6 +307,27 @@ class PatternBytecodeCompiler(
     }
     
     /**
+     * Generate list pattern matching
+     */
+    private fun generateListPatternMatch(
+        pattern: Pattern.ListPattern,
+        targetType: Type,
+        caseLabel: org.objectweb.asm.Label,
+        nextLabel: org.objectweb.asm.Label
+    ) {
+        // TODO: Implement comprehensive list pattern matching
+        // For now, implement basic placeholder that matches all lists
+        // Full implementation will need:
+        // 1. Length validation for fixed-length patterns
+        // 2. Element extraction and pattern matching
+        // 3. Rest variable binding for [first, ...rest] patterns
+        
+        // Placeholder: pop the list value and match all
+        methodVisitor.visitInsn(POP) // Remove list value
+        methodVisitor.visitJumpInsn(GOTO, caseLabel)
+    }
+    
+    /**
      * Generate guard pattern matching
      */
     private fun generateGuardPatternMatch(
@@ -378,6 +402,10 @@ class PatternBytecodeCompiler(
             is Pattern.ConstructorPattern -> {
                 // TODO: Implement field binding for constructor patterns
                 // This will require union type runtime support for field extraction
+            }
+            is Pattern.ListPattern -> {
+                // TODO: Implement variable binding for list patterns
+                // This will require list element extraction and rest variable binding
             }
             // Wildcard and literal patterns don't bind variables
             else -> { }

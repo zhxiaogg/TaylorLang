@@ -56,6 +56,12 @@ class PatternConstraintVisitor(
                 Pair(constraints, bindings)
             }
             
+            is Pattern.ListPattern -> {
+                // List pattern matches list types
+                val (constraints, bindings) = processListPattern(pattern, targetType, context)
+                Pair(constraints, bindings)
+            }
+            
             is Pattern.GuardPattern -> {
                 // Process inner pattern first, then add guard constraint
                 val (innerConstraints, innerBindings) = processPattern(pattern.pattern, targetType, context)
@@ -115,6 +121,31 @@ class PatternConstraintVisitor(
         val typeConstraint = Constraint.Equality(targetType, constructorType, pattern.sourceLocation)
         
         return Pair(allConstraints.add(typeConstraint), allBindings)
+    }
+    
+    // =============================================================================
+    // List Pattern Processing
+    // =============================================================================
+    
+    /**
+     * Process list patterns with element matching and rest variable binding.
+     */
+    private fun processListPattern(
+        pattern: Pattern.ListPattern,
+        targetType: Type,
+        context: InferenceContext
+    ): Pair<ConstraintSet, Map<String, Type>> {
+        // TODO: Implement comprehensive list pattern constraint generation
+        // For now, implement basic placeholder
+        // Full implementation will need:
+        // 1. Constraint that target type is a list type
+        // 2. Element type extraction from list type
+        // 3. Recursive pattern processing for each element
+        // 4. Rest variable binding with proper list subtype
+        
+        // Placeholder: return empty constraints and no bindings
+        // This allows the code to compile and can be improved incrementally
+        return Pair(ConstraintSet.empty(), emptyMap())
     }
     
     // =============================================================================
@@ -333,6 +364,11 @@ class PatternConstraintVisitor(
             is Pattern.ConstructorPattern -> {
                 pattern.patterns.flatMap { extractBindings(it) }.toSet()
             }
+            is Pattern.ListPattern -> {
+                val elementBindings = pattern.elements.flatMap { extractBindings(it) }.toSet()
+                val restBinding = pattern.restVariable?.let { setOf(it) } ?: emptySet()
+                elementBindings + restBinding
+            }
             is Pattern.GuardPattern -> extractBindings(pattern.pattern)
         }
     }
@@ -354,6 +390,10 @@ class PatternConstraintVisitor(
             is Pattern.IdentifierPattern -> bindings.add(pattern.name)
             is Pattern.ConstructorPattern -> {
                 pattern.patterns.forEach { collectBindingsRecursively(it, bindings) }
+            }
+            is Pattern.ListPattern -> {
+                pattern.elements.forEach { collectBindingsRecursively(it, bindings) }
+                pattern.restVariable?.let { bindings.add(it) }
             }
             is Pattern.GuardPattern -> collectBindingsRecursively(pattern.pattern, bindings)
             else -> { /* No bindings for wildcard and literal patterns */ }

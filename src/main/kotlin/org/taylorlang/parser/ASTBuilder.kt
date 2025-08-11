@@ -447,6 +447,7 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
                 )
             }
             ctx.constructorPattern() != null -> visit(ctx.constructorPattern()) as Pattern
+            ctx.listPattern() != null -> visit(ctx.listPattern()) as Pattern
             ctx.expression() != null -> {
                 Pattern.GuardPattern(
                     pattern = visit(ctx.pattern()) as Pattern,
@@ -468,6 +469,21 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
         return Pattern.ConstructorPattern(
             constructor = constructor,
             patterns = patterns,
+            sourceLocation = ctx.toSourceLocation()
+        )
+    }
+
+    override fun visitListPattern(ctx: TaylorLangParser.ListPatternContext): Pattern.ListPattern {
+        val elements = ctx.pattern()
+            ?.map { visit(it) as Pattern }
+            ?.toPersistentList()
+            ?: persistentListOf()
+        
+        val restVariable = ctx.IDENTIFIER()?.text // For [first, ...rest] patterns
+        
+        return Pattern.ListPattern(
+            elements = elements,
+            restVariable = restVariable,
             sourceLocation = ctx.toSourceLocation()
         )
     }

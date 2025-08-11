@@ -94,6 +94,7 @@ interface ASTVisitor<R> {
     fun visitLiteralPattern(node: Pattern.LiteralPattern): R
     fun visitConstructorPattern(node: Pattern.ConstructorPattern): R
     fun visitGuardPattern(node: Pattern.GuardPattern): R
+    fun visitListPattern(node: Pattern.ListPattern): R
     
     // =============================================================================
     // Types
