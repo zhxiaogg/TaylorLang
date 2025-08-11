@@ -18,7 +18,8 @@ import org.taylorlang.typechecker.*
 class PatternBytecodeCompiler(
     private val methodVisitor: MethodVisitor,
     private val variableSlotManager: VariableSlotManager,
-    private val expressionGenerator: ExpressionBytecodeGenerator
+    private val expressionGenerator: ExpressionBytecodeGenerator,
+    private val generateExpressionCallback: ((TypedExpression) -> Unit)? = null
 ) {
     
     /**
@@ -39,7 +40,7 @@ class PatternBytecodeCompiler(
         
         // Generate the target expression and store it in a local variable for repeated access
         val targetType = expressionGenerator.inferExpressionType(matchExpr.target)
-        expressionGenerator.generateExpression(TypedExpression(matchExpr.target, targetType))
+        generateExpression(TypedExpression(matchExpr.target, targetType))
         
         // Store target value in a temporary slot for pattern matching
         val targetSlot = variableSlotManager.allocateTemporarySlot(targetType)
@@ -89,7 +90,7 @@ class PatternBytecodeCompiler(
             
             // Generate case expression
             val caseExprType = expressionGenerator.inferExpressionType(case.expression)
-            expressionGenerator.generateExpression(TypedExpression(case.expression, caseExprType))
+            generateExpression(TypedExpression(case.expression, caseExprType))
             
             // For statements, check if the expression result needs to be popped or left on stack
             // If the case expression is a void-returning function call, no value is left on stack
@@ -288,7 +289,7 @@ class PatternBytecodeCompiler(
         
         // Generate guard expression
         val guardType = expressionGenerator.inferExpressionType(pattern.guard)
-        expressionGenerator.generateExpression(TypedExpression(pattern.guard, guardType))
+        generateExpression(TypedExpression(pattern.guard, guardType))
         
         // Restore slot manager state
         variableSlotManager.restoreCheckpoint(savedSlotManager)
@@ -334,6 +335,17 @@ class PatternBytecodeCompiler(
         // TODO: Implement proper check using type definitions
         // For now, return false to treat all identifiers as variable bindings
         return false
+    }
+    
+    /**
+     * Helper method to generate expressions - uses callback if available, otherwise falls back to expressionGenerator
+     */
+    private fun generateExpression(expr: TypedExpression) {
+        if (generateExpressionCallback != null) {
+            generateExpressionCallback.invoke(expr)
+        } else {
+            expressionGenerator.generateExpression(expr)
+        }
     }
     
     /**

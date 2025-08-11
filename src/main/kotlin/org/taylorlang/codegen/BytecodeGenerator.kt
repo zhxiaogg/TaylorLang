@@ -148,10 +148,10 @@ class BytecodeGenerator {
         }
         
         // Create other generators that depend on expression generator
-        controlFlowGenerator = ControlFlowBytecodeGenerator(mv, expressionGenerator)
-        patternCompiler = PatternBytecodeCompiler(mv, variableSlotManager, expressionGenerator)
+        controlFlowGenerator = ControlFlowBytecodeGenerator(mv, expressionGenerator, ::generateExpression)
+        patternCompiler = PatternBytecodeCompiler(mv, variableSlotManager, expressionGenerator, ::generateExpression)
         functionGenerator = FunctionBytecodeGenerator(currentClassName, variableSlotManager, 
-            expressionGenerator, controlFlowGenerator)
+            expressionGenerator, controlFlowGenerator, ::generateExpression)
         functionGenerator.setMethodVisitor(mv)
     }
     
@@ -287,6 +287,7 @@ class BytecodeGenerator {
                     VariableSlotManager(), // New slot manager for function scope
                     tempExprGen,
                     tempControlFlowGen
+                    // Don't pass callback for function declarations - they handle their own context
                 )
                 funcGenerator.generateFunctionDeclaration(statement, classWriter)
             }

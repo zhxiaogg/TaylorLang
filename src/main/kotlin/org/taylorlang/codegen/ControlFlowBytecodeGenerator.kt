@@ -16,7 +16,8 @@ import org.taylorlang.typechecker.*
  */
 class ControlFlowBytecodeGenerator(
     private val methodVisitor: MethodVisitor,
-    private val expressionGenerator: ExpressionBytecodeGenerator
+    private val expressionGenerator: ExpressionBytecodeGenerator,
+    private val generateExpressionCallback: ((TypedExpression) -> Unit)? = null
 ) {
     
     /**
@@ -28,14 +29,14 @@ class ControlFlowBytecodeGenerator(
         
         // Generate condition
         val conditionType = expressionGenerator.inferExpressionType(ifExpr.condition)
-        expressionGenerator.generateExpression(TypedExpression(ifExpr.condition, conditionType))
+        generateExpression(TypedExpression(ifExpr.condition, conditionType))
         
         // Jump to else if condition is false (0)
         methodVisitor.visitJumpInsn(IFEQ, elseLabel)
         
         // Generate then branch
         val thenType = expressionGenerator.inferExpressionType(ifExpr.thenExpression)
-        expressionGenerator.generateExpression(TypedExpression(ifExpr.thenExpression, thenType))
+        generateExpression(TypedExpression(ifExpr.thenExpression, thenType))
         
         // Skip else branch
         methodVisitor.visitJumpInsn(GOTO, endLabel)
@@ -44,7 +45,7 @@ class ControlFlowBytecodeGenerator(
         methodVisitor.visitLabel(elseLabel)
         if (ifExpr.elseExpression != null) {
             val elseType = expressionGenerator.inferExpressionType(ifExpr.elseExpression)
-            expressionGenerator.generateExpression(TypedExpression(ifExpr.elseExpression, elseType))
+            generateExpression(TypedExpression(ifExpr.elseExpression, elseType))
         } else {
             // No else branch - push default value based on result type
             when (getJvmType(resultType)) {
@@ -67,48 +68,60 @@ class ControlFlowBytecodeGenerator(
      */
     fun generateWhileExpression(whileExpr: WhileExpression, resultType: Type) {
         val conditionLabel = org.objectweb.asm.Label()
-        val loopBodyStart = org.objectweb.asm.Label()
-        val loopEnd = org.objectweb.asm.Label()
+        val loopBodyLabel = org.objectweb.asm.Label()
+        val loopEndLabel = org.objectweb.asm.Label()
         
-        // Jump to condition check first
+        // Standard while loop pattern:
+        // 1. Jump to condition check
+        // 2. Loop body
+        // 3. Condition check  
+        // 4. If true, jump back to body
+        // 5. End
+        
+        // Jump directly to condition check (skip body initially)
         methodVisitor.visitJumpInsn(GOTO, conditionLabel)
         
-        // Loop body start label
-        methodVisitor.visitLabel(loopBodyStart)
-        
-        // Generate body
+        // Loop body label and code
+        methodVisitor.visitLabel(loopBodyLabel)
         val bodyType = expressionGenerator.inferExpressionType(whileExpr.body)
-        expressionGenerator.generateExpression(TypedExpression(whileExpr.body, bodyType))
+        generateExpression(TypedExpression(whileExpr.body, bodyType))
         
-        // Pop the body result (while loops don't use body results)
+        // Pop the body result since while loops don't return body values
         if (getJvmType(bodyType) != "V") {
             methodVisitor.visitInsn(POP)
         }
         
-        // Condition check label
+        // Condition evaluation
         methodVisitor.visitLabel(conditionLabel)
-        
-        // Generate condition
         val conditionType = expressionGenerator.inferExpressionType(whileExpr.condition)
-        expressionGenerator.generateExpression(TypedExpression(whileExpr.condition, conditionType))
+        generateExpression(TypedExpression(whileExpr.condition, conditionType))
         
-        // Jump to loop body if condition is true (non-zero) - TECH LEAD'S FIX
-        methodVisitor.visitJumpInsn(IFNE, loopBodyStart)
+        // If condition is true (non-zero), jump back to body
+        methodVisitor.visitJumpInsn(IFNE, loopBodyLabel)
         
-        // Fall through to loop end when condition is false
+        // Condition is false, continue to end
+        methodVisitor.visitLabel(loopEndLabel)
         
-        // Loop end label  
-        methodVisitor.visitLabel(loopEnd)
-        
-        // While loop result is typically Unit - push appropriate default value
-        when (getJvmType(resultType)) {
-            "I", "Z" -> methodVisitor.visitLdcInsn(0)
-            "D" -> methodVisitor.visitLdcInsn(0.0)
-            "Ljava/lang/String;" -> methodVisitor.visitLdcInsn("")
-            "V" -> {
-                // Unit/void - no value to push
+        // While expressions typically return Unit, but we may need to push a default value
+        // to satisfy the stack expectation
+        if (getJvmType(resultType) != "V") {
+            when (getJvmType(resultType)) {
+                "I", "Z" -> methodVisitor.visitLdcInsn(0)
+                "D" -> methodVisitor.visitLdcInsn(0.0)
+                "Ljava/lang/String;" -> methodVisitor.visitLdcInsn("")
+                else -> methodVisitor.visitInsn(ACONST_NULL)
             }
-            else -> methodVisitor.visitInsn(ACONST_NULL)
+        }
+    }
+    
+    /**
+     * Helper method to generate expressions - uses callback if available, otherwise falls back to expressionGenerator
+     */
+    private fun generateExpression(expr: TypedExpression) {
+        if (generateExpressionCallback != null) {
+            generateExpressionCallback.invoke(expr)
+        } else {
+            expressionGenerator.generateExpression(expr)
         }
     }
     

@@ -19,7 +19,8 @@ class FunctionBytecodeGenerator(
     private val currentClassName: String,
     private val variableSlotManager: VariableSlotManager,
     private val expressionGenerator: ExpressionBytecodeGenerator,
-    private val controlFlowGenerator: ControlFlowBytecodeGenerator
+    private val controlFlowGenerator: ControlFlowBytecodeGenerator,
+    private val generateExpressionCallback: ((TypedExpression) -> Unit)? = null
 ) {
     
     private lateinit var methodVisitor: MethodVisitor
@@ -60,12 +61,15 @@ class FunctionBytecodeGenerator(
         
         when (val body = funcDecl.body) {
             is TypedFunctionBody.Expression -> {
-                expressionGenerator.generateExpression(body.expression)
+                generateExpression(body.expression)
                 
                 if (isMainFunction) {
                     // Main function should not return a value, just execute and return void
-                    // For main function with expression body, the expression is executed but the result is not returned
-                    // println calls already handle their own void return, so we don't need to pop anything
+                    // Pop any value that was left on the stack by the expression
+                    val exprType = getJvmType(body.expression.type)
+                    if (exprType != "V") {
+                        methodVisitor.visitInsn(POP)
+                    }
                     methodVisitor.visitInsn(RETURN)
                 } else {
                     // Regular function returns the expression value
@@ -76,7 +80,7 @@ class FunctionBytecodeGenerator(
                 for (stmt in body.statements) {
                     when (stmt) {
                         is TypedStatement.ExpressionStatement -> {
-                            expressionGenerator.generateExpression(stmt.expression)
+                            generateExpression(stmt.expression)
                             if (getJvmType(stmt.expression.type) != "V") {
                                 methodVisitor.visitInsn(POP)
                             }
@@ -131,7 +135,7 @@ class FunctionBytecodeGenerator(
         // Generate arguments in order
         for (argument in call.arguments) {
             val argType = expressionGenerator.inferExpressionType(argument)
-            expressionGenerator.generateExpression(TypedExpression(argument, argType))
+            generateExpression(TypedExpression(argument, argType))
         }
         
         // Build method descriptor for the user function call
@@ -163,7 +167,7 @@ class FunctionBytecodeGenerator(
             val arg = call.arguments[0]
             val argType = expressionGenerator.inferExpressionType(arg)
             
-            expressionGenerator.generateExpression(TypedExpression(arg, argType))
+            generateExpression(TypedExpression(arg, argType))
             
             // Map to appropriate PrintStream.println overload
             when (argType) {
@@ -234,6 +238,17 @@ class FunctionBytecodeGenerator(
                 else -> 1
             }
             else -> 1 // Objects, arrays, etc. use 1 slot
+        }
+    }
+    
+    /**
+     * Helper method to generate expressions - uses callback if available, otherwise falls back to expressionGenerator
+     */
+    private fun generateExpression(expr: TypedExpression) {
+        if (generateExpressionCallback != null) {
+            generateExpressionCallback.invoke(expr)
+        } else {
+            expressionGenerator.generateExpression(expr)
         }
     }
     
