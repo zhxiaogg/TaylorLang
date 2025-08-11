@@ -16,45 +16,48 @@
 
 **MAJOR MILESTONE ACHIEVED**: Phase 3 (JVM Backend) is now **COMPLETE** at 97.7% success rate. TaylorLang programs compile to executable JVM bytecode with all core language features operational and ready for practical use.
 
-#### Current Priority Task: Immutable Collections Implementation
+#### Current Priority Task: ConstraintCollector Refactoring - CRITICAL ARCHITECTURE CLEANUP
 **Status**: ✅ ASSIGNED (2025-08-11)  
 **Assignee**: kotlin-java-engineer  
-**Component**: Standard Library  
+**Component**: Type System - Constraint Collection  
 **Effort**: Large (1 week)  
-**Priority**: HIGH - Foundation for practical programming  
+**Priority**: CRITICAL - Second largest file size violation  
 **Start Date**: 2025-08-11
 **Target Completion**: 2025-08-18
 
-**WHY**: TaylorLang needs essential data structures for practical programming. With the JVM backend complete, developers need collections to build real applications.
+**WHY**: ConstraintCollector.kt (1,354 lines) is the second-largest file size violation after BytecodeGenerator. With BytecodeGenerator successfully refactored, this is the next critical architecture cleanup needed for maintainable codebase.
 
-**WHAT**: Implement immutable List, Map, and Set collections with functional operations that integrate seamlessly with TaylorLang's type system and pattern matching.
+**WHAT**: Refactor ConstraintCollector.kt into focused, single-responsibility components following the successful BytecodeGenerator refactoring pattern that achieved 97.7% test success.
 
 **HOW**: 
-- Research immutable data structures (persistent data structures, structural sharing)
-- Study Clojure's persistent vectors and maps
-- Look into Scala's immutable collections implementation
-- Reference functional programming collection patterns
+- Apply proven refactoring pattern from BytecodeGenerator success
+- Research constraint generation patterns in type inference systems (Hindley-Milner, Algorithm W)
+- Study compiler architecture separation of concerns
+- Reference successful constraint collector implementations (OCaml, Haskell compilers)
+- Apply visitor pattern and delegation pattern for clean architecture
 
 **SCOPE**:
-- Day 1-2: Design collection interfaces and core data structures
-- Day 3-4: Implement immutable List with structural sharing
-- Day 5-6: Implement immutable Map with efficient key-value operations
-- Day 7: Implement immutable Set and comprehensive testing
+- Day 1-2: Analyze ConstraintCollector structure and design component separation
+- Day 3-4: Extract constraint generation for expressions (literals, operators, calls)
+- Day 5-6: Extract constraint generation for statements and control flow
+- Day 7: Integration testing and performance validation
 
 **SUCCESS CRITERIA**:
-- ✅ Immutable List implementation with functional operations (map, filter, fold, append)
-- ✅ Immutable Map with key-value operations and efficient lookup
-- ✅ Immutable Set with mathematical set operations (union, intersection, difference)
-- ✅ Integration with pattern matching for collection destructuring
-- ✅ Comprehensive test coverage (>90%)
-- ✅ Performance benchmarks comparable to Java Collections
-- ✅ Memory efficiency through structural sharing
+- ✅ ConstraintCollector.kt reduced to <500 lines (main coordinator/facade)
+- ✅ 4-5 specialized constraint generation components (<400 lines each)
+- ✅ Clean delegation pattern like BytecodeGenerator refactoring
+- ✅ All existing 39 ConstraintCollectorTest tests pass
+- ✅ No regression in other type system tests
+- ✅ Improved maintainability and extensibility
+- ✅ Performance benchmarks show no regression
+- ✅ Follow Single Responsibility Principle
 
 **RESOURCES**:
-- Purely Functional Data Structures by Chris Okasaki
-- Clojure's Persistent Vector implementation
-- Scala Collections architecture
-- Java's Collections framework for interoperability patterns
+- BytecodeGenerator refactoring success pattern (docs/techlead.md)
+- Types and Programming Languages by Pierce (constraint generation chapters)
+- Algorithm W and Hindley-Milner constraint generation papers
+- OCaml type inference implementation
+- Clean Code by Robert Martin (SRP and delegation patterns)
 
 ---
 
