@@ -46,34 +46,49 @@ class PatternMatchingBytecodeTest : DescribeSpec({
     /**
      * Helper function to compile and execute TaylorLang code
      */
-    suspend fun executeCode(program: Program, expectedOutput: String? = null): Any? {
+    fun executeCode(program: Program, expectedOutput: String? = null): Any? {
+        println("executeCode started with program: ${program.statements.size} statements")
         val typedProgramResult = typeChecker.typeCheck(program)
+        println("Type checking result: ${if (typedProgramResult.isSuccess) "SUCCESS" else "FAILURE"}")
         
         return typedProgramResult.fold(
             onSuccess = { typedProgram ->
+                println("Starting bytecode generation...")
                 val result = generator.generateBytecode(typedProgram, tempDir)
+                println("Bytecode generation completed: ${if (result.isSuccess) "SUCCESS" else "FAILURE"}")
                 result.fold(
                     onSuccess = { generationResult ->
+                        println("Starting class loading for: ${generationResult.mainClassName}")
                         // Load and execute the generated class
                         val classLoader = URLClassLoader(arrayOf(tempDir.toURI().toURL()))
                         val clazz = classLoader.loadClass(generationResult.mainClassName!!)
                         val mainMethod = clazz.getDeclaredMethod("main", Array<String>::class.java)
+                        println("Class loaded successfully, preparing to execute...")
                         
                         if (expectedOutput != null) {
+                            println("Executing with output capture, expected: '$expectedOutput'")
                             // Capture stdout for output verification
                             val originalOut = System.out
                             val baos = ByteArrayOutputStream()
                             val ps = PrintStream(baos)
-                            System.setOut(ps)
                             
                             try {
+                                originalOut.println("About to invoke main method...")
+                                System.setOut(ps)
                                 mainMethod.invoke(null, arrayOf<String>())
-                                val actualOutput = baos.toString().trim()
-                                actualOutput shouldBe expectedOutput
-                            } finally {
                                 System.setOut(originalOut)
+                                println("Main method execution completed")
+                                val actualOutput = baos.toString().trim()
+                                println("Actual output: '$actualOutput'")
+                                actualOutput shouldBe expectedOutput
+                            } catch (e: Exception) {
+                                System.setOut(originalOut)
+                                println("Exception during main method execution: ${e.message}")
+                                e.printStackTrace()
+                                throw e
                             }
                         } else {
+                            println("Executing without output capture")
                             mainMethod.invoke(null, arrayOf<String>())
                         }
                         true
@@ -96,25 +111,40 @@ class PatternMatchingBytecodeTest : DescribeSpec({
     describe("Literal Pattern Matching") {
         
         it("should match integer literals") {
-            val program = TestUtils.createProgram(listOf(
-                TestUtils.createExpressionStatement(
-                    MatchExpression(
-                        target = Literal.IntLiteral(42),
-                        cases = persistentListOf(
-                            MatchCase(
-                                pattern = Pattern.LiteralPattern(Literal.IntLiteral(42)),
-                                expression = TestUtils.createFunctionCall("println", listOf(Literal.StringLiteral("matched 42")))
-                            ),
-                            MatchCase(
-                                pattern = Pattern.WildcardPattern,
-                                expression = TestUtils.createFunctionCall("println", listOf(Literal.StringLiteral("no match")))
+            try {
+                println("=== Starting pattern matching test ===")
+                
+                val program = TestUtils.createProgram(listOf(
+                    TestUtils.createExpressionStatement(
+                        MatchExpression(
+                            target = Literal.IntLiteral(42),
+                            cases = persistentListOf(
+                                MatchCase(
+                                    pattern = Pattern.LiteralPattern(Literal.IntLiteral(42)),
+                                    expression = TestUtils.createFunctionCall("println", listOf(Literal.StringLiteral("matched 42")))
+                                ),
+                                MatchCase(
+                                    pattern = Pattern.WildcardPattern,
+                                    expression = TestUtils.createFunctionCall("println", listOf(Literal.StringLiteral("no match")))
+                                )
                             )
                         )
                     )
-                )
-            ))
-            
-            executeCode(program, "matched 42") shouldBe true
+                ))
+                
+                println("Program created successfully: $program")
+                
+                println("About to call executeCode...")
+                val result = executeCode(program, "matched 42")
+                println("executeCode returned: $result")
+                
+                result shouldBe true
+                
+            } catch (e: Exception) {
+                println("❌ Exception in test: ${e.message}")
+                e.printStackTrace()
+                throw e
+            }
         }
         
         it("should match boolean literals") {

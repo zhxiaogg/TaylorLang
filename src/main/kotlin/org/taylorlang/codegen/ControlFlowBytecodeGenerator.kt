@@ -74,43 +74,11 @@ class ControlFlowBytecodeGenerator(
      * 5. Continue after loop
      */
     fun generateWhileExpression(whileExpr: WhileExpression, resultType: Type) {
-        val loopStartLabel = org.objectweb.asm.Label()
-        val conditionCheckLabel = org.objectweb.asm.Label()
-        val loopEndLabel = org.objectweb.asm.Label()
+        // TESTING: Completely disable while loop generation to test if body executes independently
+        println("DEBUG: generateWhileExpression called, but DISABLED - should not see while loop body execute")
         
-        // CRITICAL: Jump to condition check FIRST to implement proper while loop semantics
-        // This ensures while(false) never executes the body
-        methodVisitor.visitJumpInsn(GOTO, conditionCheckLabel)
-        
-        // === LOOP BODY SECTION ===
-        methodVisitor.visitLabel(loopStartLabel)
-        
-        // Generate the loop body
-        val bodyType = expressionGenerator.inferExpressionType(whileExpr.body)
-        generateExpression(TypedExpression(whileExpr.body, bodyType))
-        
-        // Pop body result - while loops return Unit, not the body result
-        if (getJvmType(bodyType) != "V") {
-            methodVisitor.visitInsn(POP)
-        }
-        
-        // === CONDITION CHECK SECTION ===
-        methodVisitor.visitLabel(conditionCheckLabel)
-        
-        // Generate condition evaluation  
-        val conditionType = expressionGenerator.inferExpressionType(whileExpr.condition)
-        generateExpression(TypedExpression(whileExpr.condition, conditionType))
-        
-        // CRITICAL: IFNE jumps if stack value is NOT zero (i.e., true)
-        // - while(true): condition puts 1 on stack, IFNE jumps to body -> correct
-        // - while(false): condition puts 0 on stack, IFNE does NOT jump -> correct  
-        methodVisitor.visitJumpInsn(IFNE, loopStartLabel)
-        
-        // === LOOP EXIT SECTION ===
-        methodVisitor.visitLabel(loopEndLabel)
-        
-        // While expressions return Unit - no value to push
-        // The stack should already be clean after condition evaluation
+        // Just push a Unit value and return
+        methodVisitor.visitInsn(ICONST_0) // Unit value
     }
     
     /**
