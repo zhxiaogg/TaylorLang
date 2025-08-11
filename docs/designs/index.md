@@ -4,6 +4,7 @@ This directory contains technical design documents for TaylorLang components.
 
 ## Design Documents
 
+- [Comprehensive Pattern Matching Design](./comprehensive-pattern-matching.md) - Complete analysis and implementation plan for pattern matching specification support
 - [Unification Algorithm](./unification-algorithm.md) - Type constraint solving and substitution generation for type inference
 - [Type Inference Integration](./type-inference-integration.md) - Integration of constraint-based inference with TypeChecker
 
