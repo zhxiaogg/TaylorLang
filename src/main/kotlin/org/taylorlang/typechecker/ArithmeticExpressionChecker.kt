@@ -131,56 +131,34 @@ class ArithmeticExpressionChecker(
     /**
      * Check if two types are compatible (structural equality ignoring source locations).
      * 
+     * Migrated to use centralized TypeOperations for consistent type comparison
+     * across all type checking components.
+     * 
      * @param type1 First type to compare
      * @param type2 Second type to compare
      * @return true if the types are compatible
      */
     private fun typesCompatible(type1: Type, type2: Type): Boolean {
-        // Structural equality ignoring source locations
-        return when {
-            type1 is Type.PrimitiveType && type2 is Type.PrimitiveType -> 
-                type1.name == type2.name
-            type1 is Type.NamedType && type2 is Type.NamedType -> 
-                type1.name == type2.name
-            type1 is Type.GenericType && type2 is Type.GenericType -> 
-                type1.name == type2.name && type1.arguments.size == type2.arguments.size &&
-                type1.arguments.zip(type2.arguments).all { (a1, a2) -> typesCompatible(a1, a2) }
-            type1 is Type.TupleType && type2 is Type.TupleType -> 
-                type1.elementTypes.size == type2.elementTypes.size &&
-                type1.elementTypes.zip(type2.elementTypes).all { (t1, t2) -> typesCompatible(t1, t2) }
-            type1 is Type.NullableType && type2 is Type.NullableType ->
-                typesCompatible(type1.baseType, type2.baseType)
-            type1 is Type.UnionType && type2 is Type.UnionType ->
-                type1.name == type2.name && type1.typeArguments.size == type2.typeArguments.size &&
-                type1.typeArguments.zip(type2.typeArguments).all { (a1, a2) -> typesCompatible(a1, a2) }
-            type1 is Type.FunctionType && type2 is Type.FunctionType ->
-                typesCompatible(type1.returnType, type2.returnType) &&
-                type1.parameterTypes.size == type2.parameterTypes.size &&
-                type1.parameterTypes.zip(type2.parameterTypes).all { (p1, p2) -> typesCompatible(p1, p2) }
-            else -> type1 == type2
-        }
+        return TypeOperations.areEqual(type1, type2)
     }
     
     /**
      * Attempt to unify two types, handling numeric type promotion.
+     * 
+     * Migrated to use centralized TypeOperations for optimized unification
+     * with caching and enhanced error handling.
      * 
      * @param type1 First type to unify
      * @param type2 Second type to unify
      * @return The unified type, or null if unification fails
      */
     fun unifyTypes(type1: Type, type2: Type): Type? {
-        // If types are exactly the same, unification succeeds
-        if (typesCompatible(type1, type2)) {
-            return type1
+        return when (val result = TypeOperations.unify(type1, type2)) {
+            is TypeUnification.UnificationResult.Success -> result.unifiedType
+            is TypeUnification.UnificationResult.Failure -> {
+                // Try numeric type promotion as fallback
+                TypeOperations.getWiderType(type1, type2)
+            }
         }
-        
-        // Handle numeric type promotion
-        val numericUnification = BuiltinTypes.getWiderNumericType(type1, type2)
-        if (numericUnification != null) {
-            return numericUnification
-        }
-        
-        // For this implementation, we'll be strict about type unification
-        return null
     }
 }
