@@ -290,19 +290,64 @@ class BytecodeGenerator {
     private fun generateStatement(statement: TypedStatement, classWriter: ClassWriter) {
         when (statement) {
             is TypedStatement.FunctionDeclaration -> {
-                // Create dedicated generators for function scope
-                val dummyMv = classWriter.visitMethod(ACC_PRIVATE, "dummy", "()V", null, null)
-                val tempExprGen = ExpressionBytecodeGenerator(dummyMv, VariableSlotManager()) { BuiltinTypes.INT }
-                val tempControlFlowGen = ControlFlowBytecodeGenerator(dummyMv, tempExprGen)
+                // For function declarations, directly generate the function using the class writer
+                val funcDecl = statement.declaration
+                val isMainFunction = funcDecl.name == "main"
                 
-                val funcGenerator = FunctionBytecodeGenerator(
-                    currentClassName, 
-                    VariableSlotManager(), // New slot manager for function scope
-                    tempExprGen,
-                    tempControlFlowGen
-                    // Don't pass callback - let function generator handle its own expression generation
+                val descriptor = if (isMainFunction) {
+                    "([Ljava/lang/String;)V"  // Main function always has this signature
+                } else {
+                    buildMethodDescriptor(funcDecl)
+                }
+                
+                val access = ACC_PUBLIC + ACC_STATIC
+                
+                val methodVisitor = classWriter.visitMethod(
+                    access,
+                    funcDecl.name,
+                    descriptor,
+                    null,
+                    null
                 )
-                funcGenerator.generateFunctionDeclaration(statement, classWriter)
+                methodVisitor.visitCode()
+                
+                // Set up proper generators for this method
+                val functionSlotManager = VariableSlotManager()
+                val functionExprGen = ExpressionBytecodeGenerator(methodVisitor, functionSlotManager) { expr ->
+                    when (expr) {
+                        is Literal.IntLiteral -> BuiltinTypes.INT
+                        is Literal.FloatLiteral -> BuiltinTypes.DOUBLE
+                        is Literal.BooleanLiteral -> BuiltinTypes.BOOLEAN
+                        is Literal.StringLiteral -> BuiltinTypes.STRING
+                        else -> BuiltinTypes.INT
+                    }
+                }
+                val functionControlFlowGen = ControlFlowBytecodeGenerator(methodVisitor, functionExprGen) { expr ->
+                    functionExprGen.generateExpression(expr)
+                }
+                
+                // Generate function body
+                when (val body = statement.body) {
+                    is TypedFunctionBody.Expression -> {
+                        // Generate the expression
+                        generateFunctionExpression(body.expression, functionExprGen, functionControlFlowGen, methodVisitor)
+                        
+                        if (isMainFunction) {
+                            // Main function should return void
+                            methodVisitor.visitInsn(RETURN)
+                        } else {
+                            // Regular function returns the expression value
+                            generateReturnInstruction(body.expression.type, methodVisitor)
+                        }
+                    }
+                    is TypedFunctionBody.Block -> {
+                        // Handle block body - not implemented in this fix
+                        methodVisitor.visitInsn(RETURN)
+                    }
+                }
+                
+                methodVisitor.visitMaxs(10, 10) // Conservative estimates
+                methodVisitor.visitEnd()
             }
             is TypedStatement.ExpressionStatement -> {
                 // Expression statements are handled in main method
@@ -380,6 +425,88 @@ class BytecodeGenerator {
             }
             else -> "Ljava/lang/Object;"
         }
+    }
+    
+    /**
+     * Generate function expression
+     */
+    private fun generateFunctionExpression(
+        expr: TypedExpression, 
+        exprGen: ExpressionBytecodeGenerator, 
+        controlFlowGen: ControlFlowBytecodeGenerator,
+        methodVisitor: MethodVisitor
+    ) {
+        when (val expression = expr.expression) {
+            is FunctionCall -> {
+                val functionName = (expression.target as? Identifier)?.name
+                if (functionName == "println") {
+                    // Generate println call
+                    methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;")
+                    
+                    if (expression.arguments.isNotEmpty()) {
+                        val arg = expression.arguments[0]
+                        val argType = exprGen.inferExpressionType(arg)
+                        exprGen.generateExpression(TypedExpression(arg, argType))
+                        
+                        val methodDescriptor = when (argType) {
+                            BuiltinTypes.INT -> "(I)V"
+                            BuiltinTypes.DOUBLE -> "(D)V" 
+                            BuiltinTypes.BOOLEAN -> {
+                                controlFlowGen.convertBooleanToString()
+                                "(Ljava/lang/String;)V"
+                            }
+                            BuiltinTypes.STRING -> "(Ljava/lang/String;)V"
+                            else -> "(Ljava/lang/Object;)V"
+                        }
+                        
+                        methodVisitor.visitMethodInsn(
+                            INVOKEVIRTUAL,
+                            "java/io/PrintStream", 
+                            "println",
+                            methodDescriptor,
+                            false
+                        )
+                    }
+                } else {
+                    // Other function calls - delegate to expression generator
+                    exprGen.generateExpression(expr)
+                }
+            }
+            is IfExpression -> {
+                controlFlowGen.generateIfExpression(expression, expr.type)
+            }
+            is WhileExpression -> {
+                controlFlowGen.generateWhileExpression(expression, expr.type)
+            }
+            else -> {
+                exprGen.generateExpression(expr)
+            }
+        }
+    }
+    
+    /**
+     * Generate return instruction for given type
+     */
+    private fun generateReturnInstruction(type: Type, methodVisitor: MethodVisitor) {
+        when (getJvmType(type)) {
+            "I", "Z" -> methodVisitor.visitInsn(IRETURN)
+            "D" -> methodVisitor.visitInsn(DRETURN)
+            "Ljava/lang/String;" -> methodVisitor.visitInsn(ARETURN)
+            "V" -> methodVisitor.visitInsn(RETURN)
+            else -> methodVisitor.visitInsn(ARETURN)
+        }
+    }
+    
+    /**
+     * Build method descriptor from function declaration
+     */
+    private fun buildMethodDescriptor(funcDecl: FunctionDecl): String {
+        val paramTypes = funcDecl.parameters.map { param ->
+            param.type?.let(::getJvmType) ?: "Ljava/lang/Object;"
+        }
+        val returnType = funcDecl.returnType?.let(::getJvmType) ?: "V"
+        
+        return "(${paramTypes.joinToString("")})$returnType"
     }
     
     /**

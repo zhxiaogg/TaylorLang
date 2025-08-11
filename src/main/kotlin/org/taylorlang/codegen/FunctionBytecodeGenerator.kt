@@ -43,6 +43,7 @@ class FunctionBytecodeGenerator(
             buildMethodDescriptor(funcDecl.declaration)
         }
         
+        
         val access = ACC_PUBLIC + ACC_STATIC
         
         val methodVisitor = classWriter.visitMethod(
@@ -76,10 +77,24 @@ class FunctionBytecodeGenerator(
                 
                 if (isMainFunction) {
                     // Main function should not return a value, just execute and return void
-                    // Pop any value that was left on the stack by the expression
-                    val exprType = getJvmType(body.expression.type)
-                    if (exprType != "V") {
-                        methodVisitor.visitInsn(POP)
+                    // For main functions, we don't need to worry about return values on the stack
+                    // The println() call already handles its own stack management and returns void
+                    
+                    // Check if this is a function call that returns void
+                    val isVoidExpression = when (val expr = body.expression.expression) {
+                        is FunctionCall -> {
+                            val functionName = (expr.target as? Identifier)?.name
+                            functionName == "println" // println returns void
+                        }
+                        else -> false
+                    }
+                    
+                    if (!isVoidExpression) {
+                        // Only pop if the expression actually leaves something on the stack
+                        val exprType = getJvmType(body.expression.type)
+                        if (exprType != "V") {
+                            methodVisitor.visitInsn(POP)
+                        }
                     }
                     // Return normally from main method (no System.exit needed)
                     methodVisitor.visitInsn(RETURN)
@@ -339,7 +354,9 @@ class FunctionBytecodeGenerator(
                 // Handle function calls specially - need to pass local generators for argument generation
                 val functionName = (expression.target as? Identifier)?.name
                 when (functionName) {
-                    "println" -> generatePrintlnCallWithLocalGenerators(expression, localExpressionGenerator)
+                    "println" -> {
+                        generatePrintlnCallWithLocalGenerators(expression, localExpressionGenerator)
+                    }
                     else -> generateFunctionCall(expression, expr.type)
                 }
             }
