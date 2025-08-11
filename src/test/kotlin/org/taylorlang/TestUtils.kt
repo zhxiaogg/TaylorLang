@@ -2,6 +2,8 @@ package org.taylorlang
 
 import io.kotest.matchers.should
 import io.kotest.matchers.types.beInstanceOf
+import org.taylorlang.ast.*
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * Test utilities for safer type checking and casting
@@ -30,4 +32,38 @@ inline fun <reified T : Any> List<*>.safeGetAs(index: Int, errorMessage: String 
 inline fun <reified T : Any> Any?.shouldBeA(): T {
     this should beInstanceOf<T>()
     return this as T
+}
+
+/**
+ * Helper methods for creating test AST nodes
+ */
+object TestUtils {
+    
+    /**
+     * Create a Program with given statements
+     */
+    fun createProgram(statements: List<Statement>): Program {
+        return Program(
+            statements = persistentListOf(*statements.toTypedArray()),
+            sourceLocation = null
+        )
+    }
+    
+    /**
+     * Create an expression statement wrapper (Expression already extends Statement)
+     */
+    fun createExpressionStatement(expression: Expression): Statement {
+        return expression
+    }
+    
+    /**
+     * Create a function call expression for testing
+     */
+    fun createFunctionCall(functionName: String, arguments: List<Expression>): FunctionCall {
+        return FunctionCall(
+            target = Identifier(functionName),
+            arguments = persistentListOf(*arguments.toTypedArray()),
+            sourceLocation = null
+        )
+    }
 }

@@ -3,6 +3,14 @@ package org.taylorlang.codegen
 import org.taylorlang.ast.Type
 
 /**
+ * Checkpoint of variable slot manager state for restoration
+ */
+data class SlotCheckpoint(
+    val variableSlots: Map<String, Int>,
+    val nextAvailableSlot: Int
+)
+
+/**
  * Manages JVM local variable slots for bytecode generation.
  * 
  * The JVM uses local variable slots to store method parameters and local variables.
@@ -85,6 +93,50 @@ class VariableSlotManager {
     fun clear() {
         variableSlots.clear()
         nextAvailableSlot = 1
+    }
+    
+    /**
+     * Allocate a temporary slot for intermediate values.
+     * These slots don't have variable names and are released explicitly.
+     */
+    fun allocateTemporarySlot(type: Type): Int {
+        val slot = nextAvailableSlot
+        nextAvailableSlot += getSlotCount(type)
+        return slot
+    }
+    
+    /**
+     * Release a temporary slot (not implemented - just for API consistency)
+     */
+    fun releaseTemporarySlot(slot: Int) {
+        // In a full implementation, we'd track and reuse temporary slots
+        // For now, we just consume slots and rely on the JVM's optimization
+    }
+    
+    /**
+     * Create a checkpoint of current slot state for restoration
+     */
+    fun createCheckpoint(): SlotCheckpoint {
+        return SlotCheckpoint(
+            variableSlots = variableSlots.toMap(),
+            nextAvailableSlot = nextAvailableSlot
+        )
+    }
+    
+    /**
+     * Restore slot state from a checkpoint
+     */
+    fun restoreCheckpoint(checkpoint: SlotCheckpoint) {
+        variableSlots.clear()
+        variableSlots.putAll(checkpoint.variableSlots)
+        nextAvailableSlot = checkpoint.nextAvailableSlot
+    }
+    
+    /**
+     * Get the last allocated slot number (for debugging)
+     */
+    fun getLastAllocatedSlot(): Int {
+        return nextAvailableSlot - 1
     }
     
     /**

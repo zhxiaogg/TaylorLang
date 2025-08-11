@@ -418,6 +418,9 @@ class BytecodeGenerator {
             is FunctionCall -> {
                 generateFunctionCall(expression, expr.type)
             }
+            is MatchExpression -> {
+                generateMatchExpression(expression, expr.type)
+            }
             else -> {
                 // Unsupported expression - push default value
                 when (getJvmType(expr.type)) {
@@ -844,6 +847,288 @@ class BytecodeGenerator {
             methodDescriptor,
             false
         )
+    }
+    
+    /**
+     * Generate code for match expressions
+     */
+    private fun generateMatchExpression(matchExpr: MatchExpression, resultType: Type) {
+        if (matchExpr.cases.isEmpty()) {
+            // Empty match - push default value and return
+            when (getJvmType(resultType)) {
+                "I", "Z" -> methodVisitor!!.visitLdcInsn(0)
+                "D" -> methodVisitor!!.visitLdcInsn(0.0)
+                "Ljava/lang/String;" -> methodVisitor!!.visitLdcInsn("")
+                "V" -> { /* Unit/void - no value to push */ }
+                else -> methodVisitor!!.visitInsn(ACONST_NULL)
+            }
+            return
+        }
+        
+        // Generate the target expression and store it in a local variable for repeated access
+        val targetType = inferExpressionType(matchExpr.target)
+        generateExpression(TypedExpression(matchExpr.target, targetType))
+        
+        // Store target value in a temporary slot for pattern matching
+        val targetSlot = variableSlotManager.allocateTemporarySlot(targetType)
+        val storeInstruction = variableSlotManager.getStoreInstruction(targetType)
+        methodVisitor!!.visitVarInsn(storeInstruction, targetSlot)
+        
+        // Create labels
+        val caseBodyLabels = matchExpr.cases.map { org.objectweb.asm.Label() }
+        val endLabel = org.objectweb.asm.Label()
+        
+        // Generate pattern tests and jumps
+        for (i in matchExpr.cases.indices) {
+            val case = matchExpr.cases[i]
+            val caseBodyLabel = caseBodyLabels[i]
+            val nextCaseLabel = if (i < matchExpr.cases.size - 1) {
+                org.objectweb.asm.Label() // Label for next case test
+            } else {
+                endLabel // Last case, jump to end if no match
+            }
+            
+            // Load target value for comparison
+            val loadInstruction = variableSlotManager.getLoadInstruction(targetType)
+            methodVisitor!!.visitVarInsn(loadInstruction, targetSlot)
+            
+            // Generate pattern test
+            generatePatternTest(case.pattern, targetType, caseBodyLabel, nextCaseLabel)
+            
+            // If this isn't the last case, add the next case label
+            if (i < matchExpr.cases.size - 1) {
+                methodVisitor!!.visitLabel(nextCaseLabel)
+            }
+        }
+        
+        // Generate case bodies
+        for (i in matchExpr.cases.indices) {
+            val case = matchExpr.cases[i]
+            val caseBodyLabel = caseBodyLabels[i]
+            
+            // Case body label
+            methodVisitor!!.visitLabel(caseBodyLabel)
+            
+            // Create new scope for pattern variable bindings
+            val savedSlotManager = variableSlotManager.createCheckpoint()
+            
+            // Bind pattern variables (if any)
+            bindPatternVariables(case.pattern, targetType, targetSlot)
+            
+            // Generate case expression
+            val caseExprType = inferExpressionType(case.expression)
+            generateExpression(TypedExpression(case.expression, caseExprType))
+            
+            // Restore variable slot state
+            variableSlotManager.restoreCheckpoint(savedSlotManager)
+            
+            // Jump to end (don't fall through to next case)
+            methodVisitor!!.visitJumpInsn(GOTO, endLabel)
+        }
+        
+        // End label
+        methodVisitor!!.visitLabel(endLabel)
+        
+        // Release temporary slot
+        variableSlotManager.releaseTemporarySlot(targetSlot)
+    }
+    
+    /**
+     * Generate pattern test logic that jumps to caseLabel if pattern matches,
+     * otherwise falls through to nextLabel
+     */
+    private fun generatePatternTest(
+        pattern: Pattern, 
+        targetType: Type, 
+        caseLabel: org.objectweb.asm.Label, 
+        nextLabel: org.objectweb.asm.Label
+    ) {
+        when (pattern) {
+            is Pattern.WildcardPattern -> {
+                // Wildcard always matches - remove value and jump to case
+                methodVisitor!!.visitInsn(POP) // Remove target value from stack
+                methodVisitor!!.visitJumpInsn(GOTO, caseLabel)
+            }
+            is Pattern.LiteralPattern -> {
+                generateLiteralPatternMatch(pattern.literal, targetType, caseLabel, nextLabel)
+            }
+            is Pattern.ConstructorPattern -> {
+                generateConstructorPatternMatch(pattern, targetType, caseLabel, nextLabel)
+            }
+            is Pattern.IdentifierPattern -> {
+                // Check if this is a nullary constructor or a variable binding
+                if (isNullaryConstructor(pattern.name, targetType)) {
+                    generateNullaryConstructorMatch(pattern.name, targetType, caseLabel, nextLabel)
+                } else {
+                    // Variable pattern - always matches, remove value and jump
+                    methodVisitor!!.visitInsn(POP) // Remove target value from stack
+                    methodVisitor!!.visitJumpInsn(GOTO, caseLabel)
+                }
+            }
+            is Pattern.GuardPattern -> {
+                // First check the inner pattern, then evaluate guard
+                generateGuardPatternMatch(pattern, targetType, caseLabel, nextLabel)
+            }
+        }
+    }
+    
+    /**
+     * Generate literal pattern matching
+     */
+    private fun generateLiteralPatternMatch(
+        literal: Literal,
+        targetType: Type,
+        caseLabel: org.objectweb.asm.Label,
+        nextLabel: org.objectweb.asm.Label
+    ) {
+        // Stack: [target_value]
+        // Generate literal value for comparison
+        when (literal) {
+            is Literal.IntLiteral -> {
+                methodVisitor!!.visitLdcInsn(literal.value)
+                // Compare integers: IF_ICMPEQ jumps if equal
+                methodVisitor!!.visitJumpInsn(IF_ICMPEQ, caseLabel)
+            }
+            is Literal.BooleanLiteral -> {
+                methodVisitor!!.visitLdcInsn(if (literal.value) 1 else 0)
+                methodVisitor!!.visitJumpInsn(IF_ICMPEQ, caseLabel)
+            }
+            is Literal.StringLiteral -> {
+                methodVisitor!!.visitLdcInsn(literal.value)
+                // Use String.equals() for string comparison
+                methodVisitor!!.visitMethodInsn(
+                    INVOKEVIRTUAL,
+                    "java/lang/String",
+                    "equals",
+                    "(Ljava/lang/Object;)Z",
+                    false
+                )
+                methodVisitor!!.visitJumpInsn(IFNE, caseLabel)
+            }
+            is Literal.FloatLiteral -> {
+                methodVisitor!!.visitLdcInsn(literal.value)
+                methodVisitor!!.visitInsn(DCMPG)
+                methodVisitor!!.visitJumpInsn(IFEQ, caseLabel)
+            }
+            is Literal.NullLiteral -> {
+                // Compare with null
+                methodVisitor!!.visitJumpInsn(IFNULL, caseLabel)
+                return // Don't fall through to nextLabel jump
+            }
+            else -> {
+                // Unsupported literal - treat as non-matching
+                methodVisitor!!.visitInsn(POP) // Remove target value
+            }
+        }
+        // If we reach here, pattern didn't match - fall through to next pattern
+    }
+    
+    /**
+     * Generate constructor pattern matching for union types
+     */
+    private fun generateConstructorPatternMatch(
+        pattern: Pattern.ConstructorPattern,
+        targetType: Type,
+        caseLabel: org.objectweb.asm.Label,
+        nextLabel: org.objectweb.asm.Label
+    ) {
+        // For now, implement basic constructor matching
+        // TODO: Full union type runtime support will be needed
+        
+        // Placeholder: assume the constructor name matches some field or method
+        // Real implementation would check union type variant tags
+        methodVisitor!!.visitInsn(POP) // Remove target value for now
+        
+        // For demonstration, always jump to case (this will be properly implemented
+        // when union type runtime representation is finalized)
+        methodVisitor!!.visitJumpInsn(GOTO, caseLabel)
+    }
+    
+    /**
+     * Generate nullary constructor matching
+     */
+    private fun generateNullaryConstructorMatch(
+        constructorName: String,
+        targetType: Type,
+        caseLabel: org.objectweb.asm.Label,
+        nextLabel: org.objectweb.asm.Label
+    ) {
+        // Similar to constructor pattern but for nullary constructors
+        // TODO: Implement with proper union type runtime support
+        methodVisitor!!.visitInsn(POP) // Remove target value
+        methodVisitor!!.visitJumpInsn(GOTO, caseLabel)
+    }
+    
+    /**
+     * Generate guard pattern matching
+     */
+    private fun generateGuardPatternMatch(
+        pattern: Pattern.GuardPattern,
+        targetType: Type,
+        caseLabel: org.objectweb.asm.Label,
+        nextLabel: org.objectweb.asm.Label
+    ) {
+        // Create intermediate label for guard evaluation
+        val guardLabel = org.objectweb.asm.Label()
+        
+        // First, match the inner pattern
+        generatePatternTest(pattern.pattern, targetType, guardLabel, nextLabel)
+        
+        // If inner pattern matched, evaluate guard
+        methodVisitor!!.visitLabel(guardLabel)
+        
+        // Bind pattern variables for guard evaluation
+        val savedSlotManager = variableSlotManager.createCheckpoint()
+        bindPatternVariables(pattern.pattern, targetType, variableSlotManager.getLastAllocatedSlot())
+        
+        // Generate guard expression
+        val guardType = inferExpressionType(pattern.guard)
+        generateExpression(TypedExpression(pattern.guard, guardType))
+        
+        // Restore slot manager state
+        variableSlotManager.restoreCheckpoint(savedSlotManager)
+        
+        // Jump to case if guard is true
+        methodVisitor!!.visitJumpInsn(IFNE, caseLabel)
+        
+        // If guard is false, fall through to next pattern
+    }
+    
+    /**
+     * Bind pattern variables to local slots
+     */
+    private fun bindPatternVariables(pattern: Pattern, targetType: Type, targetSlot: Int) {
+        when (pattern) {
+            is Pattern.IdentifierPattern -> {
+                if (!isNullaryConstructor(pattern.name, targetType)) {
+                    // Variable binding - copy target value to new slot
+                    val slot = variableSlotManager.allocateSlot(pattern.name, targetType)
+                    val loadInstruction = variableSlotManager.getLoadInstruction(targetType)
+                    val storeInstruction = variableSlotManager.getStoreInstruction(targetType)
+                    
+                    methodVisitor!!.visitVarInsn(loadInstruction, targetSlot)
+                    methodVisitor!!.visitVarInsn(storeInstruction, slot)
+                }
+            }
+            is Pattern.GuardPattern -> {
+                bindPatternVariables(pattern.pattern, targetType, targetSlot)
+            }
+            is Pattern.ConstructorPattern -> {
+                // TODO: Implement field binding for constructor patterns
+                // This will require union type runtime support for field extraction
+            }
+            // Wildcard and literal patterns don't bind variables
+            else -> { }
+        }
+    }
+    
+    /**
+     * Check if an identifier is a nullary constructor for the given type
+     */
+    private fun isNullaryConstructor(name: String, targetType: Type): Boolean {
+        // TODO: Implement proper check using type definitions
+        // For now, return false to treat all identifiers as variable bindings
+        return false
     }
     
     /**
