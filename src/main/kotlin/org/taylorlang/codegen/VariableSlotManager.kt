@@ -7,6 +7,7 @@ import org.taylorlang.ast.Type
  */
 data class SlotCheckpoint(
     val variableSlots: Map<String, Int>,
+    val variableTypes: Map<String, Type>,
     val nextAvailableSlot: Int
 )
 
@@ -24,6 +25,7 @@ data class SlotCheckpoint(
  */
 class VariableSlotManager {
     private val variableSlots = mutableMapOf<String, Int>()
+    private val variableTypes = mutableMapOf<String, Type>()
     private var nextAvailableSlot = 1 // Start at 1, slot 0 reserved for 'this'
     
     /**
@@ -39,6 +41,7 @@ class VariableSlotManager {
         
         val slot = nextAvailableSlot
         variableSlots[name] = slot
+        variableTypes[name] = type
         
         // Increment by the number of slots this type requires
         nextAvailableSlot += getSlotCount(type)
@@ -63,6 +66,15 @@ class VariableSlotManager {
      */
     fun getSlotOrThrow(name: String): Int {
         return getSlot(name) ?: throw IllegalArgumentException("Variable '$name' has no allocated slot")
+    }
+    
+    /**
+     * Get the type of a variable.
+     * @param name Variable name
+     * @return The variable type, or null if not allocated
+     */
+    fun getType(name: String): Type? {
+        return variableTypes[name]
     }
     
     /**
@@ -92,6 +104,7 @@ class VariableSlotManager {
      */
     fun clear() {
         variableSlots.clear()
+        variableTypes.clear()
         nextAvailableSlot = 1
     }
     
@@ -119,6 +132,7 @@ class VariableSlotManager {
     fun createCheckpoint(): SlotCheckpoint {
         return SlotCheckpoint(
             variableSlots = variableSlots.toMap(),
+            variableTypes = variableTypes.toMap(),
             nextAvailableSlot = nextAvailableSlot
         )
     }
@@ -128,7 +142,9 @@ class VariableSlotManager {
      */
     fun restoreCheckpoint(checkpoint: SlotCheckpoint) {
         variableSlots.clear()
+        variableTypes.clear()
         variableSlots.putAll(checkpoint.variableSlots)
+        variableTypes.putAll(checkpoint.variableTypes)
         nextAvailableSlot = checkpoint.nextAvailableSlot
     }
     
