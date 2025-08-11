@@ -260,10 +260,11 @@ class BytecodeVisitor(
         
         // CRITICAL: IFNE jumps if stack value is NOT zero (i.e., true)
         // - while(true): condition puts 1 on stack, IFNE jumps to body -> correct
-        // - while(false): condition puts 0 on stack, IFNE does NOT jump -> correct  
+        // - while(false): condition puts 0 on stack, IFNE does NOT jump -> falls through to exit
         methodVisitor.visitJumpInsn(IFNE, loopStartLabel)
         
         // === LOOP EXIT SECTION ===
+        // No explicit jump needed here - execution falls through when condition is false
         methodVisitor.visitLabel(loopEndLabel)
         
         // While expressions need to leave a value on the stack
