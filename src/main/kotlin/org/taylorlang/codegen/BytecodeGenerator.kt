@@ -919,6 +919,34 @@ class BytecodeGenerator {
             val caseExprType = inferExpressionType(case.expression)
             generateExpression(TypedExpression(case.expression, caseExprType))
             
+            // For statements, check if the expression result needs to be popped or left on stack
+            // If the case expression is a void-returning function call, no value is left on stack
+            val leavesValueOnStack = when (case.expression) {
+                is FunctionCall -> {
+                    if ((case.expression.target as? Identifier)?.name == "println") {
+                        false // println returns void
+                    } else {
+                        getJvmType(caseExprType) != "V"
+                    }
+                }
+                else -> getJvmType(caseExprType) != "V"
+            }
+            
+            // If this case expression left a value on the stack but we need to match the result type
+            // of the overall match expression, we may need to convert or leave it
+            if (leavesValueOnStack && getJvmType(resultType) == "V") {
+                // Case expression returned a value but match expression should return void - pop it
+                methodVisitor!!.visitInsn(POP)
+            } else if (!leavesValueOnStack && getJvmType(resultType) != "V") {
+                // Case expression was void but match expression should return a value - push default
+                when (getJvmType(resultType)) {
+                    "I", "Z" -> methodVisitor!!.visitLdcInsn(0)
+                    "D" -> methodVisitor!!.visitLdcInsn(0.0)
+                    "Ljava/lang/String;" -> methodVisitor!!.visitLdcInsn("")
+                    else -> methodVisitor!!.visitInsn(ACONST_NULL)
+                }
+            }
+            
             // Restore variable slot state
             variableSlotManager.restoreCheckpoint(savedSlotManager)
             
@@ -986,12 +1014,15 @@ class BytecodeGenerator {
         when (literal) {
             is Literal.IntLiteral -> {
                 methodVisitor!!.visitLdcInsn(literal.value)
-                // Compare integers: IF_ICMPEQ jumps if equal
+                // Compare integers: IF_ICMPEQ jumps if equal, consumes both values
                 methodVisitor!!.visitJumpInsn(IF_ICMPEQ, caseLabel)
+                // If we reach here, comparison failed and stack is empty
+                // No need to pop anything
             }
             is Literal.BooleanLiteral -> {
                 methodVisitor!!.visitLdcInsn(if (literal.value) 1 else 0)
                 methodVisitor!!.visitJumpInsn(IF_ICMPEQ, caseLabel)
+                // If we reach here, comparison failed and stack is empty
             }
             is Literal.StringLiteral -> {
                 methodVisitor!!.visitLdcInsn(literal.value)
@@ -1004,23 +1035,25 @@ class BytecodeGenerator {
                     false
                 )
                 methodVisitor!!.visitJumpInsn(IFNE, caseLabel)
+                // If we reach here, comparison failed and stack is empty
             }
             is Literal.FloatLiteral -> {
                 methodVisitor!!.visitLdcInsn(literal.value)
                 methodVisitor!!.visitInsn(DCMPG)
                 methodVisitor!!.visitJumpInsn(IFEQ, caseLabel)
+                // If we reach here, comparison failed and stack is empty
             }
             is Literal.NullLiteral -> {
                 // Compare with null
                 methodVisitor!!.visitJumpInsn(IFNULL, caseLabel)
-                return // Don't fall through to nextLabel jump
+                // If we reach here, comparison failed and stack is empty
             }
             else -> {
                 // Unsupported literal - treat as non-matching
                 methodVisitor!!.visitInsn(POP) // Remove target value
             }
         }
-        // If we reach here, pattern didn't match - fall through to next pattern
+        // If we reach here, pattern didn't match and stack is empty - ready for next pattern
     }
     
     /**
