@@ -170,7 +170,7 @@ class VariableSlotManager {
     private fun getSlotCount(type: Type): Int {
         return when (type) {
             is Type.PrimitiveType -> when (type.name) {
-                "Double", "Long" -> 2
+                "double", "Double", "long", "Long" -> 2
                 else -> 1
             }
             else -> 1 // Objects, arrays, etc. use 1 slot
@@ -183,10 +183,10 @@ class VariableSlotManager {
     fun getLoadInstruction(type: Type): Int {
         return when (type) {
             is Type.PrimitiveType -> when (type.name) {
-                "Int", "Boolean" -> org.objectweb.asm.Opcodes.ILOAD
-                "Double" -> org.objectweb.asm.Opcodes.DLOAD
-                "Float" -> org.objectweb.asm.Opcodes.FLOAD
-                "Long" -> org.objectweb.asm.Opcodes.LLOAD
+                "int", "Int", "boolean", "Boolean" -> org.objectweb.asm.Opcodes.ILOAD
+                "double", "Double" -> org.objectweb.asm.Opcodes.DLOAD
+                "float", "Float" -> org.objectweb.asm.Opcodes.FLOAD
+                "long", "Long" -> org.objectweb.asm.Opcodes.LLOAD
                 else -> org.objectweb.asm.Opcodes.ALOAD // String and other objects
             }
             else -> org.objectweb.asm.Opcodes.ALOAD // Objects, arrays, etc.
@@ -199,10 +199,10 @@ class VariableSlotManager {
     fun getStoreInstruction(type: Type): Int {
         return when (type) {
             is Type.PrimitiveType -> when (type.name) {
-                "Int", "Boolean" -> org.objectweb.asm.Opcodes.ISTORE
-                "Double" -> org.objectweb.asm.Opcodes.DSTORE
-                "Float" -> org.objectweb.asm.Opcodes.FSTORE
-                "Long" -> org.objectweb.asm.Opcodes.LSTORE
+                "int", "Int", "boolean", "Boolean" -> org.objectweb.asm.Opcodes.ISTORE
+                "double", "Double" -> org.objectweb.asm.Opcodes.DSTORE
+                "float", "Float" -> org.objectweb.asm.Opcodes.FSTORE
+                "long", "Long" -> org.objectweb.asm.Opcodes.LSTORE
                 else -> org.objectweb.asm.Opcodes.ASTORE // String and other objects
             }
             else -> org.objectweb.asm.Opcodes.ASTORE // Objects, arrays, etc.

@@ -274,9 +274,7 @@ class BytecodeGenerator {
             }
         }
         
-        // CRITICAL FIX: Main method should exit with code 0 for success
-        methodVisitor!!.visitLdcInsn(0)
-        methodVisitor!!.visitMethodInsn(INVOKESTATIC, "java/lang/System", "exit", "(I)V", false)
+        // Return normally from main method (no System.exit needed)
         methodVisitor!!.visitInsn(RETURN)
         methodVisitor!!.visitMaxs(10, variableSlotManager.getMaxSlots()) // Use actual slot count
         methodVisitor!!.visitEnd()
