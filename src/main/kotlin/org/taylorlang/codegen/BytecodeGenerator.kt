@@ -32,20 +32,27 @@ data class GenerationResult(
 )
 
 /**
- * JVM bytecode generator for TaylorLang using ASM library
+ * Main JVM bytecode generator coordinator for TaylorLang using ASM library.
  * 
- * This implementation generates executable JVM bytecode from typed TaylorLang AST.
- * It supports:
- * - Basic literals (integers, doubles, booleans, strings)
- * - Arithmetic expressions (+, -, *, /)
- * - Simple function declarations with expression bodies
- * - Main method generation for program entry point
+ * This refactored implementation coordinates specialized generators:
+ * - ExpressionBytecodeGenerator: literals, arithmetic, variables
+ * - ControlFlowBytecodeGenerator: if/else, while loops, boolean ops
+ * - PatternBytecodeCompiler: pattern matching, guards, variable binding
+ * - FunctionBytecodeGenerator: function declarations, calls, parameters
+ * 
+ * Supports compilation of complete TaylorLang programs to executable JVM bytecode.
  */
 class BytecodeGenerator {
     
     private var methodVisitor: MethodVisitor? = null
     private var currentClassName: String = "Program"
     private val variableSlotManager = VariableSlotManager()
+    
+    // Specialized generators (initialized on demand)
+    private lateinit var expressionGenerator: ExpressionBytecodeGenerator
+    private lateinit var controlFlowGenerator: ControlFlowBytecodeGenerator
+    private lateinit var patternCompiler: PatternBytecodeCompiler
+    private lateinit var functionGenerator: FunctionBytecodeGenerator
     
     /**
      * Generate bytecode from a typed program
@@ -124,6 +131,31 @@ class BytecodeGenerator {
     }
     
     /**
+     * Initialize specialized generators for this method visitor
+     */
+    private fun initializeGenerators() {
+        val mv = methodVisitor!!
+        
+        // Create expression generator first with proper type inference
+        expressionGenerator = ExpressionBytecodeGenerator(mv, variableSlotManager) { expr ->
+            when (expr) {
+                is Literal.IntLiteral -> BuiltinTypes.INT
+                is Literal.FloatLiteral -> BuiltinTypes.DOUBLE
+                is Literal.BooleanLiteral -> BuiltinTypes.BOOLEAN
+                is Literal.StringLiteral -> BuiltinTypes.STRING
+                else -> BuiltinTypes.INT
+            }
+        }
+        
+        // Create other generators that depend on expression generator
+        controlFlowGenerator = ControlFlowBytecodeGenerator(mv, expressionGenerator)
+        patternCompiler = PatternBytecodeCompiler(mv, variableSlotManager, expressionGenerator)
+        functionGenerator = FunctionBytecodeGenerator(currentClassName, variableSlotManager, 
+            expressionGenerator, controlFlowGenerator)
+        functionGenerator.setMethodVisitor(mv)
+    }
+    
+    /**
      * Generate default constructor
      */
     private fun generateConstructor(classWriter: ClassWriter) {
@@ -154,6 +186,9 @@ class BytecodeGenerator {
             null
         )
         methodVisitor!!.visitCode()
+        
+        // Initialize specialized generators
+        initializeGenerators()
         
         // Generate code for each statement
         for (statement in statements) {
@@ -218,7 +253,7 @@ class BytecodeGenerator {
                     // Generate return statement
                     if (statement.expression != null) {
                         generateExpression(statement.expression)
-                        generateReturn(statement.expression.type)
+                        functionGenerator.generateReturn(statement.expression.type, methodVisitor!!)
                     } else {
                         methodVisitor!!.visitInsn(RETURN)
                     }
@@ -242,7 +277,18 @@ class BytecodeGenerator {
     private fun generateStatement(statement: TypedStatement, classWriter: ClassWriter) {
         when (statement) {
             is TypedStatement.FunctionDeclaration -> {
-                generateFunctionDeclaration(statement, classWriter)
+                // Create dedicated generators for function scope
+                val dummyMv = classWriter.visitMethod(ACC_PRIVATE, "dummy", "()V", null, null)
+                val tempExprGen = ExpressionBytecodeGenerator(dummyMv, VariableSlotManager()) { BuiltinTypes.INT }
+                val tempControlFlowGen = ControlFlowBytecodeGenerator(dummyMv, tempExprGen)
+                
+                val funcGenerator = FunctionBytecodeGenerator(
+                    currentClassName, 
+                    VariableSlotManager(), // New slot manager for function scope
+                    tempExprGen,
+                    tempControlFlowGen
+                )
+                funcGenerator.generateFunctionDeclaration(statement, classWriter)
             }
             is TypedStatement.ExpressionStatement -> {
                 // Expression statements are handled in main method
@@ -266,1023 +312,32 @@ class BytecodeGenerator {
     }
     
     /**
-     * Generate code for function declaration
-     */
-    private fun generateFunctionDeclaration(funcDecl: TypedStatement.FunctionDeclaration, classWriter: ClassWriter) {
-        val isMainFunction = funcDecl.declaration.name == "main"
-        val descriptor = if (isMainFunction) {
-            "([Ljava/lang/String;)V"  // Main function always has this signature
-        } else {
-            buildMethodDescriptor(funcDecl.declaration)
-        }
-        
-        val access = ACC_PUBLIC + ACC_STATIC
-        
-        methodVisitor = classWriter.visitMethod(
-            access,
-            funcDecl.declaration.name,
-            descriptor,
-            null,
-            null
-        )
-        methodVisitor!!.visitCode()
-        
-        // Set up parameter slots for user-defined functions (not main)
-        if (!isMainFunction) {
-            setupFunctionParameterSlots(funcDecl.declaration)
-        }
-        
-        when (val body = funcDecl.body) {
-            is TypedFunctionBody.Expression -> {
-                generateExpression(body.expression)
-                
-                if (isMainFunction) {
-                    // Main function should not return a value, just execute and return void
-                    // For main function with expression body, the expression is executed but the result is not returned
-                    // println calls already handle their own void return, so we don't need to pop anything
-                    methodVisitor!!.visitInsn(RETURN)
-                } else {
-                    // Regular function returns the expression value
-                    generateReturn(body.expression.type)
-                }
-            }
-            is TypedFunctionBody.Block -> {
-                for (stmt in body.statements) {
-                    when (stmt) {
-                        is TypedStatement.ExpressionStatement -> {
-                            generateExpression(stmt.expression)
-                            if (getJvmType(stmt.expression.type) != "V") {
-                                methodVisitor!!.visitInsn(POP)
-                            }
-                        }
-                        else -> {
-                            // Handle other statement types
-                        }
-                    }
-                }
-                // Return void for block functions without explicit return
-                methodVisitor!!.visitInsn(RETURN)
-            }
-        }
-        
-        methodVisitor!!.visitMaxs(10, 10) // Conservative estimates
-        methodVisitor!!.visitEnd()
-    }
-    
-    /**
-     * Set up variable slots for function parameters
-     */
-    private fun setupFunctionParameterSlots(functionDecl: FunctionDecl) {
-        // Clear existing slots since we're starting a new function
-        variableSlotManager.clear()
-        
-        // For static methods, parameters start at slot 0 (no 'this' parameter)
-        var currentSlot = 0
-        
-        // Create a custom variable slot manager that handles parameters correctly
-        val paramSlotManager = VariableSlotManager()
-        paramSlotManager.clear()
-        
-        for (param in functionDecl.parameters) {
-            val paramType = param.type ?: BuiltinTypes.UNIT
-            
-            // Manually assign parameter to its slot (parameters are pre-allocated by JVM)
-            // We simulate this by directly setting the slot mapping
-            paramSlotManager.allocateSlot(param.name, paramType)
-            
-            currentSlot += getSlotCount(paramType)
-        }
-        
-        // Replace the current variable slot manager for this function
-        // This is a bit of a hack, but it allows us to handle parameters correctly
-        this.variableSlotManager.clear()
-        for (param in functionDecl.parameters) {
-            val paramType = param.type ?: BuiltinTypes.UNIT
-            variableSlotManager.allocateSlot(param.name, paramType)
-        }
-    }
-    
-    /**
-     * Get the number of JVM slots required for a given type.
-     */
-    private fun getSlotCount(type: Type): Int {
-        return when (type) {
-            is Type.PrimitiveType -> when (type.name) {
-                "Double", "Long" -> 2
-                else -> 1
-            }
-            else -> 1 // Objects, arrays, etc. use 1 slot
-        }
-    }
-    
-    /**
-     * Generate code for an expression
+     * Generate code for an expression (delegates to specialized generators)
      */
     private fun generateExpression(expr: TypedExpression) {
+        // Ensure generators are initialized
+        if (!::expressionGenerator.isInitialized) {
+            initializeGenerators()
+        }
+        
         when (val expression = expr.expression) {
-            is Literal.IntLiteral -> {
-                methodVisitor!!.visitLdcInsn(expression.value)
-            }
-            is Literal.FloatLiteral -> {
-                methodVisitor!!.visitLdcInsn(expression.value)
-            }
-            is Literal.BooleanLiteral -> {
-                methodVisitor!!.visitLdcInsn(if (expression.value) 1 else 0)
-            }
-            is Literal.StringLiteral -> {
-                methodVisitor!!.visitLdcInsn(expression.value)
-            }
-            is BinaryOp -> {
-                generateBinaryOperation(expression, expr.type)
-            }
-            is UnaryOp -> {
-                generateUnaryOperation(expression, expr.type)
-            }
-            is Identifier -> {
-                // Load variable from local slot
-                if (variableSlotManager.hasSlot(expression.name)) {
-                    val slot = variableSlotManager.getSlot(expression.name)!!
-                    val loadInstruction = variableSlotManager.getLoadInstruction(expr.type)
-                    methodVisitor!!.visitVarInsn(loadInstruction, slot)
-                } else {
-                    // For now, load 0 as placeholder for unknown identifiers (e.g., functions)
-                    methodVisitor!!.visitLdcInsn(0)
-                }
-            }
             is IfExpression -> {
-                generateIfExpression(expression, expr.type)
+                controlFlowGenerator.generateIfExpression(expression, expr.type)
             }
             is WhileExpression -> {
-                generateWhileExpression(expression, expr.type)
+                controlFlowGenerator.generateWhileExpression(expression, expr.type)
             }
             is FunctionCall -> {
-                generateFunctionCall(expression, expr.type)
+                functionGenerator.generateFunctionCall(expression, expr.type)
             }
             is MatchExpression -> {
-                generateMatchExpression(expression, expr.type)
+                patternCompiler.generateMatchExpression(expression, expr.type)
             }
             else -> {
-                // Unsupported expression - push default value
-                when (getJvmType(expr.type)) {
-                    "I", "Z" -> methodVisitor!!.visitLdcInsn(0)
-                    "D" -> methodVisitor!!.visitLdcInsn(0.0)
-                    else -> methodVisitor!!.visitLdcInsn("")
-                }
+                // Delegate to expression generator for basic expressions
+                expressionGenerator.generateExpression(expr)
             }
         }
-    }
-    
-    /**
-     * Generate code for binary operations
-     */
-    private fun generateBinaryOperation(binaryOp: BinaryOp, resultType: Type) {
-        // Determine the operand type by inspecting the operands
-        val operandType = determineOperandType(binaryOp, resultType)
-        val isDoubleOp = !isIntegerType(operandType)
-        
-        // Generate left operand
-        when (val left = binaryOp.left) {
-            is Literal.IntLiteral -> {
-                if (isDoubleOp) {
-                    // Convert int to double for double operations
-                    methodVisitor!!.visitLdcInsn(left.value.toDouble())
-                } else {
-                    methodVisitor!!.visitLdcInsn(left.value)
-                }
-            }
-            is Literal.FloatLiteral -> methodVisitor!!.visitLdcInsn(left.value)
-            else -> generateExpression(TypedExpression(left, operandType))
-        }
-        
-        // Generate right operand
-        when (val right = binaryOp.right) {
-            is Literal.IntLiteral -> {
-                if (isDoubleOp) {
-                    // Convert int to double for double operations
-                    methodVisitor!!.visitLdcInsn(right.value.toDouble())
-                } else {
-                    methodVisitor!!.visitLdcInsn(right.value)
-                }
-            }
-            is Literal.FloatLiteral -> methodVisitor!!.visitLdcInsn(right.value)
-            else -> generateExpression(TypedExpression(right, operandType))
-        }
-        
-        // Generate operation based on operand type
-        when (binaryOp.operator) {
-            BinaryOperator.PLUS -> {
-                if (isIntegerType(operandType)) {
-                    methodVisitor!!.visitInsn(IADD)
-                } else {
-                    methodVisitor!!.visitInsn(DADD)
-                }
-            }
-            BinaryOperator.MINUS -> {
-                if (isIntegerType(operandType)) {
-                    methodVisitor!!.visitInsn(ISUB)
-                } else {
-                    methodVisitor!!.visitInsn(DSUB)
-                }
-            }
-            BinaryOperator.MULTIPLY -> {
-                if (isIntegerType(operandType)) {
-                    methodVisitor!!.visitInsn(IMUL)
-                } else {
-                    methodVisitor!!.visitInsn(DMUL)
-                }
-            }
-            BinaryOperator.DIVIDE -> {
-                if (isIntegerType(operandType)) {
-                    methodVisitor!!.visitInsn(IDIV)
-                } else {
-                    methodVisitor!!.visitInsn(DDIV)
-                }
-            }
-            // Comparison operators
-            BinaryOperator.LESS_THAN -> {
-                generateComparison(isIntegerType(operandType), IFLT)
-            }
-            BinaryOperator.LESS_EQUAL -> {
-                generateComparison(isIntegerType(operandType), IFLE)
-            }
-            BinaryOperator.GREATER_THAN -> {
-                generateComparison(isIntegerType(operandType), IFGT)
-            }
-            BinaryOperator.GREATER_EQUAL -> {
-                generateComparison(isIntegerType(operandType), IFGE)
-            }
-            BinaryOperator.EQUAL -> {
-                generateComparison(isIntegerType(operandType), IFEQ)
-            }
-            BinaryOperator.NOT_EQUAL -> {
-                generateComparison(isIntegerType(operandType), IFNE)
-            }
-            // Boolean operators
-            BinaryOperator.AND -> {
-                generateBooleanAnd()
-            }
-            BinaryOperator.OR -> {
-                generateBooleanOr()
-            }
-            else -> {
-                // Unsupported operation - use appropriate add instruction as fallback
-                if (isIntegerType(operandType)) {
-                    methodVisitor!!.visitInsn(IADD)
-                } else {
-                    methodVisitor!!.visitInsn(DADD)
-                }
-            }
-        }
-    }
-    
-    /**
-     * Determine the operand type for binary operations
-     */
-    private fun determineOperandType(binaryOp: BinaryOp, resultType: Type): Type {
-        // Use the consolidated type inference logic
-        val leftType = inferExpressionType(binaryOp.left)
-        val rightType = inferExpressionType(binaryOp.right)
-        
-        // For comparison and boolean operations, we need to determine the operand type
-        // (not the result type, which is boolean)
-        return when (binaryOp.operator) {
-            BinaryOperator.LESS_THAN, BinaryOperator.LESS_EQUAL,
-            BinaryOperator.GREATER_THAN, BinaryOperator.GREATER_EQUAL,
-            BinaryOperator.EQUAL, BinaryOperator.NOT_EQUAL -> {
-                // For comparisons, promote to the wider type for comparison
-                when {
-                    leftType == BuiltinTypes.DOUBLE || rightType == BuiltinTypes.DOUBLE -> BuiltinTypes.DOUBLE
-                    leftType == BuiltinTypes.INT && rightType == BuiltinTypes.INT -> BuiltinTypes.INT
-                    else -> BuiltinTypes.INT // Default to int
-                }
-            }
-            BinaryOperator.AND, BinaryOperator.OR -> {
-                // Boolean operations work on boolean operands
-                BuiltinTypes.BOOLEAN
-            }
-            else -> {
-                // For arithmetic operations, if either operand is double, the result is double
-                when {
-                    leftType == BuiltinTypes.DOUBLE || rightType == BuiltinTypes.DOUBLE -> BuiltinTypes.DOUBLE
-                    leftType == BuiltinTypes.INT && rightType == BuiltinTypes.INT -> BuiltinTypes.INT
-                    else -> BuiltinTypes.INT // Default to int
-                }
-            }
-        }
-    }
-    
-    /**
-     * Check if an expression evaluates to an integer
-     */
-    private fun isIntegerExpression(expr: Expression): Boolean {
-        return when (expr) {
-            is Literal.IntLiteral -> true
-            is BinaryOp -> isIntegerExpression(expr.left) && isIntegerExpression(expr.right)
-            else -> false
-        }
-    }
-    
-    /**
-     * Generate code for unary operations
-     */
-    private fun generateUnaryOperation(unaryOp: UnaryOp, resultType: Type) {
-        // Generate operand
-        when (val operand = unaryOp.operand) {
-            is Literal.IntLiteral -> methodVisitor!!.visitLdcInsn(operand.value)
-            is Literal.FloatLiteral -> methodVisitor!!.visitLdcInsn(operand.value)
-            else -> generateExpression(TypedExpression(operand, resultType))
-        }
-        
-        when (unaryOp.operator) {
-            UnaryOperator.MINUS -> {
-                if (isIntegerType(resultType)) {
-                    methodVisitor!!.visitInsn(INEG)
-                } else {
-                    methodVisitor!!.visitInsn(DNEG)
-                }
-            }
-            UnaryOperator.NOT -> {
-                // For boolean NOT: if value is 0, push 1, else push 0
-                methodVisitor!!.visitLdcInsn(1)
-                methodVisitor!!.visitInsn(IXOR)
-            }
-        }
-    }
-    
-    /**
-     * Infer the type of an expression based on its structure
-     */
-    private fun inferExpressionType(expr: Expression): Type {
-        return when (expr) {
-            is Literal.IntLiteral -> BuiltinTypes.INT
-            is Literal.FloatLiteral -> BuiltinTypes.DOUBLE
-            is Literal.BooleanLiteral -> BuiltinTypes.BOOLEAN
-            is Literal.StringLiteral -> BuiltinTypes.STRING
-            is BinaryOp -> {
-                // For binary operations, determine the result type
-                when (expr.operator) {
-                    BinaryOperator.LESS_THAN, BinaryOperator.LESS_EQUAL,
-                    BinaryOperator.GREATER_THAN, BinaryOperator.GREATER_EQUAL,
-                    BinaryOperator.EQUAL, BinaryOperator.NOT_EQUAL,
-                    BinaryOperator.AND, BinaryOperator.OR -> BuiltinTypes.BOOLEAN
-                    else -> {
-                        // Arithmetic operations
-                        if (isIntegerExpression(expr)) BuiltinTypes.INT else BuiltinTypes.DOUBLE
-                    }
-                }
-            }
-            is UnaryOp -> {
-                when (expr.operator) {
-                    UnaryOperator.NOT -> BuiltinTypes.BOOLEAN
-                    UnaryOperator.MINUS -> inferExpressionType(expr.operand)
-                }
-            }
-            is IfExpression -> {
-                // For if expressions, determine the result type based on branches
-                val thenType = inferExpressionType(expr.thenExpression)
-                if (expr.elseExpression != null) {
-                    val elseType = inferExpressionType(expr.elseExpression)
-                    // Promote to the wider type if different
-                    when {
-                        thenType == BuiltinTypes.DOUBLE || elseType == BuiltinTypes.DOUBLE -> BuiltinTypes.DOUBLE
-                        thenType == BuiltinTypes.STRING || elseType == BuiltinTypes.STRING -> BuiltinTypes.STRING
-                        thenType == BuiltinTypes.BOOLEAN || elseType == BuiltinTypes.BOOLEAN -> BuiltinTypes.BOOLEAN
-                        else -> thenType
-                    }
-                } else {
-                    // No else branch - type is nullable or Unit
-                    thenType
-                }
-            }
-            is WhileExpression -> {
-                // While loops return Unit
-                BuiltinTypes.UNIT
-            }
-            else -> BuiltinTypes.INT // Default fallback
-        }
-    }
-    
-    /**
-     * Generate code for if expressions
-     */
-    private fun generateIfExpression(ifExpr: IfExpression, resultType: Type) {
-        val elseLabel = org.objectweb.asm.Label()
-        val endLabel = org.objectweb.asm.Label()
-        
-        // Generate condition
-        val conditionType = inferExpressionType(ifExpr.condition)
-        generateExpression(TypedExpression(ifExpr.condition, conditionType))
-        
-        // Jump to else if condition is false (0)
-        methodVisitor!!.visitJumpInsn(IFEQ, elseLabel)
-        
-        // Generate then branch
-        val thenType = inferExpressionType(ifExpr.thenExpression)
-        generateExpression(TypedExpression(ifExpr.thenExpression, thenType))
-        
-        // Skip else branch
-        methodVisitor!!.visitJumpInsn(GOTO, endLabel)
-        
-        // Generate else branch
-        methodVisitor!!.visitLabel(elseLabel)
-        if (ifExpr.elseExpression != null) {
-            val elseType = inferExpressionType(ifExpr.elseExpression)
-            generateExpression(TypedExpression(ifExpr.elseExpression, elseType))
-        } else {
-            // No else branch - push default value based on result type
-            when (getJvmType(resultType)) {
-                "I", "Z" -> methodVisitor!!.visitLdcInsn(0)
-                "D" -> methodVisitor!!.visitLdcInsn(0.0)
-                "Ljava/lang/String;" -> methodVisitor!!.visitLdcInsn("")
-                "V" -> {
-                    // Unit/void - no value to push
-                }
-                else -> methodVisitor!!.visitInsn(ACONST_NULL)
-            }
-        }
-        
-        // End label
-        methodVisitor!!.visitLabel(endLabel)
-    }
-    
-    /**
-     * Generate code for while expressions
-     */
-    private fun generateWhileExpression(whileExpr: WhileExpression, resultType: Type) {
-        val conditionLabel = org.objectweb.asm.Label()
-        val loopBodyStart = org.objectweb.asm.Label()
-        val loopEnd = org.objectweb.asm.Label()
-        
-        // Jump to condition check first
-        methodVisitor!!.visitJumpInsn(GOTO, conditionLabel)
-        
-        // Loop body start label
-        methodVisitor!!.visitLabel(loopBodyStart)
-        
-        // Generate body
-        val bodyType = inferExpressionType(whileExpr.body)
-        generateExpression(TypedExpression(whileExpr.body, bodyType))
-        
-        // Pop the body result (while loops don't use body results)
-        if (getJvmType(bodyType) != "V") {
-            methodVisitor!!.visitInsn(POP)
-        }
-        
-        // Condition check label
-        methodVisitor!!.visitLabel(conditionLabel)
-        
-        // Generate condition
-        val conditionType = inferExpressionType(whileExpr.condition)
-        generateExpression(TypedExpression(whileExpr.condition, conditionType))
-        
-        // Jump to loop body if condition is true (non-zero) - TECH LEAD'S FIX
-        methodVisitor!!.visitJumpInsn(IFNE, loopBodyStart)
-        
-        // Fall through to loop end when condition is false
-        
-        // Loop end label  
-        methodVisitor!!.visitLabel(loopEnd)
-        
-        // While loop result is typically Unit - push appropriate default value
-        when (getJvmType(resultType)) {
-            "I", "Z" -> methodVisitor!!.visitLdcInsn(0)
-            "D" -> methodVisitor!!.visitLdcInsn(0.0)
-            "Ljava/lang/String;" -> methodVisitor!!.visitLdcInsn("")
-            "V" -> {
-                // Unit/void - no value to push
-            }
-            else -> methodVisitor!!.visitInsn(ACONST_NULL)
-        }
-    }
-    
-    /**
-     * Generate code for function calls
-     */
-    private fun generateFunctionCall(call: FunctionCall, resultType: Type) {
-        val functionName = (call.target as? Identifier)?.name
-        
-        when (functionName) {
-            "println" -> generatePrintlnCall(call)
-            else -> {
-                // User-defined function call
-                generateUserFunctionCall(call, functionName, resultType)
-            }
-        }
-    }
-    
-    /**
-     * Generate code for user-defined function calls
-     */
-    private fun generateUserFunctionCall(call: FunctionCall, functionName: String?, resultType: Type) {
-        if (functionName == null) {
-            // Complex function expressions not supported yet
-            when (getJvmType(resultType)) {
-                "I", "Z" -> methodVisitor!!.visitLdcInsn(0)
-                "D" -> methodVisitor!!.visitLdcInsn(0.0)
-                "Ljava/lang/String;" -> methodVisitor!!.visitLdcInsn("")
-                "V" -> { /* No value to push for void */ }
-                else -> methodVisitor!!.visitInsn(ACONST_NULL)
-            }
-            return
-        }
-        
-        // Generate arguments in order
-        for (argument in call.arguments) {
-            val argType = inferExpressionType(argument)
-            generateExpression(TypedExpression(argument, argType))
-        }
-        
-        // Build method descriptor for the user function call
-        val paramTypes = call.arguments.map { arg ->
-            val argType = inferExpressionType(arg)
-            getJvmType(argType)
-        }
-        val returnType = getJvmType(resultType)
-        val methodDescriptor = "(${paramTypes.joinToString("")})$returnType"
-        
-        // Generate static method call to the user function
-        methodVisitor!!.visitMethodInsn(
-            INVOKESTATIC,
-            currentClassName,
-            functionName,
-            methodDescriptor,
-            false
-        )
-    }
-    
-    /**
-     * Generate code for println builtin function
-     */
-    private fun generatePrintlnCall(call: FunctionCall) {
-        methodVisitor!!.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;")
-        
-        // Generate arguments and determine the correct method signature
-        val methodDescriptor = if (call.arguments.isNotEmpty()) {
-            val arg = call.arguments[0]
-            val argType = inferExpressionType(arg)
-            
-            generateExpression(TypedExpression(arg, argType))
-            
-            // Map to appropriate PrintStream.println overload
-            when (argType) {
-                BuiltinTypes.INT -> "(I)V"
-                BuiltinTypes.DOUBLE -> "(D)V"
-                BuiltinTypes.BOOLEAN -> {
-                    // Convert boolean to string representation
-                    convertBooleanToString()
-                    "(Ljava/lang/String;)V"
-                }
-                BuiltinTypes.STRING -> "(Ljava/lang/String;)V"
-                else -> "(Ljava/lang/Object;)V"
-            }
-        } else {
-            methodVisitor!!.visitLdcInsn("")
-            "(Ljava/lang/String;)V"
-        }
-        
-        methodVisitor!!.visitMethodInsn(
-            INVOKEVIRTUAL,
-            "java/io/PrintStream",
-            "println",
-            methodDescriptor,
-            false
-        )
-    }
-    
-    /**
-     * Generate code for match expressions
-     */
-    private fun generateMatchExpression(matchExpr: MatchExpression, resultType: Type) {
-        if (matchExpr.cases.isEmpty()) {
-            // Empty match - push default value and return
-            when (getJvmType(resultType)) {
-                "I", "Z" -> methodVisitor!!.visitLdcInsn(0)
-                "D" -> methodVisitor!!.visitLdcInsn(0.0)
-                "Ljava/lang/String;" -> methodVisitor!!.visitLdcInsn("")
-                "V" -> { /* Unit/void - no value to push */ }
-                else -> methodVisitor!!.visitInsn(ACONST_NULL)
-            }
-            return
-        }
-        
-        // Generate the target expression and store it in a local variable for repeated access
-        val targetType = inferExpressionType(matchExpr.target)
-        generateExpression(TypedExpression(matchExpr.target, targetType))
-        
-        // Store target value in a temporary slot for pattern matching
-        val targetSlot = variableSlotManager.allocateTemporarySlot(targetType)
-        val storeInstruction = variableSlotManager.getStoreInstruction(targetType)
-        methodVisitor!!.visitVarInsn(storeInstruction, targetSlot)
-        
-        // Create labels
-        val caseBodyLabels = matchExpr.cases.map { org.objectweb.asm.Label() }
-        val endLabel = org.objectweb.asm.Label()
-        
-        // Generate pattern tests and jumps
-        for (i in matchExpr.cases.indices) {
-            val case = matchExpr.cases[i]
-            val caseBodyLabel = caseBodyLabels[i]
-            val nextCaseLabel = if (i < matchExpr.cases.size - 1) {
-                org.objectweb.asm.Label() // Label for next case test
-            } else {
-                endLabel // Last case, jump to end if no match
-            }
-            
-            // Load target value for comparison
-            val loadInstruction = variableSlotManager.getLoadInstruction(targetType)
-            methodVisitor!!.visitVarInsn(loadInstruction, targetSlot)
-            
-            // Generate pattern test
-            generatePatternTest(case.pattern, targetType, caseBodyLabel, nextCaseLabel)
-            
-            // If this isn't the last case, add the next case label
-            if (i < matchExpr.cases.size - 1) {
-                methodVisitor!!.visitLabel(nextCaseLabel)
-            }
-        }
-        
-        // Generate case bodies
-        for (i in matchExpr.cases.indices) {
-            val case = matchExpr.cases[i]
-            val caseBodyLabel = caseBodyLabels[i]
-            
-            // Case body label
-            methodVisitor!!.visitLabel(caseBodyLabel)
-            
-            // Create new scope for pattern variable bindings
-            val savedSlotManager = variableSlotManager.createCheckpoint()
-            
-            // Bind pattern variables (if any)
-            bindPatternVariables(case.pattern, targetType, targetSlot)
-            
-            // Generate case expression
-            val caseExprType = inferExpressionType(case.expression)
-            generateExpression(TypedExpression(case.expression, caseExprType))
-            
-            // For statements, check if the expression result needs to be popped or left on stack
-            // If the case expression is a void-returning function call, no value is left on stack
-            val leavesValueOnStack = when (case.expression) {
-                is FunctionCall -> {
-                    if ((case.expression.target as? Identifier)?.name == "println") {
-                        false // println returns void
-                    } else {
-                        getJvmType(caseExprType) != "V"
-                    }
-                }
-                else -> getJvmType(caseExprType) != "V"
-            }
-            
-            // If this case expression left a value on the stack but we need to match the result type
-            // of the overall match expression, we may need to convert or leave it
-            if (leavesValueOnStack && getJvmType(resultType) == "V") {
-                // Case expression returned a value but match expression should return void - pop it
-                methodVisitor!!.visitInsn(POP)
-            } else if (!leavesValueOnStack && getJvmType(resultType) != "V") {
-                // Case expression was void but match expression should return a value - push default
-                when (getJvmType(resultType)) {
-                    "I", "Z" -> methodVisitor!!.visitLdcInsn(0)
-                    "D" -> methodVisitor!!.visitLdcInsn(0.0)
-                    "Ljava/lang/String;" -> methodVisitor!!.visitLdcInsn("")
-                    else -> methodVisitor!!.visitInsn(ACONST_NULL)
-                }
-            }
-            
-            // Restore variable slot state
-            variableSlotManager.restoreCheckpoint(savedSlotManager)
-            
-            // Jump to end (don't fall through to next case)
-            methodVisitor!!.visitJumpInsn(GOTO, endLabel)
-        }
-        
-        // End label
-        methodVisitor!!.visitLabel(endLabel)
-        
-        // Release temporary slot
-        variableSlotManager.releaseTemporarySlot(targetSlot)
-    }
-    
-    /**
-     * Generate pattern test logic that jumps to caseLabel if pattern matches,
-     * otherwise falls through to nextLabel
-     */
-    private fun generatePatternTest(
-        pattern: Pattern, 
-        targetType: Type, 
-        caseLabel: org.objectweb.asm.Label, 
-        nextLabel: org.objectweb.asm.Label
-    ) {
-        when (pattern) {
-            is Pattern.WildcardPattern -> {
-                // Wildcard always matches - remove value and jump to case
-                methodVisitor!!.visitInsn(POP) // Remove target value from stack
-                methodVisitor!!.visitJumpInsn(GOTO, caseLabel)
-            }
-            is Pattern.LiteralPattern -> {
-                generateLiteralPatternMatch(pattern.literal, targetType, caseLabel, nextLabel)
-            }
-            is Pattern.ConstructorPattern -> {
-                generateConstructorPatternMatch(pattern, targetType, caseLabel, nextLabel)
-            }
-            is Pattern.IdentifierPattern -> {
-                // Check if this is a nullary constructor or a variable binding
-                if (isNullaryConstructor(pattern.name, targetType)) {
-                    generateNullaryConstructorMatch(pattern.name, targetType, caseLabel, nextLabel)
-                } else {
-                    // Variable pattern - always matches, remove value and jump
-                    methodVisitor!!.visitInsn(POP) // Remove target value from stack
-                    methodVisitor!!.visitJumpInsn(GOTO, caseLabel)
-                }
-            }
-            is Pattern.GuardPattern -> {
-                // First check the inner pattern, then evaluate guard
-                generateGuardPatternMatch(pattern, targetType, caseLabel, nextLabel)
-            }
-        }
-    }
-    
-    /**
-     * Generate literal pattern matching
-     */
-    private fun generateLiteralPatternMatch(
-        literal: Literal,
-        targetType: Type,
-        caseLabel: org.objectweb.asm.Label,
-        nextLabel: org.objectweb.asm.Label
-    ) {
-        // Stack: [target_value]
-        // Generate literal value for comparison
-        when (literal) {
-            is Literal.IntLiteral -> {
-                methodVisitor!!.visitLdcInsn(literal.value)
-                // Compare integers: IF_ICMPEQ jumps if equal, consumes both values
-                methodVisitor!!.visitJumpInsn(IF_ICMPEQ, caseLabel)
-                // If we reach here, comparison failed and stack is empty
-                // No need to pop anything
-            }
-            is Literal.BooleanLiteral -> {
-                methodVisitor!!.visitLdcInsn(if (literal.value) 1 else 0)
-                methodVisitor!!.visitJumpInsn(IF_ICMPEQ, caseLabel)
-                // If we reach here, comparison failed and stack is empty
-            }
-            is Literal.StringLiteral -> {
-                methodVisitor!!.visitLdcInsn(literal.value)
-                // Use String.equals() for string comparison
-                methodVisitor!!.visitMethodInsn(
-                    INVOKEVIRTUAL,
-                    "java/lang/String",
-                    "equals",
-                    "(Ljava/lang/Object;)Z",
-                    false
-                )
-                methodVisitor!!.visitJumpInsn(IFNE, caseLabel)
-                // If we reach here, comparison failed and stack is empty
-            }
-            is Literal.FloatLiteral -> {
-                methodVisitor!!.visitLdcInsn(literal.value)
-                methodVisitor!!.visitInsn(DCMPG)
-                methodVisitor!!.visitJumpInsn(IFEQ, caseLabel)
-                // If we reach here, comparison failed and stack is empty
-            }
-            is Literal.NullLiteral -> {
-                // Compare with null
-                methodVisitor!!.visitJumpInsn(IFNULL, caseLabel)
-                // If we reach here, comparison failed and stack is empty
-            }
-            else -> {
-                // Unsupported literal - treat as non-matching
-                methodVisitor!!.visitInsn(POP) // Remove target value
-            }
-        }
-        // If we reach here, pattern didn't match and stack is empty - ready for next pattern
-    }
-    
-    /**
-     * Generate constructor pattern matching for union types
-     */
-    private fun generateConstructorPatternMatch(
-        pattern: Pattern.ConstructorPattern,
-        targetType: Type,
-        caseLabel: org.objectweb.asm.Label,
-        nextLabel: org.objectweb.asm.Label
-    ) {
-        // For now, implement basic constructor matching
-        // TODO: Full union type runtime support will be needed
-        
-        // Placeholder: assume the constructor name matches some field or method
-        // Real implementation would check union type variant tags
-        methodVisitor!!.visitInsn(POP) // Remove target value for now
-        
-        // For demonstration, always jump to case (this will be properly implemented
-        // when union type runtime representation is finalized)
-        methodVisitor!!.visitJumpInsn(GOTO, caseLabel)
-    }
-    
-    /**
-     * Generate nullary constructor matching
-     */
-    private fun generateNullaryConstructorMatch(
-        constructorName: String,
-        targetType: Type,
-        caseLabel: org.objectweb.asm.Label,
-        nextLabel: org.objectweb.asm.Label
-    ) {
-        // Similar to constructor pattern but for nullary constructors
-        // TODO: Implement with proper union type runtime support
-        methodVisitor!!.visitInsn(POP) // Remove target value
-        methodVisitor!!.visitJumpInsn(GOTO, caseLabel)
-    }
-    
-    /**
-     * Generate guard pattern matching
-     */
-    private fun generateGuardPatternMatch(
-        pattern: Pattern.GuardPattern,
-        targetType: Type,
-        caseLabel: org.objectweb.asm.Label,
-        nextLabel: org.objectweb.asm.Label
-    ) {
-        // Create intermediate label for guard evaluation
-        val guardLabel = org.objectweb.asm.Label()
-        
-        // First, match the inner pattern
-        generatePatternTest(pattern.pattern, targetType, guardLabel, nextLabel)
-        
-        // If inner pattern matched, evaluate guard
-        methodVisitor!!.visitLabel(guardLabel)
-        
-        // Bind pattern variables for guard evaluation
-        val savedSlotManager = variableSlotManager.createCheckpoint()
-        bindPatternVariables(pattern.pattern, targetType, variableSlotManager.getLastAllocatedSlot())
-        
-        // Generate guard expression
-        val guardType = inferExpressionType(pattern.guard)
-        generateExpression(TypedExpression(pattern.guard, guardType))
-        
-        // Restore slot manager state
-        variableSlotManager.restoreCheckpoint(savedSlotManager)
-        
-        // Jump to case if guard is true
-        methodVisitor!!.visitJumpInsn(IFNE, caseLabel)
-        
-        // If guard is false, fall through to next pattern
-    }
-    
-    /**
-     * Bind pattern variables to local slots
-     */
-    private fun bindPatternVariables(pattern: Pattern, targetType: Type, targetSlot: Int) {
-        when (pattern) {
-            is Pattern.IdentifierPattern -> {
-                if (!isNullaryConstructor(pattern.name, targetType)) {
-                    // Variable binding - copy target value to new slot
-                    val slot = variableSlotManager.allocateSlot(pattern.name, targetType)
-                    val loadInstruction = variableSlotManager.getLoadInstruction(targetType)
-                    val storeInstruction = variableSlotManager.getStoreInstruction(targetType)
-                    
-                    methodVisitor!!.visitVarInsn(loadInstruction, targetSlot)
-                    methodVisitor!!.visitVarInsn(storeInstruction, slot)
-                }
-            }
-            is Pattern.GuardPattern -> {
-                bindPatternVariables(pattern.pattern, targetType, targetSlot)
-            }
-            is Pattern.ConstructorPattern -> {
-                // TODO: Implement field binding for constructor patterns
-                // This will require union type runtime support for field extraction
-            }
-            // Wildcard and literal patterns don't bind variables
-            else -> { }
-        }
-    }
-    
-    /**
-     * Check if an identifier is a nullary constructor for the given type
-     */
-    private fun isNullaryConstructor(name: String, targetType: Type): Boolean {
-        // TODO: Implement proper check using type definitions
-        // For now, return false to treat all identifiers as variable bindings
-        return false
-    }
-    
-    /**
-     * Convert a boolean value on the stack to its string representation ("true" or "false")
-     */
-    private fun convertBooleanToString() {
-        // The stack has a boolean (0 or 1) on top
-        // We'll use a simple if-else to convert to string
-        
-        val trueLabel = org.objectweb.asm.Label()
-        val endLabel = org.objectweb.asm.Label()
-        
-        // If the boolean value is not 0 (i.e., true), jump to trueLabel
-        methodVisitor!!.visitJumpInsn(IFNE, trueLabel)
-        
-        // False case: push "false"
-        methodVisitor!!.visitLdcInsn("false")
-        methodVisitor!!.visitJumpInsn(GOTO, endLabel)
-        
-        // True case: push "true"
-        methodVisitor!!.visitLabel(trueLabel)
-        methodVisitor!!.visitLdcInsn("true")
-        
-        // End
-        methodVisitor!!.visitLabel(endLabel)
-    }
-    
-    /**
-     * Generate comparison operation that returns a boolean result
-     */
-    private fun generateComparison(isIntegerComparison: Boolean, comparisonOp: Int) {
-        val trueLabel = org.objectweb.asm.Label()
-        val endLabel = org.objectweb.asm.Label()
-        
-        if (isIntegerComparison) {
-            // Integer comparison: use IF_ICMP* instructions
-            val icmpOp = when (comparisonOp) {
-                IFLT -> IF_ICMPLT
-                IFLE -> IF_ICMPLE  
-                IFGT -> IF_ICMPGT
-                IFGE -> IF_ICMPGE
-                IFEQ -> IF_ICMPEQ
-                IFNE -> IF_ICMPNE
-                else -> IF_ICMPEQ
-            }
-            methodVisitor!!.visitJumpInsn(icmpOp, trueLabel)
-        } else {
-            // Double comparison: use DCMPG + IF* instructions
-            methodVisitor!!.visitInsn(DCMPG)
-            methodVisitor!!.visitJumpInsn(comparisonOp, trueLabel)
-        }
-        
-        // False case: push 0 (false)
-        methodVisitor!!.visitLdcInsn(0)
-        methodVisitor!!.visitJumpInsn(GOTO, endLabel)
-        
-        // True case: push 1 (true)
-        methodVisitor!!.visitLabel(trueLabel)
-        methodVisitor!!.visitLdcInsn(1)
-        
-        // End
-        methodVisitor!!.visitLabel(endLabel)
-    }
-    
-    /**
-     * Generate short-circuit AND operation (&&)
-     * Stack: [left_operand, right_operand] -> [boolean_result]
-     */
-    private fun generateBooleanAnd() {
-        val falseLabel = org.objectweb.asm.Label()
-        val endLabel = org.objectweb.asm.Label()
-        
-        // For now, implement as a simple bitwise AND operation
-        // This is not truly short-circuit, but it's much simpler and reliable
-        methodVisitor!!.visitInsn(IAND)
-        
-        // Note: For true short-circuit behavior, we'd need to avoid evaluating
-        // the right operand when the left is false, but that requires
-        // restructuring how binary operations are generated
-    }
-    
-    /**
-     * Generate short-circuit OR operation (||)
-     * Stack: [left_operand, right_operand] -> [boolean_result]
-     */
-    private fun generateBooleanOr() {
-        val trueLabel = org.objectweb.asm.Label()
-        val endLabel = org.objectweb.asm.Label()
-        
-        // For now, implement as a simple bitwise OR operation
-        // This is not truly short-circuit, but it's much simpler and reliable
-        methodVisitor!!.visitInsn(IOR)
-        
-        // Note: For true short-circuit behavior, we'd need to avoid evaluating
-        // the right operand when the left is true, but that requires
-        // restructuring how binary operations are generated
-    }
-    
-    /**
-     * Generate return instruction based on type
-     */
-    private fun generateReturn(type: Type) {
-        when (getJvmType(type)) {
-            "I", "Z" -> methodVisitor!!.visitInsn(IRETURN)
-            "D" -> methodVisitor!!.visitInsn(DRETURN)
-            "Ljava/lang/String;" -> methodVisitor!!.visitInsn(ARETURN)
-            "V" -> methodVisitor!!.visitInsn(RETURN)
-            else -> methodVisitor!!.visitInsn(ARETURN)
-        }
-    }
-    
-    /**
-     * Build method descriptor from function declaration
-     */
-    private fun buildMethodDescriptor(funcDecl: FunctionDecl): String {
-        val paramTypes = funcDecl.parameters.map { param ->
-            param.type?.let(::getJvmType) ?: "Ljava/lang/Object;"
-        }
-        val returnType = funcDecl.returnType?.let(::getJvmType) ?: "V"
-        
-        return "(${paramTypes.joinToString("")})$returnType"
     }
     
     /**
@@ -1310,17 +365,6 @@ class BytecodeGenerator {
                 }
             }
             else -> "Ljava/lang/Object;"
-        }
-    }
-    
-    /**
-     * Check if type is an integer type
-     */
-    private fun isIntegerType(type: Type): Boolean {
-        return when (type) {
-            is Type.PrimitiveType -> type.name.lowercase() == "int"
-            is Type.NamedType -> type.name.lowercase() == "int"
-            else -> false
         }
     }
     
