@@ -188,7 +188,7 @@ class TypeCheckerTest : StringSpec({
     }
 
     "should type check simple function declarations" {
-        val source = "fn identity(x: Int): Int => x"
+        val source = "fun identity(x: Int): Int => x"
         val program = parser.parse(source)
             .getOrThrow()
         
@@ -408,7 +408,7 @@ class TypeCheckerTest : StringSpec({
     "should type check function with multiple parameters" {
         // TODO: Implement multi-parameter function type checking
         // Current issue: TypeChecker doesn't handle complex binary operations with multiple operands
-        val source = "fn add(x: Int, y: Int, z: Int): Int => x + y + z"
+        val source = "fun add(x: Int, y: Int, z: Int): Int => x + y + z"
         val program = parser.parse(source)
             .getOrThrow()
         
@@ -419,7 +419,7 @@ class TypeCheckerTest : StringSpec({
     }
 
     "should type check generic functions" { // TODO: Implement generic function support
-        val source = "fn identity<T>(x: T): T => x"
+        val source = "fun identity<T>(x: T): T => x"
         val program = parser.parse(source)
             .getOrThrow()
         
@@ -430,7 +430,7 @@ class TypeCheckerTest : StringSpec({
     }
 
     "should detect parameter type mismatches" { // TODO: Implement return type validation
-        val source = "fn test(x: Int): String => x"  // Returns Int but declares String
+        val source = "fun test(x: Int): String => x"  // Returns Int but declares String
         val program = parser.parse(source)
             .getOrThrow()
         
@@ -441,7 +441,7 @@ class TypeCheckerTest : StringSpec({
 
     "should type check function calls with arguments" { // TODO: Implement function call type checking
         val source = """
-            fn add(x: Int, y: Int): Int => x + y
+            fun add(x: Int, y: Int): Int => x + y
             val result = add(1, 2)
         """.trimIndent()
         val program = parser.parse(source)
@@ -520,7 +520,7 @@ class TypeCheckerTest : StringSpec({
 
     "should type check if expressions" { // If expression type checking implemented
         val source = """
-            fn test(x: Int): String => if (x > 0) "positive" else "non-positive"
+            fun test(x: Int): String => if (x > 0) "positive" else "non-positive"
         """.trimIndent()
         val program = parser.parse(source)
             .getOrThrow()
@@ -659,7 +659,7 @@ class TypeCheckerTest : StringSpec({
     "should handle variable shadowing correctly".config(enabled = false) { // TODO: Implement variable shadowing support
         val source = """
             val x = 10
-            fn test(): Int => {
+            fun test(): Int => {
                 val x = 20
                 x
             }
@@ -675,7 +675,7 @@ class TypeCheckerTest : StringSpec({
 
     "should handle nested scopes".config(enabled = false) { // TODO: Implement nested scope support
         val source = """
-            fn outer(): Int => {
+            fun outer(): Int => {
                 val x = 10
                 {
                     val y = 20
@@ -715,7 +715,7 @@ class TypeCheckerTest : StringSpec({
     "should type check simple match expressions with union types" {
         val source = """
             type Option<T> = Some(T) | None
-            fn unwrap<T>(opt: Option<T>, default: T): T => match opt {
+            fun unwrap<T>(opt: Option<T>, default: T): T => match opt {
                 case Some(value) => value
                 case None => default
             }
