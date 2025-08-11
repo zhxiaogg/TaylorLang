@@ -65,52 +65,52 @@ class ControlFlowBytecodeGenerator(
     
     /**
      * Generate code for while expressions
+     * 
+     * Standard while loop pattern:
+     * 1. Jump to condition check first
+     * 2. Loop body (only executed if condition is true)
+     * 3. Condition check
+     * 4. If condition true, jump back to body
+     * 5. Continue after loop
      */
     fun generateWhileExpression(whileExpr: WhileExpression, resultType: Type) {
-        val conditionLabel = org.objectweb.asm.Label()
-        val loopBodyLabel = org.objectweb.asm.Label() 
+        val loopStartLabel = org.objectweb.asm.Label()
+        val conditionCheckLabel = org.objectweb.asm.Label()
         val loopEndLabel = org.objectweb.asm.Label()
         
-        // CRITICAL FIX: Standard while loop structure
-        // 1. Jump to condition check immediately (never execute body first)
-        // 2. Condition check: if false, jump to end
-        // 3. Body execution
-        // 4. Jump back to condition check
+        // CRITICAL: Jump to condition check FIRST to implement proper while loop semantics
+        // This ensures while(false) never executes the body
+        methodVisitor.visitJumpInsn(GOTO, conditionCheckLabel)
         
-        // Jump directly to condition evaluation
-        methodVisitor.visitJumpInsn(GOTO, conditionLabel)
+        // === LOOP BODY SECTION ===
+        methodVisitor.visitLabel(loopStartLabel)
         
-        // Loop body - only executed after condition is verified as true
-        methodVisitor.visitLabel(loopBodyLabel)
+        // Generate the loop body
         val bodyType = expressionGenerator.inferExpressionType(whileExpr.body)
         generateExpression(TypedExpression(whileExpr.body, bodyType))
         
-        // Pop the body result since while loops don't return body values
+        // Pop body result - while loops return Unit, not the body result
         if (getJvmType(bodyType) != "V") {
             methodVisitor.visitInsn(POP)
         }
         
-        // Condition evaluation point - checked before every iteration
-        methodVisitor.visitLabel(conditionLabel)
+        // === CONDITION CHECK SECTION ===
+        methodVisitor.visitLabel(conditionCheckLabel)
+        
+        // Generate condition evaluation  
         val conditionType = expressionGenerator.inferExpressionType(whileExpr.condition)
         generateExpression(TypedExpression(whileExpr.condition, conditionType))
         
-        // If condition is TRUE (non-zero), jump back to body for (another) iteration
-        methodVisitor.visitJumpInsn(IFNE, loopBodyLabel)
+        // CRITICAL: IFNE jumps if stack value is NOT zero (i.e., true)
+        // - while(true): condition puts 1 on stack, IFNE jumps to body -> correct
+        // - while(false): condition puts 0 on stack, IFNE does NOT jump -> correct  
+        methodVisitor.visitJumpInsn(IFNE, loopStartLabel)
         
-        // Condition is false - fall through to end (exit loop)
+        // === LOOP EXIT SECTION ===
         methodVisitor.visitLabel(loopEndLabel)
         
-        // While expressions typically return Unit, but we may need to push a default value
-        // to satisfy the stack expectation
-        if (getJvmType(resultType) != "V") {
-            when (getJvmType(resultType)) {
-                "I", "Z" -> methodVisitor.visitLdcInsn(0)
-                "D" -> methodVisitor.visitLdcInsn(0.0)
-                "Ljava/lang/String;" -> methodVisitor.visitLdcInsn("")
-                else -> methodVisitor.visitInsn(ACONST_NULL)
-            }
-        }
+        // While expressions return Unit - no value to push
+        // The stack should already be clean after condition evaluation
     }
     
     /**
