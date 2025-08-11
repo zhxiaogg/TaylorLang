@@ -71,11 +71,16 @@ class ControlFlowBytecodeGenerator(
         val loopBodyLabel = org.objectweb.asm.Label() 
         val loopEndLabel = org.objectweb.asm.Label()
         
-        // Use the same pattern as successful if-expressions but adapted for while loops
-        // Jump to condition evaluation first (skip body initially)
+        // CRITICAL FIX: Standard while loop structure
+        // 1. Jump to condition check immediately (never execute body first)
+        // 2. Condition check: if false, jump to end
+        // 3. Body execution
+        // 4. Jump back to condition check
+        
+        // Jump directly to condition evaluation
         methodVisitor.visitJumpInsn(GOTO, conditionLabel)
         
-        // Loop body - only executed when condition is true
+        // Loop body - only executed after condition is verified as true
         methodVisitor.visitLabel(loopBodyLabel)
         val bodyType = expressionGenerator.inferExpressionType(whileExpr.body)
         generateExpression(TypedExpression(whileExpr.body, bodyType))
@@ -85,15 +90,15 @@ class ControlFlowBytecodeGenerator(
             methodVisitor.visitInsn(POP)
         }
         
-        // Condition evaluation point
+        // Condition evaluation point - checked before every iteration
         methodVisitor.visitLabel(conditionLabel)
         val conditionType = expressionGenerator.inferExpressionType(whileExpr.condition)
         generateExpression(TypedExpression(whileExpr.condition, conditionType))
         
-        // If condition is true (non-zero), jump back to body
+        // If condition is TRUE (non-zero), jump back to body for (another) iteration
         methodVisitor.visitJumpInsn(IFNE, loopBodyLabel)
         
-        // Condition is false - fall through to end
+        // Condition is false - fall through to end (exit loop)
         methodVisitor.visitLabel(loopEndLabel)
         
         // While expressions typically return Unit, but we may need to push a default value

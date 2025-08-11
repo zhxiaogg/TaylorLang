@@ -187,6 +187,14 @@ class BytecodeGenerator {
         )
         methodVisitor!!.visitCode()
         
+        // CRITICAL FIX: Static methods need different slot allocation
+        // In static methods, slot 0 is for first parameter (String[] args), 
+        // so variables start at slot 1. But the VariableSlotManager defaults to slot 1
+        // thinking slot 0 is for 'this'. We need to reset it to account for static method.
+        variableSlotManager.clear()
+        // For static main method: slot 0 = String[] args, variables start at slot 1
+        variableSlotManager.setStartingSlot(1)
+        
         // Initialize specialized generators
         initializeGenerators()
         
@@ -266,6 +274,9 @@ class BytecodeGenerator {
             }
         }
         
+        // CRITICAL FIX: Main method should exit with code 0 for success
+        methodVisitor!!.visitLdcInsn(0)
+        methodVisitor!!.visitMethodInsn(INVOKESTATIC, "java/lang/System", "exit", "(I)V", false)
         methodVisitor!!.visitInsn(RETURN)
         methodVisitor!!.visitMaxs(10, variableSlotManager.getMaxSlots()) // Use actual slot count
         methodVisitor!!.visitEnd()

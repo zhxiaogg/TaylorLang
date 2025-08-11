@@ -70,6 +70,9 @@ class FunctionBytecodeGenerator(
                     if (exprType != "V") {
                         methodVisitor.visitInsn(POP)
                     }
+                    // CRITICAL FIX: Main function should exit with code 0 for success
+                    methodVisitor.visitLdcInsn(0)
+                    methodVisitor.visitMethodInsn(INVOKESTATIC, "java/lang/System", "exit", "(I)V", false)
                     methodVisitor.visitInsn(RETURN)
                 } else {
                     // Regular function returns the expression value

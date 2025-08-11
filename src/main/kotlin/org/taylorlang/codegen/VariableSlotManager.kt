@@ -109,6 +109,14 @@ class VariableSlotManager {
     }
     
     /**
+     * Set the starting slot for variable allocation.
+     * Used for static methods where slot 0 is for parameters, not 'this'.
+     */
+    fun setStartingSlot(startSlot: Int) {
+        nextAvailableSlot = startSlot
+    }
+    
+    /**
      * Allocate a temporary slot for intermediate values.
      * These slots don't have variable names and are released explicitly.
      */
