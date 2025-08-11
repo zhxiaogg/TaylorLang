@@ -221,8 +221,8 @@
 ---
 
 ### Task: Fix Main Function Exit Code Generation
-**Status**: 🟡 HIGH PRIORITY - NEEDS ASSIGNMENT
-**Assignee**: UNASSIGNED
+**Status**: 🔴 REJECTED - CRITICAL ANALYSIS ISSUE IDENTIFIED
+**Assignee**: kotlin-java-engineer (NEEDS IMMEDIATE REWORK)
 **Component**: Code Generation - Function Generation
 **Effort**: Small (1-2 days)
 **Priority**: HIGH - Affects program execution success
