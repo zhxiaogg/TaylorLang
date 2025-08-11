@@ -60,11 +60,14 @@ class OutputCaptureDebugTest : DescribeSpec({
                                 
                                 try {
                                     println("Setting up output capture...")
+                                    
+                                    // CRITICAL FIX: Set output capture BEFORE any debug statements that should not be captured
                                     System.setOut(ps)
                                     
-                                    println("Invoking main method...")
+                                    // FIXED: Remove debug output that was contaminating captured results
                                     mainMethod.invoke(null, arrayOf<String>())
                                     
+                                    // FIXED: Restore original output BEFORE any debug prints
                                     System.setOut(originalOut)
                                     val actualOutput = baos.toString().trim()
                                     

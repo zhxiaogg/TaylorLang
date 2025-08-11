@@ -223,7 +223,12 @@ class BytecodeGenerator {
                     }
                     
                     if (shouldPop) {
-                        methodVisitor!!.visitInsn(POP)
+                        // CRITICAL FIX: Handle double-width values properly when popping
+                        if (getJvmType(statement.expression.type) == "D") {
+                            methodVisitor!!.visitInsn(POP2) // Pop double value (2 slots)
+                        } else {
+                            methodVisitor!!.visitInsn(POP) // Pop single value
+                        }
                     }
                 }
                 is TypedStatement.FunctionDeclaration -> {

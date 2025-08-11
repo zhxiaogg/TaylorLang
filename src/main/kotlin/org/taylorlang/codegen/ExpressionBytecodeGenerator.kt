@@ -48,7 +48,10 @@ class ExpressionBytecodeGenerator(
                 // Load variable from local slot
                 if (variableSlotManager.hasSlot(expression.name)) {
                     val slot = variableSlotManager.getSlot(expression.name)!!
-                    val loadInstruction = variableSlotManager.getLoadInstruction(expr.type)
+                    // CRITICAL FIX: Use the actual variable type stored in the slot, not the inferred type
+                    // This prevents JVM verification errors when types don't match
+                    val variableType = variableSlotManager.getType(expression.name)!!
+                    val loadInstruction = variableSlotManager.getLoadInstruction(variableType)
                     methodVisitor.visitVarInsn(loadInstruction, slot)
                 } else {
                     // For now, load 0 as placeholder for unknown identifiers (e.g., functions)
@@ -287,6 +290,11 @@ class ExpressionBytecodeGenerator(
                     "println" -> BuiltinTypes.UNIT // println returns void/unit
                     else -> BuiltinTypes.INT // Default for unknown functions
                 }
+            }
+            is Identifier -> {
+                // CRITICAL FIX: Look up the actual variable type from the slot manager
+                // This prevents type mismatches in function calls and other expressions
+                variableSlotManager.getType(expr.name) ?: BuiltinTypes.INT // Default to INT if not found
             }
             else -> BuiltinTypes.INT // Default fallback
         }

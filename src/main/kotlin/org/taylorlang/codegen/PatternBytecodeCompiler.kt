@@ -109,7 +109,12 @@ class PatternBytecodeCompiler(
             // of the overall match expression, we may need to convert or leave it
             if (leavesValueOnStack && getJvmType(resultType) == "V") {
                 // Case expression returned a value but match expression should return void - pop it
-                methodVisitor.visitInsn(POP)
+                // CRITICAL FIX: Handle double-width values properly when popping
+                if (getJvmType(caseExprType) == "D") {
+                    methodVisitor.visitInsn(POP2) // Pop double value (2 slots)
+                } else {
+                    methodVisitor.visitInsn(POP) // Pop single value
+                }
             } else if (!leavesValueOnStack && getJvmType(resultType) != "V") {
                 // Case expression was void but match expression should return a value - push default
                 when (getJvmType(resultType)) {
@@ -147,7 +152,12 @@ class PatternBytecodeCompiler(
         when (pattern) {
             is Pattern.WildcardPattern -> {
                 // Wildcard always matches - remove value and jump to case
-                methodVisitor.visitInsn(POP) // Remove target value from stack
+                // CRITICAL FIX: Handle double-width values properly
+                if (getJvmType(targetType) == "D") {
+                    methodVisitor.visitInsn(POP2) // Remove double value (2 slots)
+                } else {
+                    methodVisitor.visitInsn(POP) // Remove single value
+                }
                 methodVisitor.visitJumpInsn(GOTO, caseLabel)
             }
             is Pattern.LiteralPattern -> {
@@ -162,7 +172,12 @@ class PatternBytecodeCompiler(
                     generateNullaryConstructorMatch(pattern.name, targetType, caseLabel, nextLabel)
                 } else {
                     // Variable pattern - always matches, remove value and jump
-                    methodVisitor.visitInsn(POP) // Remove target value from stack
+                    // CRITICAL FIX: Handle double-width values properly
+                    if (getJvmType(targetType) == "D") {
+                        methodVisitor.visitInsn(POP2) // Remove double value (2 slots)
+                    } else {
+                        methodVisitor.visitInsn(POP) // Remove single value
+                    }
                     methodVisitor.visitJumpInsn(GOTO, caseLabel)
                 }
             }
@@ -211,14 +226,16 @@ class PatternBytecodeCompiler(
                 // If we reach here, comparison failed and stack is empty
             }
             is Literal.FloatLiteral -> {
-                // Stack starts with: [target_double]
+                // CRITICAL FIX: Handle double-width values properly
+                // Stack starts with: [target_double] (takes 2 stack positions)
                 methodVisitor.visitLdcInsn(literal.value)
-                // Stack now: [target_double, literal_double]
+                // Stack now: [target_double, literal_double] (4 stack positions total)
+                
                 // Use DCMPG for double comparison
+                // DCMPG pops two doubles (4 stack positions) and pushes one int
                 methodVisitor.visitInsn(DCMPG)
-                // DCMPG consumes both doubles and pushes int result:
-                // 0 if equal, >0 if target > literal, <0 if target < literal
-                // Stack now: [comparison_result]
+                // Stack now: [comparison_result] (1 stack position)
+                // Result: 0 if equal, >0 if target > literal, <0 if target < literal
                 methodVisitor.visitJumpInsn(IFEQ, caseLabel)
                 // If we reach here, comparison failed and stack is empty
             }
@@ -229,7 +246,12 @@ class PatternBytecodeCompiler(
             }
             else -> {
                 // Unsupported literal - treat as non-matching
-                methodVisitor.visitInsn(POP) // Remove target value
+                // For double-width values, pop twice
+                if (getJvmType(targetType) == "D") {
+                    methodVisitor.visitInsn(POP2) // Remove double value (2 slots)
+                } else {
+                    methodVisitor.visitInsn(POP) // Remove single value
+                }
             }
         }
         // If we reach here, pattern didn't match and stack is empty - ready for next pattern
@@ -249,7 +271,12 @@ class PatternBytecodeCompiler(
         
         // Placeholder: assume the constructor name matches some field or method
         // Real implementation would check union type variant tags
-        methodVisitor.visitInsn(POP) // Remove target value for now
+        // CRITICAL FIX: Handle double-width values properly
+        if (getJvmType(targetType) == "D") {
+            methodVisitor.visitInsn(POP2) // Remove double value (2 slots)
+        } else {
+            methodVisitor.visitInsn(POP) // Remove single value
+        }
         
         // For demonstration, always jump to case (this will be properly implemented
         // when union type runtime representation is finalized)
@@ -267,7 +294,12 @@ class PatternBytecodeCompiler(
     ) {
         // Similar to constructor pattern but for nullary constructors
         // TODO: Implement with proper union type runtime support
-        methodVisitor.visitInsn(POP) // Remove target value
+        // CRITICAL FIX: Handle double-width values properly
+        if (getJvmType(targetType) == "D") {
+            methodVisitor.visitInsn(POP2) // Remove double value (2 slots)
+        } else {
+            methodVisitor.visitInsn(POP) // Remove single value
+        }
         methodVisitor.visitJumpInsn(GOTO, caseLabel)
     }
     
@@ -287,7 +319,12 @@ class PatternBytecodeCompiler(
         val loadInstruction = variableSlotManager.getLoadInstruction(targetType)
         
         // Duplicate the target value and store it for guard evaluation
-        methodVisitor.visitInsn(if (getJvmType(targetType) == "D") DUP2 else DUP)
+        // CRITICAL FIX: Handle double-width values properly for duplication
+        if (getJvmType(targetType) == "D") {
+            methodVisitor.visitInsn(DUP2) // Duplicate 2-slot double value
+        } else {
+            methodVisitor.visitInsn(DUP) // Duplicate 1-slot value
+        }
         methodVisitor.visitVarInsn(storeInstruction, guardTargetSlot)
         
         // Create intermediate label for guard evaluation
