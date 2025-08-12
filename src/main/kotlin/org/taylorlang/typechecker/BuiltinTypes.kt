@@ -58,6 +58,42 @@ object BuiltinTypes {
      */
     val UNIT = Type.PrimitiveType("Unit")
     
+    /**
+     * Base exception type for the error handling system.
+     * All error types must be subtypes of Throwable.
+     */
+    val THROWABLE = Type.PrimitiveType("Throwable")
+    
+    // =============================================================================
+    // Result Type System
+    // =============================================================================
+    
+    /**
+     * Creates a Result<T, E> generic type with the given value and error types.
+     * The error type E must be constrained to be a subtype of Throwable.
+     * 
+     * @param valueType The type of the success value (T)
+     * @param errorType The type of the error value (E), must be a Throwable subtype
+     * @return Result<T, E> generic type
+     */
+    fun createResultType(valueType: Type, errorType: Type): Type.GenericType {
+        return Type.GenericType(
+            name = "Result",
+            arguments = kotlinx.collections.immutable.persistentListOf(valueType, errorType)
+        )
+    }
+    
+    /**
+     * Creates a Result<T, Throwable> generic type for general error handling.
+     * This is a convenience method for the common case where the error type is Throwable.
+     * 
+     * @param valueType The type of the success value (T)
+     * @return Result<T, Throwable> generic type
+     */
+    fun createResultType(valueType: Type): Type.GenericType {
+        return createResultType(valueType, THROWABLE)
+    }
+    
     // =============================================================================
     // Type Collections and Utilities
     // =============================================================================
@@ -73,7 +109,8 @@ object BuiltinTypes {
         "Double" to DOUBLE,
         "Boolean" to BOOLEAN,
         "String" to STRING,
-        "Unit" to UNIT
+        "Unit" to UNIT,
+        "Throwable" to THROWABLE
     )
     
     /**
@@ -217,5 +254,84 @@ object BuiltinTypes {
      */
     fun lookupPrimitive(name: String): Type? {
         return primitives[name]
+    }
+    
+    // =============================================================================
+    // Result Type Checking Utilities
+    // =============================================================================
+    
+    /**
+     * Check if a type is a Result type.
+     * @param type The type to check
+     * @return true if the type is Result<T, E>
+     */
+    fun isResultType(type: Type): Boolean {
+        return when (type) {
+            is Type.GenericType -> type.name == "Result" && type.arguments.size == 2
+            else -> false
+        }
+    }
+    
+    /**
+     * Extract the value type from a Result<T, E> type.
+     * @param resultType The Result type
+     * @return The value type T, or null if not a valid Result type
+     */
+    fun getResultValueType(resultType: Type): Type? {
+        return if (isResultType(resultType)) {
+            (resultType as Type.GenericType).arguments.firstOrNull()
+        } else {
+            null
+        }
+    }
+    
+    /**
+     * Extract the error type from a Result<T, E> type.
+     * @param resultType The Result type
+     * @return The error type E, or null if not a valid Result type
+     */
+    fun getResultErrorType(resultType: Type): Type? {
+        return if (isResultType(resultType)) {
+            (resultType as Type.GenericType).arguments.getOrNull(1)
+        } else {
+            null
+        }
+    }
+    
+    /**
+     * Check if a type is a subtype of Throwable.
+     * For now, this checks if the type is exactly Throwable or a known exception type.
+     * In a full implementation, this would consult a type hierarchy.
+     * 
+     * @param type The type to check
+     * @return true if the type is a Throwable subtype
+     */
+    fun isThrowableSubtype(type: Type): Boolean {
+        return when (type) {
+            is Type.PrimitiveType -> {
+                when (type.name) {
+                    "Throwable", "Exception", "RuntimeException", 
+                    "IllegalArgumentException", "IllegalStateException",
+                    "NullPointerException", "IndexOutOfBoundsException" -> true
+                    else -> false
+                }
+            }
+            is Type.NamedType -> {
+                // Check for user-defined exception types
+                // In a full implementation, this would consult the type hierarchy
+                type.name.endsWith("Exception") || type.name.endsWith("Error")
+            }
+            else -> false
+        }
+    }
+    
+    /**
+     * Validate that the error type in a Result<T, E> is a Throwable subtype.
+     * @param resultType The Result type to validate
+     * @return true if the error type is valid (Throwable subtype)
+     */
+    fun validateResultErrorType(resultType: Type): Boolean {
+        val errorType = getResultErrorType(resultType)
+        return errorType != null && isThrowableSubtype(errorType)
     }
 }

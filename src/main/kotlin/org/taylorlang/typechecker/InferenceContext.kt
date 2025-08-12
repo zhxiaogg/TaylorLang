@@ -46,7 +46,13 @@ data class InferenceContext(
      * Current scope level for debugging and scope management.
      * Root scope is level 0, nested scopes increment this value.
      */
-    val scopeLevel: Int = 0
+    val scopeLevel: Int = 0,
+    
+    /**
+     * Current function return type for validation of try expressions.
+     * Try expressions are only allowed in functions returning Result<T, E>.
+     */
+    val functionReturnType: Type? = null
 ) {
     
     // =============================================================================
@@ -213,6 +219,35 @@ data class InferenceContext(
         val envFreeVars = getFreeTypeVars()
         val generalizableVars = typeVars - envFreeVars
         return TypeScheme(generalizableVars, type)
+    }
+    
+    // =============================================================================
+    // Function Context Operations
+    // =============================================================================
+    
+    /**
+     * Get the current function return type.
+     * Used to validate try expressions which are only allowed in Result-returning functions.
+     */
+    fun getCurrentFunctionReturnType(): Type? = functionReturnType
+    
+    /**
+     * Set the function return type for the current context.
+     * Creates a new context with the updated function return type.
+     */
+    fun withFunctionReturnType(returnType: Type): InferenceContext {
+        return copy(functionReturnType = returnType)
+    }
+    
+    /**
+     * Create a new scope with pattern bindings.
+     * Useful for catch clauses and pattern matching where multiple variables are bound.
+     */
+    fun withPatternBindings(bindings: Map<String, Type>): InferenceContext {
+        val newEnv = typeEnvironment.putAll(
+            bindings.mapValues { (_, type) -> TypeScheme.monomorphic(type) }
+        )
+        return copy(typeEnvironment = newEnv)
     }
     
     // =============================================================================

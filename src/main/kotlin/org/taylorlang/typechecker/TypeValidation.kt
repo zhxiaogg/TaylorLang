@@ -294,11 +294,50 @@ object TypeValidation {
     }
     
     /**
-     * Validate generic type constraints (placeholder for future constraint system).
+     * Validate generic type constraints including Result type Throwable constraints.
      */
     private fun validateGenericConstraints(genericType: Type.GenericType): ValidationResult {
-        // This would validate type bounds, constraints, etc.
-        // For now, return valid as constraint system is not fully implemented
+        // Special validation for Result<T, E> types
+        if (BuiltinTypes.isResultType(genericType)) {
+            return validateResultTypeConstraints(genericType)
+        }
+        
+        // Other generic type constraints would go here
+        // For now, other generic types are valid
+        return ValidationResult.Valid
+    }
+    
+    /**
+     * Validate Result<T, E> type constraints.
+     * Ensures that the error type E is a subtype of Throwable.
+     */
+    private fun validateResultTypeConstraints(resultType: Type.GenericType): ValidationResult {
+        if (!BuiltinTypes.isResultType(resultType)) {
+            return ValidationResult.Invalid(
+                errors = listOf(
+                    ValidationError.TypeConstraintViolation(
+                        type = resultType,
+                        constraint = "Result type structure",
+                        reason = "Type is not a valid Result<T, E>"
+                    )
+                )
+            )
+        }
+        
+        // Validate that error type is Throwable subtype
+        if (!BuiltinTypes.validateResultErrorType(resultType)) {
+            val errorType = BuiltinTypes.getResultErrorType(resultType)
+            return ValidationResult.Invalid(
+                errors = listOf(
+                    ValidationError.ResultErrorTypeViolation(
+                        resultType = resultType,
+                        errorType = errorType,
+                        reason = "Error type must be a subtype of Throwable"
+                    )
+                )
+            )
+        }
+        
         return ValidationResult.Valid
     }
     
@@ -374,6 +413,15 @@ object TypeValidation {
         ) : ValidationError() {
             override val message: String = 
                 "Circular type reference detected: ${cycle.joinToString(" -> ")}"
+        }
+        
+        data class ResultErrorTypeViolation(
+            val resultType: Type.GenericType,
+            val errorType: Type?,
+            val reason: String
+        ) : ValidationError() {
+            override val message: String = 
+                "Result type ${resultType} has invalid error type ${errorType}: $reason"
         }
     }
     

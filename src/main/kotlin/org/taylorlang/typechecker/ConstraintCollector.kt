@@ -169,6 +169,89 @@ class ConstraintCollector {
         return statementVisitor.handleConstructorCall(call, expectedType, context)
     }
     
+    /**
+     * Type check a function declaration with constraint collection.
+     * This method ensures that function return types are properly propagated
+     * to validate try expressions and other return-type-dependent constructs.
+     */
+    fun typeCheckFunctionDeclaration(
+        functionDecl: FunctionDecl,
+        context: InferenceContext
+    ): ConstraintResult {
+        // Extract or infer return type
+        val returnType = functionDecl.returnType ?: run {
+            // Create a fresh type variable for the return type if not specified
+            val returnVar = TypeVar.fresh()
+            Type.NamedType(returnVar.id)
+        }
+        
+        // Create parameter types and context
+        val paramTypes = functionDecl.parameters.map { param ->
+            param.type ?: run {
+                val paramVar = TypeVar.fresh()
+                Type.NamedType(paramVar.id)
+            }
+        }
+        
+        // Create new context with function parameters and return type
+        val paramBindings = functionDecl.parameters.zip(paramTypes).associate { (param, type) ->
+            param.name to type
+        }
+        
+        val functionContext = context
+            .withFunctionReturnType(returnType)
+            .enterScopeWith(paramBindings)
+        
+        // Process function body with the enhanced context
+        return when (functionDecl.body) {
+            is FunctionBody.ExpressionBody -> {
+                // Collect constraints from expression body
+                val bodyResult = collectConstraintsWithExpected(
+                    functionDecl.body.expression, 
+                    returnType, 
+                    functionContext
+                )
+                
+                // Return type is the return type with accumulated constraints
+                ConstraintResult(returnType, bodyResult.constraints)
+            }
+            is FunctionBody.BlockBody -> {
+                // Process each statement in the block
+                var allConstraints = ConstraintSet.empty()
+                var blockContext = functionContext
+                
+                for (statement in functionDecl.body.statements) {
+                    when (statement) {
+                        is Expression -> {
+                            val stmtResult = collectConstraints(statement, blockContext)
+                            allConstraints = allConstraints.merge(stmtResult.constraints)
+                        }
+                        is ValDecl -> {
+                            val initResult = collectConstraints(statement.initializer, blockContext)
+                            allConstraints = allConstraints.merge(initResult.constraints)
+                            
+                            val varType = statement.type ?: initResult.type
+                            if (statement.type != null) {
+                                val constraint = Constraint.Equality(
+                                    initResult.type,
+                                    statement.type,
+                                    statement.sourceLocation
+                                )
+                                allConstraints = allConstraints.add(constraint)
+                            }
+                            blockContext = blockContext.withVariable(statement.name, varType)
+                        }
+                        else -> {
+                            // Handle other statement types as needed
+                        }
+                    }
+                }
+                
+                ConstraintResult(returnType, allConstraints)
+            }
+        }
+    }
+    
     
     
     

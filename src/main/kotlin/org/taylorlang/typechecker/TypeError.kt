@@ -110,6 +110,15 @@ sealed class TypeError : Throwable() {
     }
     
     /**
+     * Try expression used in an invalid context.
+     * Try expressions are only allowed in functions that return Result<T, E>.
+     */
+    data class InvalidTryExpressionContext(
+        override val message: String,
+        val location: SourceLocation?
+    ) : TypeError()
+    
+    /**
      * A composite error containing multiple individual type errors.
      * This is useful for collecting all errors in a compilation unit
      * rather than stopping at the first error.

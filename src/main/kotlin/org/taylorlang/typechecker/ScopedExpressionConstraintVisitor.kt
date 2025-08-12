@@ -159,31 +159,179 @@ class ScopedExpressionConstraintVisitor(
         expectedType: Type?,
         context: InferenceContext
     ): ConstraintResult {
+        // First, validate that we're in a Result-returning function context
+        val functionReturnType = context.getCurrentFunctionReturnType()
+        if (functionReturnType != null && !BuiltinTypes.isResultType(functionReturnType)) {
+            // Try expressions are only allowed in Result-returning functions
+            val error = TypeError.InvalidTryExpressionContext(
+                "Try expressions can only be used in functions that return Result<T, E>",
+                tryExpr.sourceLocation
+            )
+            // For now, we'll continue processing but this should be an error
+            // In a full implementation, this would add a constraint violation
+        }
+        
+        // Determine the expected Result type
+        val expectedResultType = expectedType ?: functionReturnType
+        val (expectedValueType, expectedErrorType) = if (expectedResultType != null && BuiltinTypes.isResultType(expectedResultType)) {
+            Pair(
+                BuiltinTypes.getResultValueType(expectedResultType),
+                BuiltinTypes.getResultErrorType(expectedResultType)
+            )
+        } else {
+            // Create fresh type variables for Result<T, E>
+            val valueVar = TypeVar.fresh()
+            val errorVar = TypeVar.fresh()
+            Pair(
+                Type.NamedType(valueVar.id),
+                Type.NamedType(errorVar.id)
+            )
+        }
+        
         // Collect constraints from the try expression
-        val tryResult = collector.collectConstraintsWithExpected(tryExpr.expression, expectedType, context)
+        val tryResult = collector.collectConstraintsWithExpected(tryExpr.expression, expectedValueType, context)
         var allConstraints = tryResult.constraints
         
+        // The try expression should evaluate to the value type
+        val tryValueType = tryResult.type
+        
         // Process catch clauses if present
+        var catchErrorTypes = mutableListOf<Type>()
         if (tryExpr.catchClauses.isNotEmpty()) {
-            // For now, treat catch clauses similarly to match cases
-            // In a full implementation, this would handle Result types and error propagation
             for (catchClause in tryExpr.catchClauses) {
-                // Collect constraints from catch body
-                val bodyResult = collector.collectConstraintsWithExpected(catchClause.body, expectedType, context)
-                allConstraints = allConstraints.merge(bodyResult.constraints)
+                // Process the pattern to extract error type information
+                val patternResult = processCatchPattern(catchClause.pattern, expectedErrorType, context)
+                allConstraints = allConstraints.merge(patternResult.constraints)
+                catchErrorTypes.add(patternResult.errorType)
+                
+                // Create new context with pattern bindings
+                val catchContext = context.withPatternBindings(patternResult.bindings)
                 
                 // Process guard expression if present
                 catchClause.guardExpression?.let { guard ->
-                    val guardResult = collector.collectConstraints(guard, context)
+                    val guardResult = collector.collectConstraintsWithExpected(guard, BuiltinTypes.BOOLEAN, catchContext)
                     allConstraints = allConstraints.merge(guardResult.constraints)
                 }
+                
+                // Collect constraints from catch body - should return same type as try
+                val bodyResult = collector.collectConstraintsWithExpected(catchClause.body, expectedValueType, catchContext)
+                allConstraints = allConstraints.merge(bodyResult.constraints)
+                
+                // Add constraint that catch body type matches try body type
+                val equalityConstraint = Constraint.Equality(
+                    bodyResult.type,
+                    tryValueType,
+                    catchClause.sourceLocation
+                )
+                allConstraints = allConstraints.add(equalityConstraint)
             }
         }
         
-        // The result type is the same as the try expression type for now
-        // In the full implementation, this would involve Result type handling
-        val resultType = expectedType ?: tryResult.type
+        // Create the Result type for the overall try expression
+        val inferredErrorType = expectedErrorType ?: run {
+            // If we have catch clauses, unify their error types
+            if (catchErrorTypes.isNotEmpty()) {
+                // For simplicity, take the first error type
+                // A full implementation would perform proper unification
+                catchErrorTypes.first()
+            } else {
+                // Default to Throwable
+                BuiltinTypes.THROWABLE
+            }
+        }
+        
+        val resultType = BuiltinTypes.createResultType(tryValueType, inferredErrorType)
+        
+        // Add constraint that the inferred error type is a Throwable subtype
+        if (inferredErrorType != null && !BuiltinTypes.isThrowableSubtype(inferredErrorType)) {
+            val throwableConstraint = Constraint.Subtype(
+                inferredErrorType,
+                BuiltinTypes.THROWABLE,
+                tryExpr.sourceLocation
+            )
+            allConstraints = allConstraints.add(throwableConstraint)
+        }
+        
+        // If we have an expected type, add equality constraint
+        if (expectedType != null) {
+            val constraint = Constraint.Equality(resultType, expectedType, tryExpr.sourceLocation)
+            allConstraints = allConstraints.add(constraint)
+        }
         
         return ConstraintResult(resultType, allConstraints)
     }
+    
+    /**
+     * Process a catch clause pattern to extract error type and variable bindings.
+     */
+    private fun processCatchPattern(
+        pattern: Pattern,
+        expectedErrorType: Type?,
+        context: InferenceContext
+    ): CatchPatternResult {
+        // For now, handle simple patterns
+        return when (pattern) {
+            is Pattern.IdentifierPattern -> {
+                val errorType = expectedErrorType ?: BuiltinTypes.THROWABLE
+                CatchPatternResult(
+                    errorType = errorType,
+                    bindings = mapOf(pattern.name to errorType),
+                    constraints = ConstraintSet.empty()
+                )
+            }
+            is Pattern.ConstructorPattern -> {
+                // Constructor pattern for specific exception types
+                val errorType = Type.NamedType(pattern.constructor)
+                val bindings = mutableMapOf<String, Type>()
+                var constraints = ConstraintSet.empty()
+                
+                // Process constructor arguments
+                pattern.patterns.forEachIndexed { _, argPattern ->
+                    when (argPattern) {
+                        is Pattern.IdentifierPattern -> {
+                            val argVar = TypeVar.fresh()
+                            val argType = Type.NamedType(argVar.id)
+                            bindings[argPattern.name] = argType
+                        }
+                        else -> {
+                            // Handle other pattern types as needed
+                        }
+                    }
+                }
+                
+                // Add constraint that the error type is a Throwable subtype
+                if (expectedErrorType != null) {
+                    val subtypeConstraint = Constraint.Subtype(errorType, expectedErrorType, pattern.sourceLocation)
+                    constraints = constraints.add(subtypeConstraint)
+                } else {
+                    val throwableConstraint = Constraint.Subtype(errorType, BuiltinTypes.THROWABLE, pattern.sourceLocation)
+                    constraints = constraints.add(throwableConstraint)
+                }
+                
+                CatchPatternResult(
+                    errorType = errorType,
+                    bindings = bindings,
+                    constraints = constraints
+                )
+            }
+            else -> {
+                // Fallback for other pattern types
+                val errorType = expectedErrorType ?: BuiltinTypes.THROWABLE
+                CatchPatternResult(
+                    errorType = errorType,
+                    bindings = emptyMap(),
+                    constraints = ConstraintSet.empty()
+                )
+            }
+        }
+    }
+    
+    /**
+     * Result of processing a catch pattern.
+     */
+    private data class CatchPatternResult(
+        val errorType: Type,
+        val bindings: Map<String, Type>,
+        val constraints: ConstraintSet
+    )
 }
