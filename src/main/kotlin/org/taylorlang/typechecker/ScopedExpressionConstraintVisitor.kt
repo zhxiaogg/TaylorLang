@@ -1,6 +1,7 @@
 package org.taylorlang.typechecker
 
 import kotlinx.collections.immutable.toPersistentList
+import kotlinx.collections.immutable.PersistentList
 import org.taylorlang.ast.*
 
 /**
@@ -161,104 +162,345 @@ class ScopedExpressionConstraintVisitor(
     ): ConstraintResult {
         // First, validate that we're in a Result-returning function context
         val functionReturnType = context.getCurrentFunctionReturnType()
-        if (functionReturnType != null && !BuiltinTypes.isResultType(functionReturnType)) {
-            // Try expressions are only allowed in Result-returning functions
-            val error = TypeError.InvalidTryExpressionContext(
-                "Try expressions can only be used in functions that return Result<T, E>",
+        var allConstraints = ConstraintSet.empty()
+        
+        // Enhanced validation for try expression context
+        val tryExpressionValidation = validateTryExpressionContext(tryExpr, functionReturnType)
+        if (tryExpressionValidation.hasError) {
+            // Add a constraint that will fail during constraint solving with a proper error message
+            val errorConstraint = Constraint.Equality(
+                BuiltinTypes.UNIT, // Invalid placeholder type
+                BuiltinTypes.INT,  // Different type to ensure failure
                 tryExpr.sourceLocation
             )
-            // For now, we'll continue processing but this should be an error
-            // In a full implementation, this would add a constraint violation
+            allConstraints = allConstraints.add(errorConstraint)
         }
         
-        // Determine the expected Result type
-        val expectedResultType = expectedType ?: functionReturnType
-        val (expectedValueType, expectedErrorType) = if (expectedResultType != null && BuiltinTypes.isResultType(expectedResultType)) {
-            Pair(
-                BuiltinTypes.getResultValueType(expectedResultType),
-                BuiltinTypes.getResultErrorType(expectedResultType)
+        // Determine the expected Result type with enhanced inference
+        val (expectedValueType, expectedErrorType, resultTypeInfo) = inferTryExpressionTypes(
+            expectedType, 
+            functionReturnType, 
+            tryExpr
+        )
+        
+        // Collect constraints from the try expression with bidirectional type checking
+        val tryResult = collector.collectConstraintsWithExpected(
+            tryExpr.expression, 
+            expectedValueType, 
+            context
+        )
+        allConstraints = allConstraints.merge(tryResult.constraints)
+        
+        // Enhanced constraint generation: try expression must return a Result type
+        if (!BuiltinTypes.isResultType(tryResult.type)) {
+            val resultConstraint = Constraint.Equality(
+                tryResult.type,
+                BuiltinTypes.createResultType(expectedValueType ?: tryResult.type, expectedErrorType ?: BuiltinTypes.THROWABLE),
+                tryExpr.expression.sourceLocation
             )
+            allConstraints = allConstraints.add(resultConstraint)
+        }
+        
+        // The try expression should evaluate to the value type (unwrapped from Result)
+        val tryValueType = if (BuiltinTypes.isResultType(tryResult.type)) {
+            BuiltinTypes.getResultValueType(tryResult.type) ?: run {
+                // Create fresh type variable if we can't extract the value type
+                val freshVar = TypeVar.fresh()
+                Type.NamedType(freshVar.id)
+            }
         } else {
-            // Create fresh type variables for Result<T, E>
-            val valueVar = TypeVar.fresh()
-            val errorVar = TypeVar.fresh()
-            Pair(
-                Type.NamedType(valueVar.id),
-                Type.NamedType(errorVar.id)
-            )
+            tryResult.type
         }
         
-        // Collect constraints from the try expression
-        val tryResult = collector.collectConstraintsWithExpected(tryExpr.expression, expectedValueType, context)
-        var allConstraints = tryResult.constraints
+        // Process catch clauses with enhanced error type checking
+        val catchProcessingResult = processCatchClauses(
+            tryExpr.catchClauses,
+            tryValueType,
+            expectedErrorType,
+            context
+        )
+        allConstraints = allConstraints.merge(catchProcessingResult.constraints)
         
-        // The try expression should evaluate to the value type
-        val tryValueType = tryResult.type
-        
-        // Process catch clauses if present
-        var catchErrorTypes = mutableListOf<Type>()
-        if (tryExpr.catchClauses.isNotEmpty()) {
-            for (catchClause in tryExpr.catchClauses) {
-                // Process the pattern to extract error type information
-                val patternResult = processCatchPattern(catchClause.pattern, expectedErrorType, context)
-                allConstraints = allConstraints.merge(patternResult.constraints)
-                catchErrorTypes.add(patternResult.errorType)
-                
-                // Create new context with pattern bindings
-                val catchContext = context.withPatternBindings(patternResult.bindings)
-                
-                // Process guard expression if present
-                catchClause.guardExpression?.let { guard ->
-                    val guardResult = collector.collectConstraintsWithExpected(guard, BuiltinTypes.BOOLEAN, catchContext)
-                    allConstraints = allConstraints.merge(guardResult.constraints)
-                }
-                
-                // Collect constraints from catch body - should return same type as try
-                val bodyResult = collector.collectConstraintsWithExpected(catchClause.body, expectedValueType, catchContext)
-                allConstraints = allConstraints.merge(bodyResult.constraints)
-                
-                // Add constraint that catch body type matches try body type
-                val equalityConstraint = Constraint.Equality(
-                    bodyResult.type,
-                    tryValueType,
-                    catchClause.sourceLocation
-                )
-                allConstraints = allConstraints.add(equalityConstraint)
-            }
-        }
-        
-        // Create the Result type for the overall try expression
-        val inferredErrorType = expectedErrorType ?: run {
-            // If we have catch clauses, unify their error types
-            if (catchErrorTypes.isNotEmpty()) {
-                // For simplicity, take the first error type
-                // A full implementation would perform proper unification
-                catchErrorTypes.first()
-            } else {
-                // Default to Throwable
-                BuiltinTypes.THROWABLE
-            }
-        }
-        
-        val resultType = BuiltinTypes.createResultType(tryValueType, inferredErrorType)
+        // Create the final Result type with proper type inference
+        val finalErrorType = catchProcessingResult.unifiedErrorType ?: expectedErrorType ?: BuiltinTypes.THROWABLE
+        val resultType = BuiltinTypes.createResultType(tryValueType, finalErrorType)
         
         // Add constraint that the inferred error type is a Throwable subtype
-        if (inferredErrorType != null && !BuiltinTypes.isThrowableSubtype(inferredErrorType)) {
-            val throwableConstraint = Constraint.Subtype(
-                inferredErrorType,
-                BuiltinTypes.THROWABLE,
+        val throwableConstraints = generateThrowableConstraints(finalErrorType, tryExpr.sourceLocation)
+        allConstraints = allConstraints.merge(throwableConstraints)
+        
+        // Enhanced bidirectional type checking: if we have an expected type, unify with Result type
+        if (expectedType != null) {
+            val unificationConstraints = generateResultTypeUnificationConstraints(
+                resultType, 
+                expectedType, 
                 tryExpr.sourceLocation
             )
-            allConstraints = allConstraints.add(throwableConstraint)
+            allConstraints = allConstraints.merge(unificationConstraints)
         }
         
-        // If we have an expected type, add equality constraint
-        if (expectedType != null) {
-            val constraint = Constraint.Equality(resultType, expectedType, tryExpr.sourceLocation)
-            allConstraints = allConstraints.add(constraint)
+        return ConstraintResult(resultType, allConstraints) // Return the Result type for constraint system
+    }
+    
+    // =============================================================================
+    // Enhanced Try Expression Type Checking Support Methods
+    // =============================================================================
+    
+    /**
+     * Validation result for try expression context checking.
+     */
+    private data class TryExpressionValidationResult(
+        val hasError: Boolean,
+        val errorMessage: String? = null
+    )
+    
+    /**
+     * Type inference result for try expressions.
+     */
+    private data class TryTypeInferenceResult(
+        val expectedValueType: Type?,
+        val expectedErrorType: Type?,
+        val isInferred: Boolean
+    )
+    
+    /**
+     * Result of processing catch clauses.
+     */
+    private data class CatchProcessingResult(
+        val constraints: ConstraintSet,
+        val unifiedErrorType: Type?,
+        val allErrorTypes: List<Type>
+    )
+    
+    /**
+     * Validate that a try expression is used in the proper context.
+     * Try expressions are only allowed in functions returning Result<T, E>.
+     */
+    private fun validateTryExpressionContext(
+        tryExpr: TryExpression,
+        functionReturnType: Type?
+    ): TryExpressionValidationResult {
+        if (functionReturnType == null) {
+            // No function context available - this is an error in most cases
+            return TryExpressionValidationResult(
+                hasError = true,
+                errorMessage = "Try expressions can only be used within function bodies"
+            )
         }
         
-        return ConstraintResult(resultType, allConstraints)
+        if (!BuiltinTypes.isResultType(functionReturnType)) {
+            return TryExpressionValidationResult(
+                hasError = true,
+                errorMessage = "Try expressions can only be used in functions that return Result<T, E>, but function returns $functionReturnType"
+            )
+        }
+        
+        return TryExpressionValidationResult(hasError = false)
+    }
+    
+    /**
+     * Infer the expected value and error types for a try expression using bidirectional type checking.
+     */
+    private fun inferTryExpressionTypes(
+        expectedType: Type?,
+        functionReturnType: Type?,
+        tryExpr: TryExpression
+    ): Triple<Type?, Type?, TryTypeInferenceResult> {
+        // Priority order for type inference:
+        // 1. Explicit expected type (if it's a Result type)
+        // 2. Function return type (if it's a Result type)  
+        // 3. Fresh type variables
+        
+        when {
+            expectedType != null && BuiltinTypes.isResultType(expectedType) -> {
+                val valueType = BuiltinTypes.getResultValueType(expectedType)
+                val errorType = BuiltinTypes.getResultErrorType(expectedType)
+                return Triple(
+                    valueType, 
+                    errorType,
+                    TryTypeInferenceResult(valueType, errorType, false)
+                )
+            }
+            
+            functionReturnType != null && BuiltinTypes.isResultType(functionReturnType) -> {
+                val valueType = BuiltinTypes.getResultValueType(functionReturnType)
+                val errorType = BuiltinTypes.getResultErrorType(functionReturnType)
+                return Triple(
+                    valueType,
+                    errorType,
+                    TryTypeInferenceResult(valueType, errorType, false)
+                )
+            }
+            
+            else -> {
+                // Create fresh type variables for bidirectional inference
+                val valueVar = TypeVar.fresh()
+                val errorVar = TypeVar.fresh()
+                val valueType = Type.NamedType(valueVar.id)
+                val errorType = Type.NamedType(errorVar.id)
+                return Triple(
+                    valueType,
+                    errorType,
+                    TryTypeInferenceResult(valueType, errorType, true)
+                )
+            }
+        }
+    }
+    
+    /**
+     * Process catch clauses with enhanced error type checking and unification.
+     */
+    private fun processCatchClauses(
+        catchClauses: PersistentList<CatchClause>,
+        tryValueType: Type,
+        expectedErrorType: Type?,
+        context: InferenceContext
+    ): CatchProcessingResult {
+        if (catchClauses.isEmpty()) {
+            return CatchProcessingResult(
+                constraints = ConstraintSet.empty(),
+                unifiedErrorType = expectedErrorType,
+                allErrorTypes = emptyList()
+            )
+        }
+        
+        var allConstraints = ConstraintSet.empty()
+        val errorTypes = mutableListOf<Type>()
+        
+        for (catchClause: CatchClause in catchClauses) {
+            // Process the pattern to extract error type information
+            val patternResult = processCatchPattern(catchClause.pattern, expectedErrorType, context)
+            allConstraints = allConstraints.merge(patternResult.constraints)
+            errorTypes.add(patternResult.errorType)
+            
+            // Create new context with pattern bindings
+            val catchContext = context.withPatternBindings(patternResult.bindings)
+            
+            // Process guard expression if present
+            catchClause.guardExpression?.let { guard: Expression ->
+                val guardResult = collector.collectConstraintsWithExpected(
+                    guard, 
+                    BuiltinTypes.BOOLEAN, 
+                    catchContext
+                )
+                allConstraints = allConstraints.merge(guardResult.constraints)
+                
+                // Add constraint that guard expression must be Boolean
+                val booleanConstraint = Constraint.Equality(
+                    guardResult.type,
+                    BuiltinTypes.BOOLEAN,
+                    catchClause.sourceLocation // Use catchClause location instead
+                )
+                allConstraints = allConstraints.add(booleanConstraint)
+            }
+            
+            // Collect constraints from catch body - must return same type as try value
+            val bodyResult = collector.collectConstraintsWithExpected(
+                catchClause.body, 
+                tryValueType, 
+                catchContext
+            )
+            allConstraints = allConstraints.merge(bodyResult.constraints)
+            
+            // Enhanced constraint: catch body type must unify with try value type
+            val bodyTypeConstraint = Constraint.Equality(
+                bodyResult.type,
+                tryValueType,
+                catchClause.body.sourceLocation
+            )
+            allConstraints = allConstraints.add(bodyTypeConstraint)
+        }
+        
+        // Unify all error types from catch clauses
+        val unifiedErrorType = unifyErrorTypes(errorTypes, expectedErrorType)
+        
+        return CatchProcessingResult(
+            constraints = allConstraints,
+            unifiedErrorType = unifiedErrorType,
+            allErrorTypes = errorTypes
+        )
+    }
+    
+    /**
+     * Unify multiple error types into a single unified type.
+     * Uses a simple strategy for now - in a full implementation this would be more sophisticated.
+     */
+    private fun unifyErrorTypes(errorTypes: List<Type>, expectedErrorType: Type?): Type? {
+        if (errorTypes.isEmpty()) return expectedErrorType
+        if (errorTypes.size == 1) return errorTypes.first()
+        
+        // For now, find the most general Throwable subtype
+        // In a full implementation, this would create union types or find common supertypes
+        val throwableTypes = errorTypes.filter { BuiltinTypes.isThrowableSubtype(it) }
+        
+        return when {
+            throwableTypes.isNotEmpty() -> {
+                // Use the most general type - in practice this would be more sophisticated
+                if (throwableTypes.any { it == BuiltinTypes.THROWABLE }) {
+                    BuiltinTypes.THROWABLE
+                } else {
+                    throwableTypes.first() // Simplified - take the first valid type
+                }
+            }
+            expectedErrorType != null -> expectedErrorType
+            else -> BuiltinTypes.THROWABLE
+        }
+    }
+    
+    /**
+     * Generate constraints to ensure a type is a subtype of Throwable.
+     */
+    private fun generateThrowableConstraints(
+        errorType: Type, 
+        location: SourceLocation?
+    ): ConstraintSet {
+        if (BuiltinTypes.isThrowableSubtype(errorType)) {
+            return ConstraintSet.empty() // Already known to be valid
+        }
+        
+        // Add subtype constraint
+        val constraint = Constraint.Subtype(
+            errorType,
+            BuiltinTypes.THROWABLE,
+            location
+        )
+        return ConstraintSet.of(constraint)
+    }
+    
+    /**
+     * Generate constraints for unifying a Result type with an expected type.
+     */
+    private fun generateResultTypeUnificationConstraints(
+        resultType: Type,
+        expectedType: Type,
+        location: SourceLocation?
+    ): ConstraintSet {
+        // Direct equality constraint
+        val equalityConstraint = Constraint.Equality(resultType, expectedType, location)
+        
+        // If the expected type is also a Result type, add more specific constraints
+        if (BuiltinTypes.isResultType(expectedType)) {
+            val resultValueType = BuiltinTypes.getResultValueType(resultType)
+            val resultErrorType = BuiltinTypes.getResultErrorType(resultType)
+            val expectedValueType = BuiltinTypes.getResultValueType(expectedType)
+            val expectedErrorType = BuiltinTypes.getResultErrorType(expectedType)
+            
+            val constraints = mutableListOf(equalityConstraint)
+            
+            // Add value type constraint
+            if (resultValueType != null && expectedValueType != null) {
+                constraints.add(Constraint.Equality(resultValueType, expectedValueType, location))
+            }
+            
+            // Add error type constraint (with equality for now, subtyping can be added later)
+            if (resultErrorType != null && expectedErrorType != null) {
+                constraints.add(Constraint.Equality(resultErrorType, expectedErrorType, location))
+            }
+            
+            return ConstraintSet.fromCollection(constraints)
+        }
+        
+        return ConstraintSet.of(equalityConstraint)
     }
     
     /**

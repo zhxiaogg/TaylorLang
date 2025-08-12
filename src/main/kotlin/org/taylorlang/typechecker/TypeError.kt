@@ -119,6 +119,42 @@ sealed class TypeError : Throwable() {
     ) : TypeError()
     
     /**
+     * Try expression target does not return a Result type.
+     * The expression being tried must evaluate to Result<T, E>.
+     */
+    data class InvalidTryExpressionTarget(
+        val actualType: Type,
+        val location: SourceLocation?
+    ) : TypeError() {
+        override val message: String
+            get() = "Try expression target must return Result<T, E>, but got '$actualType'"
+    }
+    
+    /**
+     * Error type in Result is not a subtype of Throwable.
+     * All error types in Result<T, E> must extend Throwable.
+     */
+    data class InvalidResultErrorType(
+        val errorType: Type,
+        val location: SourceLocation?
+    ) : TypeError() {
+        override val message: String
+            get() = "Result error type '$errorType' must be a subtype of Throwable"
+    }
+    
+    /**
+     * Incompatible error types in try expression with catch clauses.
+     * Error types from different catch clauses cannot be unified.
+     */
+    data class IncompatibleErrorTypes(
+        val errorTypes: List<Type>,
+        val location: SourceLocation?
+    ) : TypeError() {
+        override val message: String
+            get() = "Incompatible error types in catch clauses: ${errorTypes.joinToString(", ")}"
+    }
+    
+    /**
      * A composite error containing multiple individual type errors.
      * This is useful for collecting all errors in a compilation unit
      * rather than stopping at the first error.
