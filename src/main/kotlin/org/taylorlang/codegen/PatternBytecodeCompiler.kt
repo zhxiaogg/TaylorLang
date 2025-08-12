@@ -269,20 +269,69 @@ class PatternBytecodeCompiler(
         caseLabel: org.objectweb.asm.Label,
         nextLabel: org.objectweb.asm.Label
     ) {
-        // For now, implement basic constructor matching
-        // TODO: Full union type runtime support will be needed
+        // Stack: [target_value]
         
-        // Placeholder: assume the constructor name matches some field or method
-        // Real implementation would check union type variant tags
-        // CRITICAL FIX: Handle double-width values properly
-        if (getJvmType(targetType) == "D") {
-            methodVisitor.visitInsn(POP2) // Remove double value (2 slots)
-        } else {
-            methodVisitor.visitInsn(POP) // Remove single value
+        // 1. Check if target is instanceof the constructor variant class
+        val constructorClassName = getConstructorClassName(pattern.constructor, targetType)
+        
+        // Duplicate the target value for instanceof check
+        methodVisitor.visitInsn(DUP)
+        methodVisitor.visitTypeInsn(INSTANCEOF, constructorClassName)
+        methodVisitor.visitJumpInsn(IFEQ, nextLabel) // If not instanceof, jump to next pattern
+        
+        // Stack: [target_value] (DUP consumed by instanceof check)
+        
+        // 2. Cast to constructor type for field access
+        methodVisitor.visitTypeInsn(CHECKCAST, constructorClassName)
+        
+        // Stack: [cast_target]
+        
+        // 3. If no nested patterns, constructor pattern matches - jump to case
+        if (pattern.patterns.isEmpty()) {
+            // Remove cast target from stack and jump to case
+            methodVisitor.visitInsn(POP)
+            methodVisitor.visitJumpInsn(GOTO, caseLabel)
+            return
         }
         
-        // For demonstration, always jump to case (this will be properly implemented
-        // when union type runtime representation is finalized)
+        // 4. Store cast target for multiple field accesses
+        val constructorSlot = variableSlotManager.allocateTemporarySlot(targetType)
+        methodVisitor.visitVarInsn(ASTORE, constructorSlot)
+        
+        // Stack: []
+        
+        // 5. Check each nested pattern against corresponding field
+        for ((index, fieldPattern) in pattern.patterns.withIndex()) {
+            // Load constructor object and access field
+            methodVisitor.visitVarInsn(ALOAD, constructorSlot)
+            
+            // Get field value (assuming fields are named field0, field1, etc.)
+            val fieldName = "field$index"
+            val fieldType = getFieldType(pattern.constructor, index, targetType)
+            val fieldDescriptor = getJvmTypeDescriptor(fieldType)
+            
+            methodVisitor.visitFieldInsn(GETFIELD, constructorClassName, fieldName, fieldDescriptor)
+            
+            // Stack: [field_value]
+            
+            // Create labels for nested pattern matching
+            val fieldMatchLabel = org.objectweb.asm.Label()
+            val fieldFailLabel = org.objectweb.asm.Label()
+            
+            // Generate pattern test for this field
+            generatePatternTest(fieldPattern, fieldType, fieldMatchLabel, fieldFailLabel)
+            
+            // If field pattern failed, clean up and jump to next case
+            methodVisitor.visitLabel(fieldFailLabel)
+            variableSlotManager.releaseTemporarySlot(constructorSlot)
+            methodVisitor.visitJumpInsn(GOTO, nextLabel)
+            
+            // Field pattern succeeded, continue to next field
+            methodVisitor.visitLabel(fieldMatchLabel)
+        }
+        
+        // 6. All nested patterns matched - clean up and jump to case
+        variableSlotManager.releaseTemporarySlot(constructorSlot)
         methodVisitor.visitJumpInsn(GOTO, caseLabel)
     }
     
@@ -493,8 +542,8 @@ class PatternBytecodeCompiler(
                 bindPatternVariables(pattern.pattern, targetType, targetSlot)
             }
             is Pattern.ConstructorPattern -> {
-                // TODO: Implement field binding for constructor patterns
-                // This will require union type runtime support for field extraction
+                // Bind variables from constructor pattern fields
+                bindConstructorPatternVariables(pattern, targetType, targetSlot)
             }
             is Pattern.ListPattern -> {
                 bindListPatternVariables(pattern, targetType, targetSlot)
@@ -502,6 +551,78 @@ class PatternBytecodeCompiler(
             // Wildcard and literal patterns don't bind variables
             else -> { }
         }
+    }
+    
+    /**
+     * Bind variables for constructor patterns
+     */
+    private fun bindConstructorPatternVariables(pattern: Pattern.ConstructorPattern, targetType: Type, targetSlot: Int) {
+        if (pattern.patterns.isEmpty()) {
+            return // No nested patterns to bind
+        }
+        
+        // Cast target to constructor type and store
+        val constructorClassName = getConstructorClassName(pattern.constructor, targetType)
+        methodVisitor.visitVarInsn(ALOAD, targetSlot)
+        methodVisitor.visitTypeInsn(CHECKCAST, constructorClassName)
+        
+        val constructorSlot = variableSlotManager.allocateTemporarySlot(targetType)
+        methodVisitor.visitVarInsn(ASTORE, constructorSlot)
+        
+        // Bind each field pattern
+        for ((index, fieldPattern) in pattern.patterns.withIndex()) {
+            when (fieldPattern) {
+                is Pattern.IdentifierPattern -> {
+                    if (!isNullaryConstructor(fieldPattern.name, getFieldType(pattern.constructor, index, targetType))) {
+                        // Variable binding - extract field and store in new slot
+                        val fieldType = getFieldType(pattern.constructor, index, targetType)
+                        val fieldSlot = variableSlotManager.allocateSlot(fieldPattern.name, fieldType)
+                        
+                        // Load constructor object
+                        methodVisitor.visitVarInsn(ALOAD, constructorSlot)
+                        
+                        // Get field
+                        val fieldName = "field$index"
+                        val fieldDescriptor = getJvmTypeDescriptor(fieldType)
+                        methodVisitor.visitFieldInsn(GETFIELD, constructorClassName, fieldName, fieldDescriptor)
+                        
+                        // Store in variable slot
+                        val storeInstruction = variableSlotManager.getStoreInstruction(fieldType)
+                        methodVisitor.visitVarInsn(storeInstruction, fieldSlot)
+                    }
+                }
+                is Pattern.ConstructorPattern -> {
+                    // Nested constructor pattern - recursively bind
+                    // Get field value and create temporary slot for it
+                    val fieldType = getFieldType(pattern.constructor, index, targetType)
+                    val fieldSlot = variableSlotManager.allocateTemporarySlot(fieldType)
+                    
+                    // Load constructor and get field
+                    methodVisitor.visitVarInsn(ALOAD, constructorSlot)
+                    val fieldName = "field$index"
+                    val fieldDescriptor = getJvmTypeDescriptor(fieldType)
+                    methodVisitor.visitFieldInsn(GETFIELD, constructorClassName, fieldName, fieldDescriptor)
+                    
+                    // Store field value
+                    val storeInstruction = variableSlotManager.getStoreInstruction(fieldType)
+                    methodVisitor.visitVarInsn(storeInstruction, fieldSlot)
+                    
+                    // Recursively bind nested pattern
+                    bindPatternVariables(fieldPattern, fieldType, fieldSlot)
+                    
+                    // Release temporary slot
+                    variableSlotManager.releaseTemporarySlot(fieldSlot)
+                }
+                // TODO: Handle other pattern types (lists, guards, etc.) as needed
+                else -> {
+                    // For other pattern types, extract field but don't bind yet
+                    // This is a simplified implementation
+                }
+            }
+        }
+        
+        // Release constructor slot
+        variableSlotManager.releaseTemporarySlot(constructorSlot)
     }
     
     /**
@@ -617,5 +738,70 @@ class PatternBytecodeCompiler(
             }
             else -> "Ljava/lang/Object;"
         }
+    }
+    
+    /**
+     * Get JVM type descriptor for a type (used for field descriptors)
+     */
+    private fun getJvmTypeDescriptor(type: Type): String {
+        return when (type) {
+            is Type.PrimitiveType -> {
+                when (type.name.lowercase()) {
+                    "int" -> "I"
+                    "double", "float" -> "D"
+                    "boolean" -> "Z"
+                    "string" -> "Ljava/lang/String;"
+                    else -> "Ljava/lang/Object;"
+                }
+            }
+            is Type.NamedType -> {
+                when (type.name.lowercase()) {
+                    "int" -> "I"
+                    "double", "float" -> "D"
+                    "boolean" -> "Z"
+                    "string" -> "Ljava/lang/String;"
+                    "unit", "void" -> "V"
+                    else -> "L${type.name};"
+                }
+            }
+            is Type.UnionType -> "L${type.name};"
+            is Type.GenericType -> "L${type.name};"
+            else -> "Ljava/lang/Object;"
+        }
+    }
+    
+    /**
+     * Get the JVM class name for a constructor variant
+     * Following the design document pattern of simple class generation per variant
+     */
+    private fun getConstructorClassName(constructorName: String, targetType: Type): String {
+        // For TaylorLang union types, generate class names like: Option$Some, Result$Ok, etc.
+        val unionTypeName = when (targetType) {
+            is Type.NamedType -> targetType.name
+            is Type.UnionType -> targetType.name
+            is Type.GenericType -> targetType.name
+            else -> "UnknownType"
+        }
+        return "$unionTypeName\$$constructorName"
+    }
+    
+    /**
+     * Get the type of a specific field in a constructor variant
+     * This requires lookup in the type context to find the variant definition
+     */
+    private fun getFieldType(constructorName: String, fieldIndex: Int, targetType: Type): Type {
+        // TODO: In a complete implementation, this would look up the union type definition
+        // and find the specific variant to get the correct field type.
+        // For now, return a generic Object type as a placeholder.
+        // This will need to be integrated with the type checker's TypeContext.
+        
+        // Placeholder implementation - assumes all fields are Objects
+        // Real implementation would:
+        // 1. Look up targetType in TypeContext
+        // 2. Find the UnionTypeDef 
+        // 3. Find the VariantDef with constructorName
+        // 4. Return variant.fields[fieldIndex]
+        
+        return Type.NamedType("Object")
     }
 }
