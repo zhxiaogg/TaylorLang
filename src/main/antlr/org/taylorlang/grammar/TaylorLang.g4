@@ -101,6 +101,7 @@ expression
     | forExpr                            // For loop
     | matchExpr                           // Pattern matching
     | lambdaExpr                          // Lambda expression
+    | tryExpr                            // Try expression
     ;
 
 // Primary expressions
@@ -173,6 +174,14 @@ lambdaExpr
     : IDENTIFIER '=>' expression
     | '(' (IDENTIFIER (',' IDENTIFIER)*)? ')' '=>' expression
     ;
+
+// Try expressions: try expr, try expr catch { case pattern => expr }
+tryExpr
+    : 'try' expression ('catch' catchBlock)?  // Try with optional catch
+    ;
+
+// Catch block for error handling
+catchBlock: '{' matchCase+ '}';
 
 // Lexer rules (keywords first, then identifiers)
 BooleanLiteral: 'true' | 'false';

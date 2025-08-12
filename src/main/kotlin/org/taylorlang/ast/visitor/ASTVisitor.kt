@@ -71,6 +71,8 @@ interface ASTVisitor<R> {
     fun visitForExpression(node: ForExpression): R
     fun visitConstructorCall(node: ConstructorCall): R
     fun visitBlockExpression(node: BlockExpression): R
+    fun visitTryExpression(node: TryExpression): R
+    fun visitCatchClause(node: CatchClause): R
     
     // =============================================================================
     // Literals

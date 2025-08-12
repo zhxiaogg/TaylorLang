@@ -150,6 +150,7 @@ class ConstraintCollector {
             is BlockExpression -> statementVisitor.handleBlockExpression(expression, expectedType, context)
             is LambdaExpression -> statementVisitor.handleLambdaExpression(expression, expectedType, context)
             is ForExpression -> statementVisitor.handleForExpression(expression, expectedType, context)
+            is TryExpression -> statementVisitor.handleTryExpression(expression, expectedType, context)
         }
     }
     

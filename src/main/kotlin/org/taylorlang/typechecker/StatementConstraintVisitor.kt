@@ -261,6 +261,14 @@ class StatementConstraintVisitor(
         return scopedExpressionVisitor.handleForExpression(forExpr, expectedType, context)
     }
     
+    fun handleTryExpression(
+        tryExpr: TryExpression,
+        expectedType: Type?,
+        context: InferenceContext
+    ): ConstraintResult {
+        return scopedExpressionVisitor.handleTryExpression(tryExpr, expectedType, context)
+    }
+    
     // =============================================================================
     // Variable Declaration Processing
     // =============================================================================

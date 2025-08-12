@@ -149,4 +149,41 @@ class ScopedExpressionConstraintVisitor(
         
         return ConstraintResult(resultType, allConstraints)
     }
+    
+    // =============================================================================
+    // Try Expression Handler
+    // =============================================================================
+    
+    fun handleTryExpression(
+        tryExpr: TryExpression,
+        expectedType: Type?,
+        context: InferenceContext
+    ): ConstraintResult {
+        // Collect constraints from the try expression
+        val tryResult = collector.collectConstraintsWithExpected(tryExpr.expression, expectedType, context)
+        var allConstraints = tryResult.constraints
+        
+        // Process catch clauses if present
+        if (tryExpr.catchClauses.isNotEmpty()) {
+            // For now, treat catch clauses similarly to match cases
+            // In a full implementation, this would handle Result types and error propagation
+            for (catchClause in tryExpr.catchClauses) {
+                // Collect constraints from catch body
+                val bodyResult = collector.collectConstraintsWithExpected(catchClause.body, expectedType, context)
+                allConstraints = allConstraints.merge(bodyResult.constraints)
+                
+                // Process guard expression if present
+                catchClause.guardExpression?.let { guard ->
+                    val guardResult = collector.collectConstraints(guard, context)
+                    allConstraints = allConstraints.merge(guardResult.constraints)
+                }
+            }
+        }
+        
+        // The result type is the same as the try expression type for now
+        // In the full implementation, this would involve Result type handling
+        val resultType = expectedType ?: tryResult.type
+        
+        return ConstraintResult(resultType, allConstraints)
+    }
 }

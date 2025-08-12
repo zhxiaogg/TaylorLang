@@ -175,6 +175,7 @@ abstract class BaseASTVisitor<R> : ASTVisitor<R> {
             is ForExpression -> visitForExpression(node)
             is ConstructorCall -> visitConstructorCall(node)
             is BlockExpression -> visitBlockExpression(node)
+            is TryExpression -> visitTryExpression(node)
             is Literal -> visitLiteral(node)
         }
     }
@@ -253,6 +254,19 @@ abstract class BaseASTVisitor<R> : ASTVisitor<R> {
         val stmtResults = node.statements.map { it.accept(this) }
         val exprResult = node.expression?.accept(this) ?: defaultResult()
         return combineResults(stmtResults + exprResult)
+    }
+    
+    override fun visitTryExpression(node: TryExpression): R {
+        val exprResult = node.expression.accept(this)
+        val catchResults = node.catchClauses.map { it.accept(this) }
+        return combineResults(listOf(exprResult) + catchResults)
+    }
+    
+    override fun visitCatchClause(node: CatchClause): R {
+        val patternResult = node.pattern.accept(this)
+        val guardResult = node.guardExpression?.accept(this) ?: defaultResult()
+        val bodyResult = node.body.accept(this)
+        return combineResults(listOf(patternResult, guardResult, bodyResult))
     }
     
     // =============================================================================

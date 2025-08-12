@@ -297,6 +297,7 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
             ctx.ifExpr() != null -> visit(ctx.ifExpr()) as Expression
             ctx.whileExpr() != null -> visit(ctx.whileExpr()) as Expression
             ctx.forExpr() != null -> visit(ctx.forExpr()) as Expression
+            ctx.tryExpr() != null -> visit(ctx.tryExpr()) as Expression
             
             else -> throw IllegalStateException("Unknown expression type: ${ctx.text}")
         }
@@ -542,6 +543,27 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
             variable = variable,
             iterable = iterable,
             body = body,
+            sourceLocation = ctx.toSourceLocation()
+        )
+    }
+
+    override fun visitTryExpr(ctx: TaylorLangParser.TryExprContext): TryExpression {
+        val expression = visit(ctx.expression()) as Expression
+        
+        val catchClauses = ctx.catchBlock()?.let { catchBlock ->
+            catchBlock.matchCase().map { matchCaseCtx ->
+                CatchClause(
+                    pattern = visit(matchCaseCtx.pattern()) as Pattern,
+                    guardExpression = null, // Guards are handled within patterns in our grammar
+                    body = visit(matchCaseCtx.expression()) as Expression,
+                    sourceLocation = matchCaseCtx.toSourceLocation()
+                )
+            }.toPersistentList()
+        } ?: persistentListOf()
+        
+        return TryExpression(
+            expression = expression,
+            catchClauses = catchClauses,
             sourceLocation = ctx.toSourceLocation()
         )
     }

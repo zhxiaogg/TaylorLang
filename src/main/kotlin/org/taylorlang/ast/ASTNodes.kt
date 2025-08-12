@@ -296,6 +296,23 @@ data class BlockExpression(
     override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitBlockExpression(this)
 }
 
+data class TryExpression(
+    val expression: Expression,
+    val catchClauses: PersistentList<CatchClause> = persistentListOf(),
+    override val sourceLocation: SourceLocation? = null
+) : Expression {
+    override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitTryExpression(this)
+}
+
+data class CatchClause(
+    val pattern: Pattern,
+    val guardExpression: Expression? = null,
+    val body: Expression,
+    override val sourceLocation: SourceLocation? = null
+) : ASTNode {
+    override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitCatchClause(this)
+}
+
 // =============================================================================
 // Literals
 // =============================================================================
