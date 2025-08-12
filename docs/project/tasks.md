@@ -61,6 +61,306 @@
 
 ---
 
+## PHASE 5 - TRY SYNTAX IMPLEMENTATION (HIGH PRIORITY)
+
+### Phase 5: Functional Error Handling with Try Syntax (PLANNED 2025-08-12)
+
+**STRATEGIC PRIORITY**: High - Core language feature for functional error handling
+**DESIGN DOCUMENT**: [Try Syntax Implementation](../designs/try-syntax-implementation.md)
+**ESTIMATED EFFORT**: 5 weeks (phased implementation)
+**DEPENDENCIES**: Pattern matching infrastructure (✅ completed), Type system (✅ ready)
+
+**WHY**: Try syntax is documented in TaylorLang specification but not implemented. This is essential for practical functional programming with robust error handling, especially for Java interoperability.
+
+**WHAT**: Complete implementation of try expressions with Result<T, E: Throwable> types, enabling functional error handling with automatic error propagation and JVM exception integration.
+
+**SPECIFICATION SUPPORT**:
+```kotlin
+// Basic try syntax - unwrap Result or propagate error
+fn processUser(id: String): Result<User, DatabaseError> => {
+    val user = try database.findUser(id)
+    Ok(user)
+}
+
+// Try with catch clauses for error handling
+fn processWithErrorHandling(id: String): Result<String, AppError> => {
+    try {
+        val user = try database.findUser(id)
+        val profile = try user.getProfile()
+        Ok(profile.name)
+    } catch {
+        case DatabaseError(msg) => Error(AppError.Database(msg))
+        case ProfileError(msg) => Error(AppError.Profile(msg))
+    }
+}
+```
+
+### Phase 5.1: Grammar and AST Foundation (Week 1)
+
+#### Task: Implement Try Expression Grammar Extensions
+**Status**: 🔵 PLANNED (2025-08-12)
+**Assignee**: TBD  
+**Component**: Language Grammar - Error Handling
+**Effort**: Medium (5 days)
+**Priority**: HIGH - Foundation for try syntax
+**Design Doc**: [Try Syntax Implementation](../designs/try-syntax-implementation.md)
+
+**WHY**: Try expressions require new grammar rules and AST nodes to represent try/catch constructs in the language syntax.
+
+**WHAT**: Extend TaylorLang.g4 grammar with try expression support and create corresponding AST nodes.
+
+**HOW**:
+- Research ANTLR grammar patterns for try/catch syntax
+- Study existing expression grammar for consistency
+- Design AST nodes following visitor pattern
+- Integrate with existing error handling patterns
+
+**SCOPE**:
+- Day 1: Design grammar extensions for try expressions
+- Day 2: Implement AST nodes (TryExpression, CatchClause)
+- Day 3: Integrate with ASTBuilder and visitor pattern
+- Day 4: Add parser support and basic validation
+- Day 5: Comprehensive parsing tests and edge cases
+
+**SUCCESS CRITERIA**:
+- ✅ Try expressions parse correctly (`try expression`)
+- ✅ Try with catch blocks parse (`try expr catch { case pattern => expr }`)
+- ✅ AST nodes follow existing visitor pattern
+- ✅ All parser tests pass with new syntax
+- ✅ No regression in existing grammar parsing
+- ✅ Clean integration with expression grammar
+
+**RESOURCES**:
+- ANTLR 4 documentation for grammar extensions
+- Existing TaylorLang expression grammar patterns
+- Scala/Kotlin try/catch syntax for reference
+- AST design patterns in functional language compilers
+
+---
+
+#### Task: Result Type System Integration
+**Status**: 🔵 PLANNED (2025-08-12)
+**Assignee**: TBD
+**Component**: Type System - Result Types
+**Effort**: Medium (5 days)
+**Priority**: HIGH - Type safety for error handling
+**Dependencies**: Grammar extensions
+**Design Doc**: [Try Syntax Implementation](../designs/try-syntax-implementation.md)
+
+**WHY**: Result<T, E> types need formal type system integration with constraint checking for Throwable subtypes.
+
+**WHAT**: Implement Result type definition with Throwable constraints and type checking rules for try expressions.
+
+**HOW**:
+- Extend type system with Result<T, E: Throwable> definition
+- Implement type constraint validation for error types
+- Add type checking rules for try expressions
+- Integrate with existing constraint-based type inference
+
+**SCOPE**:
+- Day 1: Define Result type in type system with Throwable constraints
+- Day 2: Implement type validation for Result types
+- Day 3: Add try expression type checking rules
+- Day 4: Function return type validation for try usage
+- Day 5: Comprehensive type checking tests
+
+**SUCCESS CRITERIA**:
+- ✅ Result<T, E> type defined with Throwable constraint
+- ✅ Error type validation enforces Throwable subtypes
+- ✅ Try expressions only allowed in Result-returning functions
+- ✅ Type inference works correctly for try expressions
+- ✅ Clear error messages for type violations
+- ✅ All type checking tests pass
+
+**RESOURCES**:
+- Existing constraint-based type checker architecture
+- Java Throwable hierarchy documentation
+- Hindley-Milner type constraint patterns
+- Result type implementations in other functional languages
+
+---
+
+### Phase 5.2: Basic Try Expression Implementation (Week 2)
+
+#### Task: Basic Try Expression Type Checking
+**Status**: 🔵 PLANNED (2025-08-12)
+**Assignee**: TBD
+**Component**: Type System - Expression Checking
+**Effort**: Medium (5 days)
+**Priority**: HIGH - Core type safety
+**Dependencies**: Result type integration
+**Design Doc**: [Try Syntax Implementation](../designs/try-syntax-implementation.md)
+
+**WHY**: Try expressions need comprehensive type checking to ensure type safety and proper error propagation.
+
+**WHAT**: Implement complete type checking for try expressions including return type validation and error type unification.
+
+**SUCCESS CRITERIA**:
+- ✅ Try expressions type check correctly in Result-returning functions
+- ✅ Error type compatibility validation works
+- ✅ Type inference extracts success types from Result types
+- ✅ Clear error messages for invalid try usage
+- ✅ Integration with existing type checking infrastructure
+
+---
+
+#### Task: Basic Try Expression Bytecode Generation
+**Status**: 🔵 PLANNED (2025-08-12)
+**Assignee**: TBD
+**Component**: Code Generation - Try Expressions
+**Effort**: Large (5 days)
+**Priority**: HIGH - Executable try syntax
+**Dependencies**: Type checking implementation
+**Design Doc**: [Try Syntax Implementation](../designs/try-syntax-implementation.md)
+
+**WHY**: Try expressions need JVM bytecode generation to compile and execute correctly.
+
+**WHAT**: Implement bytecode generation for simple try expressions with automatic error propagation.
+
+**SUCCESS CRITERIA**:
+- ✅ Simple try expressions compile to valid JVM bytecode
+- ✅ Result type unwrapping works correctly
+- ✅ Error propagation generates correct return instructions
+- ✅ Basic try expression tests pass end-to-end
+- ✅ No regression in existing bytecode generation
+
+---
+
+### Phase 5.3: Result Runtime Implementation (Week 3)
+
+#### Task: Result Type Runtime Support
+**Status**: 🔵 PLANNED (2025-08-12)
+**Assignee**: TBD
+**Component**: Runtime - Result Types
+**Effort**: Medium (5 days)
+**Priority**: HIGH - Runtime foundation
+**Dependencies**: Basic bytecode generation
+**Design Doc**: [Try Syntax Implementation](../designs/try-syntax-implementation.md)
+
+**WHY**: Result types need runtime implementation with proper JVM integration for try expressions to work.
+
+**WHAT**: Implement TaylorResult runtime classes with monadic operations and JVM integration.
+
+**SUCCESS CRITERIA**:
+- ✅ TaylorResult<T, E> runtime classes implemented
+- ✅ Ok/Error variants with proper type safety
+- ✅ Monadic operations (map, flatMap, mapError)
+- ✅ Java interoperability utilities
+- ✅ Performance comparable to manual Result handling
+
+---
+
+#### Task: Exception to Result Conversion
+**Status**: 🔵 PLANNED (2025-08-12)
+**Assignee**: TBD
+**Component**: Runtime - Java Interop
+**Effort**: Medium (5 days)
+**Priority**: HIGH - Java interoperability
+**Dependencies**: Result runtime implementation
+**Design Doc**: [Try Syntax Implementation](../designs/try-syntax-implementation.md)
+
+**WHY**: Seamless Java interoperability requires automatic conversion of Java exceptions to Result types.
+
+**WHAT**: Implement utilities for wrapping Java exception-throwing code in Result types.
+
+**SUCCESS CRITERIA**:
+- ✅ Automatic exception wrapping utilities
+- ✅ Stacktrace preservation through conversions
+- ✅ Integration with popular Java libraries
+- ✅ Performance optimization for common cases
+- ✅ Comprehensive Java interop tests
+
+---
+
+### Phase 5.4: Catch Clause Implementation (Week 4)
+
+#### Task: Catch Clause Pattern Matching
+**Status**: 🔵 PLANNED (2025-08-12)
+**Assignee**: TBD
+**Component**: Language Features - Pattern Matching
+**Effort**: Large (5 days)
+**Priority**: MEDIUM - Advanced error handling
+**Dependencies**: Basic try implementation
+**Design Doc**: [Try Syntax Implementation](../designs/try-syntax-implementation.md)
+
+**WHY**: Catch clauses enable sophisticated error handling with pattern matching on error types.
+
+**WHAT**: Implement catch clause pattern matching integrated with existing pattern matching infrastructure.
+
+**SUCCESS CRITERIA**:
+- ✅ Catch clauses work with error pattern matching
+- ✅ Multiple catch clauses handle different error types
+- ✅ Pattern matching exhaustiveness checking for errors
+- ✅ Integration with existing pattern matching framework
+- ✅ Comprehensive catch clause tests
+
+---
+
+#### Task: Try/Catch Bytecode Generation
+**Status**: 🔵 PLANNED (2025-08-12)
+**Assignee**: TBD
+**Component**: Code Generation - Exception Handling
+**Effort**: Large (5 days)
+**Priority**: MEDIUM - Complete try syntax
+**Dependencies**: Catch clause pattern matching
+**Design Doc**: [Try Syntax Implementation](../designs/try-syntax-implementation.md)
+
+**WHY**: Complete try/catch syntax requires sophisticated bytecode generation with JVM exception handling.
+
+**WHAT**: Implement full try/catch bytecode generation with pattern matching and error handling.
+
+**SUCCESS CRITERIA**:
+- ✅ Try/catch expressions compile correctly
+- ✅ Pattern matching in catch blocks works
+- ✅ JVM exception handling integration
+- ✅ Performance optimization for hot paths
+- ✅ Complete try/catch test suite passes
+
+---
+
+### Phase 5.5: Optimization and Production Ready (Week 5)
+
+#### Task: Performance Optimization and Polish
+**Status**: 🔵 PLANNED (2025-08-12)
+**Assignee**: TBD
+**Component**: Optimization - Try Syntax
+**Effort**: Medium (5 days)
+**Priority**: MEDIUM - Production readiness
+**Dependencies**: Complete implementation
+**Design Doc**: [Try Syntax Implementation](../designs/try-syntax-implementation.md)
+
+**WHY**: Production deployment requires performance optimization and comprehensive testing.
+
+**WHAT**: Optimize try syntax performance and complete comprehensive testing and documentation.
+
+**SUCCESS CRITERIA**:
+- ✅ <5% performance overhead vs manual Result handling
+- ✅ Comprehensive test coverage (>95%)
+- ✅ Documentation and examples complete
+- ✅ IDE integration and tooling support
+- ✅ Production readiness assessment passed
+
+---
+
+### Try Syntax Implementation Success Criteria
+
+**OVERALL PHASE 5 SUCCESS CRITERIA**:
+- ✅ Try expressions compile and execute correctly
+- ✅ Result<T, E: Throwable> types fully implemented
+- ✅ Catch clauses with pattern matching work
+- ✅ Java interoperability seamless
+- ✅ Performance competitive with manual error handling
+- ✅ Comprehensive test coverage and documentation
+- ✅ No regression in existing language features
+- ✅ Production-ready functional error handling
+
+**INTEGRATION SUCCESS CRITERIA**:
+- ✅ Try syntax integrates with existing pattern matching
+- ✅ Type system handles Result types correctly
+- ✅ Bytecode generation follows existing patterns
+- ✅ Runtime support compatible with existing infrastructure
+- ✅ Clear upgrade path for existing error handling code
+
 ---
 
 ## Current Test Analysis: 99.0% Success Rate (533/538 Tests Passing)
