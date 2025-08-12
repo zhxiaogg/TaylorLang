@@ -65,55 +65,101 @@ class BytecodeGenerator {
         return try {
             currentClassName = className
             
-            // Create a new ClassWriter for each generation to avoid reuse issues
-            // Use full automatic computation to avoid slot management issues
-            val classWriter = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
-            
-            // Initialize class writer
-            classWriter.visit(
-                V17, // Java 17 bytecode version
-                ACC_PUBLIC + ACC_SUPER,
-                className,
-                null,
-                "java/lang/Object",
-                null
-            )
-            
-            // Generate default constructor
-            generateConstructor(classWriter)
-            
-            // Check if program has a main function
-            val hasMainFunction = typedProgram.statements.any { statement ->
-                statement is TypedStatement.FunctionDeclaration && 
-                statement.declaration.name == "main"
+            // Try with full frame computation first, fall back to maxs only if it fails
+            val bytecodeResult = try {
+                generateWithFrames(typedProgram, outputDirectory, className)
+            } catch (e: ArrayIndexOutOfBoundsException) {
+                // Frame computation failed, try without frames
+                generateWithoutFrames(typedProgram, outputDirectory, className)
             }
             
-            if (hasMainFunction) {
-                // Generate statements as methods
-                for (statement in typedProgram.statements) {
-                    generateStatement(statement, classWriter)
-                }
-            } else {
-                // Generate main method that executes all statements
-                generateMainMethod(typedProgram.statements, classWriter)
-            }
-            
-            classWriter.visitEnd()
-            
-            // Write class file
-            outputDirectory.mkdirs()
-            val classFile = File(outputDirectory, "$className.class")
-            FileOutputStream(classFile).use { fos ->
-                fos.write(classWriter.toByteArray())
-            }
-            
-            Result.success(GenerationResult(
-                bytecodeFiles = listOf(classFile),
-                mainClassName = className
-            ))
+            Result.success(bytecodeResult)
         } catch (e: Exception) {
+            // Print stack trace for debugging
+            e.printStackTrace()
             Result.failure(Exception("Failed to generate bytecode: ${e.message}", e))
         }
+    }
+    
+    private fun generateWithFrames(
+        typedProgram: TypedProgram,
+        outputDirectory: File,
+        className: String
+    ): GenerationResult {
+        // Create a new ClassWriter for each generation to avoid reuse issues
+        // Use full automatic computation to avoid slot management issues
+        val classWriter = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+        
+        generateClassContent(typedProgram, outputDirectory, className, classWriter)
+        return writeClassFile(classWriter, outputDirectory, className)
+    }
+    
+    private fun generateWithoutFrames(
+        typedProgram: TypedProgram,
+        outputDirectory: File,
+        className: String
+    ): GenerationResult {
+        // Create a new ClassWriter without frame computation
+        val classWriter = ClassWriter(ClassWriter.COMPUTE_MAXS)
+        
+        generateClassContent(typedProgram, outputDirectory, className, classWriter)
+        return writeClassFile(classWriter, outputDirectory, className)
+    }
+    
+    private fun generateClassContent(
+        typedProgram: TypedProgram,
+        outputDirectory: File,
+        className: String,
+        classWriter: ClassWriter
+    ) {
+        // Initialize class writer
+        classWriter.visit(
+            V17, // Java 17 bytecode version
+            ACC_PUBLIC + ACC_SUPER,
+            className,
+            null,
+            "java/lang/Object",
+            null
+        )
+        
+        // Generate default constructor
+        generateConstructor(classWriter)
+        
+        // Check if program has a main function
+        val hasMainFunction = typedProgram.statements.any { statement ->
+            statement is TypedStatement.FunctionDeclaration && 
+            statement.declaration.name == "main"
+        }
+        
+        if (hasMainFunction) {
+            // Generate statements as methods
+            for (statement in typedProgram.statements) {
+                generateStatement(statement, classWriter)
+            }
+        } else {
+            // Generate main method that executes all statements
+            generateMainMethod(typedProgram.statements, classWriter)
+        }
+        
+        classWriter.visitEnd()
+    }
+    
+    private fun writeClassFile(
+        classWriter: ClassWriter,
+        outputDirectory: File,
+        className: String
+    ): GenerationResult {
+        // Write class file
+        outputDirectory.mkdirs()
+        val classFile = File(outputDirectory, "$className.class")
+        FileOutputStream(classFile).use { fos ->
+            fos.write(classWriter.toByteArray())
+        }
+        
+        return GenerationResult(
+            bytecodeFiles = listOf(classFile),
+            mainClassName = className
+        )
     }
     
     /**

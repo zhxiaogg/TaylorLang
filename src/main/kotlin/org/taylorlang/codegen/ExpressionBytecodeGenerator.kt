@@ -296,6 +296,52 @@ class ExpressionBytecodeGenerator(
                 // Infer function call return type
                 when ((expr.target as? Identifier)?.name) {
                     "println" -> BuiltinTypes.UNIT // println returns void/unit
+                    "emptyList" -> Type.GenericType("List", kotlinx.collections.immutable.persistentListOf(BuiltinTypes.INT)) // Default to List<Int>
+                    "singletonList" -> {
+                        // Get the element type from the argument
+                        val elementType = if (expr.arguments.isNotEmpty()) {
+                            inferExpressionType(expr.arguments[0])
+                        } else {
+                            BuiltinTypes.INT // Default
+                        }
+                        Type.GenericType("List", kotlinx.collections.immutable.persistentListOf(elementType))
+                    }
+                    "listOf" -> {
+                        // Single element list
+                        val elementType = if (expr.arguments.isNotEmpty()) {
+                            inferExpressionType(expr.arguments[0])
+                        } else {
+                            BuiltinTypes.INT
+                        }
+                        Type.GenericType("List", kotlinx.collections.immutable.persistentListOf(elementType))
+                    }
+                    "listOf2" -> {
+                        // Two element list
+                        val elementType = if (expr.arguments.isNotEmpty()) {
+                            inferExpressionType(expr.arguments[0])
+                        } else {
+                            BuiltinTypes.INT
+                        }
+                        Type.GenericType("List", kotlinx.collections.immutable.persistentListOf(elementType))
+                    }
+                    "listOf3" -> {
+                        // Three element list
+                        val elementType = if (expr.arguments.isNotEmpty()) {
+                            inferExpressionType(expr.arguments[0])
+                        } else {
+                            BuiltinTypes.INT
+                        }
+                        Type.GenericType("List", kotlinx.collections.immutable.persistentListOf(elementType))
+                    }
+                    "listOf4" -> {
+                        // Four element list
+                        val elementType = if (expr.arguments.isNotEmpty()) {
+                            inferExpressionType(expr.arguments[0])
+                        } else {
+                            BuiltinTypes.INT
+                        }
+                        Type.GenericType("List", kotlinx.collections.immutable.persistentListOf(elementType))
+                    }
                     else -> BuiltinTypes.INT // Default for unknown functions
                 }
             }

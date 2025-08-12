@@ -155,7 +155,7 @@ class ListPatternBytecodeTest : DescribeSpec({
         
         it("should match two element list with [a, b] pattern") {
             // Create a program with: match pairList { case [a, b] => println(a + b) case _ => println("other") }
-            val pairList = TestUtils.createFunctionCall("listOf", listOf(Literal.IntLiteral(1), Literal.IntLiteral(2)))
+            val pairList = TestUtils.createFunctionCall("listOf2", listOf(Literal.IntLiteral(1), Literal.IntLiteral(2)))
             val program = TestUtils.createProgram(listOf(
                 TestUtils.createExpressionStatement(
                     MatchExpression(
@@ -198,7 +198,7 @@ class ListPatternBytecodeTest : DescribeSpec({
         
         it("should match list with [head, ...tail] pattern") {
             // Create a program with: match myList { case [head, ...tail] => println(head) case _ => println("empty") }
-            val myList = TestUtils.createFunctionCall("listOf", listOf(
+            val myList = TestUtils.createFunctionCall("listOf3", listOf(
                 Literal.IntLiteral(1), 
                 Literal.IntLiteral(2), 
                 Literal.IntLiteral(3)
@@ -235,7 +235,7 @@ class ListPatternBytecodeTest : DescribeSpec({
         
         it("should match complex head/tail pattern [first, second, ...rest]") {
             // Create a program with: match longList { case [first, second, ...rest] => println(first + second) case _ => println("too short") }
-            val longList = TestUtils.createFunctionCall("listOf", listOf(
+            val longList = TestUtils.createFunctionCall("listOf4", listOf(
                 Literal.IntLiteral(10),
                 Literal.IntLiteral(20),
                 Literal.IntLiteral(30),
@@ -283,7 +283,7 @@ class ListPatternBytecodeTest : DescribeSpec({
         
         it("should match literal patterns in list elements") {
             // Create a program with: match numberList { case [1, x, 3] => println(x) case _ => println("no match") }
-            val numberList = TestUtils.createFunctionCall("listOf", listOf(
+            val numberList = TestUtils.createFunctionCall("listOf3", listOf(
                 Literal.IntLiteral(1),
                 Literal.IntLiteral(42),
                 Literal.IntLiteral(3)
@@ -331,7 +331,7 @@ class ListPatternBytecodeTest : DescribeSpec({
                 ValDecl(
                     name = "testList",
                     type = null,
-                    initializer = TestUtils.createFunctionCall("listOf", listOf(
+                    initializer = TestUtils.createFunctionCall("listOf3", listOf(
                         Literal.IntLiteral(1),
                         Literal.IntLiteral(2),
                         Literal.IntLiteral(3)
