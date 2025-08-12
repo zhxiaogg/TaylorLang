@@ -334,4 +334,142 @@ object BuiltinTypes {
         val errorType = getResultErrorType(resultType)
         return errorType != null && isThrowableSubtype(errorType)
     }
+    
+    // =============================================================================
+    // Collection Type System
+    // =============================================================================
+    
+    /**
+     * Creates a List<T> generic type with the given element type.
+     * @param elementType The type of the list elements
+     * @return List<T> generic type
+     */
+    fun createListType(elementType: Type): Type.GenericType {
+        return Type.GenericType(
+            name = "List",
+            arguments = kotlinx.collections.immutable.persistentListOf(elementType)
+        )
+    }
+    
+    /**
+     * Creates a Map<K, V> generic type with the given key and value types.
+     * @param keyType The type of the map keys
+     * @param valueType The type of the map values
+     * @return Map<K, V> generic type
+     */
+    fun createMapType(keyType: Type, valueType: Type): Type.GenericType {
+        return Type.GenericType(
+            name = "Map",
+            arguments = kotlinx.collections.immutable.persistentListOf(keyType, valueType)
+        )
+    }
+    
+    /**
+     * Creates a Set<T> generic type with the given element type.
+     * @param elementType The type of the set elements
+     * @return Set<T> generic type
+     */
+    fun createSetType(elementType: Type): Type.GenericType {
+        return Type.GenericType(
+            name = "Set",
+            arguments = kotlinx.collections.immutable.persistentListOf(elementType)
+        )
+    }
+    
+    /**
+     * Check if a type is a List type.
+     * @param type The type to check
+     * @return true if the type is List<T>
+     */
+    fun isListType(type: Type): Boolean {
+        return when (type) {
+            is Type.GenericType -> type.name == "List" && type.arguments.size == 1
+            else -> false
+        }
+    }
+    
+    /**
+     * Check if a type is a Map type.
+     * @param type The type to check
+     * @return true if the type is Map<K, V>
+     */
+    fun isMapType(type: Type): Boolean {
+        return when (type) {
+            is Type.GenericType -> type.name == "Map" && type.arguments.size == 2
+            else -> false
+        }
+    }
+    
+    /**
+     * Check if a type is a Set type.
+     * @param type The type to check
+     * @return true if the type is Set<T>
+     */
+    fun isSetType(type: Type): Boolean {
+        return when (type) {
+            is Type.GenericType -> type.name == "Set" && type.arguments.size == 1
+            else -> false
+        }
+    }
+    
+    /**
+     * Extract the element type from a List<T> type.
+     * @param listType The List type
+     * @return The element type T, or null if not a valid List type
+     */
+    fun getListElementType(listType: Type): Type? {
+        return if (isListType(listType)) {
+            (listType as Type.GenericType).arguments.firstOrNull()
+        } else {
+            null
+        }
+    }
+    
+    /**
+     * Extract the key type from a Map<K, V> type.
+     * @param mapType The Map type
+     * @return The key type K, or null if not a valid Map type
+     */
+    fun getMapKeyType(mapType: Type): Type? {
+        return if (isMapType(mapType)) {
+            (mapType as Type.GenericType).arguments.firstOrNull()
+        } else {
+            null
+        }
+    }
+    
+    /**
+     * Extract the value type from a Map<K, V> type.
+     * @param mapType The Map type
+     * @return The value type V, or null if not a valid Map type
+     */
+    fun getMapValueType(mapType: Type): Type? {
+        return if (isMapType(mapType)) {
+            (mapType as Type.GenericType).arguments.getOrNull(1)
+        } else {
+            null
+        }
+    }
+    
+    /**
+     * Extract the element type from a Set<T> type.
+     * @param setType The Set type
+     * @return The element type T, or null if not a valid Set type
+     */
+    fun getSetElementType(setType: Type): Type? {
+        return if (isSetType(setType)) {
+            (setType as Type.GenericType).arguments.firstOrNull()
+        } else {
+            null
+        }
+    }
+    
+    /**
+     * Check if a type is a collection type (List, Map, or Set).
+     * @param type The type to check
+     * @return true if the type is a collection type
+     */
+    fun isCollectionType(type: Type): Boolean {
+        return isListType(type) || isMapType(type) || isSetType(type)
+    }
 }
