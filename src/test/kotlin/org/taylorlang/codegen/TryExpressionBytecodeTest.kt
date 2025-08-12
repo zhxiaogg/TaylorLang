@@ -44,12 +44,9 @@ class TryExpressionBytecodeTest {
 
     @Test
     fun `test simple try expression bytecode generation`() {
-        // Create a simple try expression: try someResultFunction()
+        // Create a simple try expression: try TaylorResult.ok(42)
         val tryExpr = TryExpression(
-            expression = FunctionCall(
-                target = Identifier("someResultFunction"),
-                arguments = persistentListOf()
-            ),
+            expression = createOkResultExpression(42),
             catchClauses = persistentListOf()
         )
         

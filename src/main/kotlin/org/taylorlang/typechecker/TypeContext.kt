@@ -220,6 +220,10 @@ data class TypeContext(
                 "List" to TypeDefinition.UnionTypeDef(
                     typeParameters = listOf("T"),
                     variants = emptyList() // List is handled specially in the runtime
+                ),
+                "Result" to TypeDefinition.UnionTypeDef(
+                    typeParameters = listOf("T", "E"),
+                    variants = emptyList() // Result is handled specially in the runtime
                 )
             )
             
@@ -264,6 +268,39 @@ data class TypeContext(
                     typeParameters = listOf("T"),
                     parameterTypes = listOf(Type.NamedType("T"), Type.NamedType("T"), Type.NamedType("T"), Type.NamedType("T")), // listOf(elem1, elem2, elem3, elem4)
                     returnType = Type.GenericType("List", kotlinx.collections.immutable.persistentListOf(Type.NamedType("T")))
+                ),
+                // TaylorResult construction functions
+                "TaylorResult.ok" to FunctionSignature(
+                    typeParameters = listOf("T"),
+                    parameterTypes = listOf(Type.NamedType("T")),
+                    returnType = Type.GenericType("Result", kotlinx.collections.immutable.persistentListOf(
+                        Type.NamedType("T"), 
+                        BuiltinTypes.THROWABLE
+                    ))
+                ),
+                "TaylorResult.error" to FunctionSignature(
+                    typeParameters = listOf("T"),
+                    parameterTypes = listOf(BuiltinTypes.THROWABLE),
+                    returnType = Type.GenericType("Result", kotlinx.collections.immutable.persistentListOf(
+                        Type.NamedType("T"), 
+                        BuiltinTypes.THROWABLE
+                    ))
+                ),
+                // Exception constructor functions
+                "RuntimeException" to FunctionSignature(
+                    typeParameters = listOf(),
+                    parameterTypes = listOf(BuiltinTypes.STRING),
+                    returnType = BuiltinTypes.THROWABLE
+                ),
+                "Exception" to FunctionSignature(
+                    typeParameters = listOf(),
+                    parameterTypes = listOf(BuiltinTypes.STRING),
+                    returnType = BuiltinTypes.THROWABLE
+                ),
+                "Throwable" to FunctionSignature(
+                    typeParameters = listOf(),
+                    parameterTypes = listOf(BuiltinTypes.STRING),
+                    returnType = BuiltinTypes.THROWABLE
                 )
             )
             
