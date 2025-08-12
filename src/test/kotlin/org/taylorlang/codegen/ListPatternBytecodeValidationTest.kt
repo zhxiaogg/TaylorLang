@@ -31,11 +31,11 @@ class ListPatternBytecodeValidationTest : DescribeSpec({
     describe("List Pattern Bytecode Validation") {
         
         it("should compile empty list pattern") {
-            // match someList { case [] => 0 }
+            // match emptyList() { case [] => 0 }
             val program = TestUtils.createProgram(listOf(
                 TestUtils.createExpressionStatement(
                     MatchExpression(
-                        target = Identifier("someList"),
+                        target = TestUtils.createFunctionCall("emptyList", listOf()),
                         cases = persistentListOf(
                             MatchCase(
                                 pattern = Pattern.ListPattern(
@@ -60,11 +60,11 @@ class ListPatternBytecodeValidationTest : DescribeSpec({
         }
         
         it("should compile single element list pattern") {
-            // match someList { case [x] => x }
+            // match singletonList(42) { case [x] => x }
             val program = TestUtils.createProgram(listOf(
                 TestUtils.createExpressionStatement(
                     MatchExpression(
-                        target = Identifier("someList"),
+                        target = TestUtils.createFunctionCall("singletonList", listOf(Literal.IntLiteral(42))),
                         cases = persistentListOf(
                             MatchCase(
                                 pattern = Pattern.ListPattern(
@@ -91,11 +91,11 @@ class ListPatternBytecodeValidationTest : DescribeSpec({
         }
         
         it("should compile fixed-length list pattern") {
-            // match someList { case [a, b] => a }
+            // match listOf2(1, 2) { case [a, b] => a }
             val program = TestUtils.createProgram(listOf(
                 TestUtils.createExpressionStatement(
                     MatchExpression(
-                        target = Identifier("someList"),
+                        target = TestUtils.createFunctionCall("listOf2", listOf(Literal.IntLiteral(1), Literal.IntLiteral(2))),
                         cases = persistentListOf(
                             MatchCase(
                                 pattern = Pattern.ListPattern(
@@ -123,11 +123,11 @@ class ListPatternBytecodeValidationTest : DescribeSpec({
         }
         
         it("should compile head/tail list pattern") {
-            // match someList { case [head, ...tail] => head }
+            // match listOf3(1, 2, 3) { case [head, ...tail] => head }
             val program = TestUtils.createProgram(listOf(
                 TestUtils.createExpressionStatement(
                     MatchExpression(
-                        target = Identifier("someList"),
+                        target = TestUtils.createFunctionCall("listOf3", listOf(Literal.IntLiteral(1), Literal.IntLiteral(2), Literal.IntLiteral(3))),
                         cases = persistentListOf(
                             MatchCase(
                                 pattern = Pattern.ListPattern(
@@ -154,11 +154,11 @@ class ListPatternBytecodeValidationTest : DescribeSpec({
         }
         
         it("should compile complex head/tail list pattern") {
-            // match someList { case [first, second, ...rest] => first }
+            // match listOf4(10, 20, 30, 40) { case [first, second, ...rest] => first }
             val program = TestUtils.createProgram(listOf(
                 TestUtils.createExpressionStatement(
                     MatchExpression(
-                        target = Identifier("someList"),
+                        target = TestUtils.createFunctionCall("listOf4", listOf(Literal.IntLiteral(10), Literal.IntLiteral(20), Literal.IntLiteral(30), Literal.IntLiteral(40))),
                         cases = persistentListOf(
                             MatchCase(
                                 pattern = Pattern.ListPattern(
@@ -186,11 +186,11 @@ class ListPatternBytecodeValidationTest : DescribeSpec({
         }
         
         it("should compile list pattern with literal elements") {
-            // match someList { case [1, x, 3] => x }
+            // match listOf3(1, 42, 3) { case [1, x, 3] => x }
             val program = TestUtils.createProgram(listOf(
                 TestUtils.createExpressionStatement(
                     MatchExpression(
-                        target = Identifier("someList"),
+                        target = TestUtils.createFunctionCall("listOf3", listOf(Literal.IntLiteral(1), Literal.IntLiteral(42), Literal.IntLiteral(3))),
                         cases = persistentListOf(
                             MatchCase(
                                 pattern = Pattern.ListPattern(
@@ -223,7 +223,7 @@ class ListPatternBytecodeValidationTest : DescribeSpec({
             val program = TestUtils.createProgram(listOf(
                 TestUtils.createExpressionStatement(
                     MatchExpression(
-                        target = Identifier("someList"),
+                        target = TestUtils.createFunctionCall("listOf2", listOf(Literal.IntLiteral(1), Literal.IntLiteral(2))),
                         cases = persistentListOf(
                             // case [] => "empty"
                             MatchCase(

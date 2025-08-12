@@ -215,6 +215,14 @@ data class TypeContext(
                 TypeDefinition.UnionTypeDef(emptyList(), emptyList()) 
             }
             
+            // Add generic type definitions for built-in containers
+            val containerTypeDefs = mapOf(
+                "List" to TypeDefinition.UnionTypeDef(
+                    typeParameters = listOf("T"),
+                    variants = emptyList() // List is handled specially in the runtime
+                )
+            )
+            
             // Add builtin functions
             // Note: For now, we'll model println as polymorphic accepting any single argument
             // In a real implementation, we'd want proper function overloading support
@@ -223,11 +231,44 @@ data class TypeContext(
                     typeParameters = listOf("T"), // Generic type parameter
                     parameterTypes = listOf(Type.NamedType("T")),
                     returnType = BuiltinTypes.UNIT
+                ),
+                // List construction functions
+                "emptyList" to FunctionSignature(
+                    typeParameters = listOf("T"), 
+                    parameterTypes = listOf(),
+                    returnType = Type.GenericType("List", kotlinx.collections.immutable.persistentListOf(Type.NamedType("T")))
+                ),
+                "singletonList" to FunctionSignature(
+                    typeParameters = listOf("T"),
+                    parameterTypes = listOf(Type.NamedType("T")),
+                    returnType = Type.GenericType("List", kotlinx.collections.immutable.persistentListOf(Type.NamedType("T")))
+                ),
+                // listOf with single parameter
+                "listOf" to FunctionSignature(
+                    typeParameters = listOf("T"),
+                    parameterTypes = listOf(Type.NamedType("T")), // listOf(element)
+                    returnType = Type.GenericType("List", kotlinx.collections.immutable.persistentListOf(Type.NamedType("T")))
+                ),
+                // listOf2 for two parameters - internal name, but we'll modify the type checker to resolve listOf calls by arity
+                "listOf2" to FunctionSignature(
+                    typeParameters = listOf("T"),
+                    parameterTypes = listOf(Type.NamedType("T"), Type.NamedType("T")), // listOf(elem1, elem2)
+                    returnType = Type.GenericType("List", kotlinx.collections.immutable.persistentListOf(Type.NamedType("T")))
+                ),
+                "listOf3" to FunctionSignature(
+                    typeParameters = listOf("T"),
+                    parameterTypes = listOf(Type.NamedType("T"), Type.NamedType("T"), Type.NamedType("T")), // listOf(elem1, elem2, elem3)
+                    returnType = Type.GenericType("List", kotlinx.collections.immutable.persistentListOf(Type.NamedType("T")))
+                ),
+                "listOf4" to FunctionSignature(
+                    typeParameters = listOf("T"),
+                    parameterTypes = listOf(Type.NamedType("T"), Type.NamedType("T"), Type.NamedType("T"), Type.NamedType("T")), // listOf(elem1, elem2, elem3, elem4)
+                    returnType = Type.GenericType("List", kotlinx.collections.immutable.persistentListOf(Type.NamedType("T")))
                 )
             )
             
             return TypeContext(
-                types = primitiveTypeDefs.toPersistentMap(),
+                types = (primitiveTypeDefs + containerTypeDefs).toPersistentMap(),
                 functions = builtinFunctions.toPersistentMap()
             )
         }

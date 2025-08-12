@@ -307,6 +307,40 @@ class BytecodeVisitor(
                 }
                 methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V", false)
             }
+            node.target is Identifier && node.target.name == "emptyList" -> {
+                // Generate empty ArrayList
+                methodVisitor.visitTypeInsn(NEW, "java/util/ArrayList")
+                methodVisitor.visitInsn(DUP)
+                methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/util/ArrayList", "<init>", "()V", false)
+            }
+            node.target is Identifier && node.target.name == "singletonList" -> {
+                // Generate ArrayList with one element
+                methodVisitor.visitTypeInsn(NEW, "java/util/ArrayList")
+                methodVisitor.visitInsn(DUP)
+                methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/util/ArrayList", "<init>", "()V", false)
+                // singletonList should always have exactly one argument
+                if (node.arguments.size == 1) {
+                    methodVisitor.visitInsn(DUP)
+                    node.arguments[0].accept(this)
+                    boxPrimitiveIfNeeded(typeInferenceHelper(node.arguments[0]))
+                    methodVisitor.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z", true)
+                    methodVisitor.visitInsn(POP) // Remove the boolean return value
+                }
+            }
+            node.target is Identifier && (node.target.name == "listOf" || node.target.name.startsWith("listOf")) -> {
+                // Generate ArrayList with multiple elements
+                methodVisitor.visitTypeInsn(NEW, "java/util/ArrayList")
+                methodVisitor.visitInsn(DUP)
+                methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/util/ArrayList", "<init>", "()V", false)
+                // Add each argument
+                for (arg in node.arguments) {
+                    methodVisitor.visitInsn(DUP)
+                    arg.accept(this)
+                    boxPrimitiveIfNeeded(typeInferenceHelper(arg))
+                    methodVisitor.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z", true)
+                    methodVisitor.visitInsn(POP) // Remove the boolean return value
+                }
+            }
             else -> {
                 // Regular function call - generate target and arguments
                 node.target.accept(this)

@@ -32,11 +32,11 @@ class ListPatternStructureTest : DescribeSpec({
         it("should create and compile program with list pattern AST") {
             // Create a program with a variable declaration followed by match
             val program = TestUtils.createProgram(listOf(
-                // val myList = 42  // dummy value to avoid undefined variable
+                // val myList = emptyList<Int>()  // proper list value
                 ValDecl(
                     name = "myList",
                     type = null,
-                    initializer = Literal.IntLiteral(42)
+                    initializer = TestUtils.createFunctionCall("emptyList", listOf())
                 ),
                 // match myList { case [] => 0 case _ => 1 }
                 TestUtils.createExpressionStatement(
@@ -71,11 +71,11 @@ class ListPatternStructureTest : DescribeSpec({
         
         it("should compile list pattern with multiple cases") {
             val program = TestUtils.createProgram(listOf(
-                // val x = "dummy"
+                // val x = listOf2(1, 2)  // Use explicit arity function
                 ValDecl(
                     name = "x",
                     type = null,
-                    initializer = Literal.StringLiteral("dummy")
+                    initializer = TestUtils.createFunctionCall("listOf2", listOf(Literal.IntLiteral(1), Literal.IntLiteral(2)))
                 ),
                 // Complex match expression with multiple list patterns
                 TestUtils.createExpressionStatement(
@@ -130,7 +130,7 @@ class ListPatternStructureTest : DescribeSpec({
                 ValDecl(
                     name = "data",
                     type = null,
-                    initializer = Literal.IntLiteral(100)
+                    initializer = TestUtils.createFunctionCall("listOf2", listOf(Literal.IntLiteral(10), Literal.IntLiteral(20)))
                 ),
                 TestUtils.createExpressionStatement(
                     MatchExpression(
