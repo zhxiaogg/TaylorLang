@@ -95,6 +95,42 @@ match list {
 - Lists treated like any other union type
 - Simple and consistent with existing patterns
 
+#### Tuple Runtime Classes (Phase 1)
+
+```kotlin
+// For TaylorLang tuple: (a, b)
+// Generate runtime class:
+
+class Tuple2<A, B>(val _1: A, val _2: B) {
+    // Standard tuple implementation
+}
+
+class Tuple3<A, B, C>(val _1: A, val _2: B, val _3: C) {
+    // Standard tuple implementation
+}
+```
+
+**Tuple Pattern Matching**:
+```taylor
+// Phase 1: Constructor pattern syntax
+match tuple {
+    case Tuple2(a, b) => ...
+    case Tuple3(a, b, c) => ...
+}
+
+// Phase 2 (Future): Special syntax sugar
+match tuple {
+    case (a, b) => ...      // Desugars to Tuple2(a, b)
+    case (a, b, c) => ...   // Desugars to Tuple3(a, b, c)
+}
+```
+
+**Design Benefits**:
+- Reuses existing constructor pattern infrastructure
+- No new AST nodes needed for Phase 1
+- Clean separation: runtime classes vs pattern syntax
+- Future Phase 2 can add syntax sugar without breaking changes
+
 ### Constructor Pattern Bytecode Implementation
 
 #### The Missing TODO Implementation
@@ -293,6 +329,9 @@ class ConstructorPatternBytecodeTest : DescribeSpec({
         it("should match Cons(head, tail) patterns") { 
             // Test List as union type
         }
+        it("should match Tuple2(a, b) patterns") { 
+            // Test tuple constructor patterns
+        }
         it("should support nested patterns") { 
             // Test Some(Ok(value))
         }
@@ -310,6 +349,7 @@ class ConstructorPatternBytecodeTest : DescribeSpec({
 - [ ] PatternBytecodeCompiler.generateConstructorPatternMatch() implemented
 - [ ] Basic constructor patterns work: `case Ok(value) => ...`
 - [ ] Lists work as union types: `case Cons(head, tail) => ...`
+- [ ] Tuples work as constructor patterns: `case Tuple2(a, b) => ...`
 - [ ] Zero regressions in existing 96.8% test success rate
 - [ ] Clean integration with existing pattern matching framework
 
@@ -334,6 +374,7 @@ This SIMPLIFIED design focuses on completing the existing 96.8% implemented patt
 **Expected Outcomes**:
 - Working constructor pattern matching for TaylorLang union types
 - Simple List implementation as union type
+- Tuple pattern matching using constructor pattern infrastructure (Phase 1)
 - Completed TODO in PatternBytecodeCompiler
 - Foundation for future expansion without over-engineering
 

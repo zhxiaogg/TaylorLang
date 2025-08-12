@@ -613,11 +613,11 @@ fn processListPattern<T>(list: List<T>) => match list {
 **Effort**: Medium-Large (3-4 days)  
 **Priority**: HIGH - Major specification feature
 **Dependencies**: Phase 4.1 completion
-**Design Doc**: [Comprehensive Pattern Matching](../designs/comprehensive-pattern-matching.md)
+**Design Doc**: [Constructor Deconstruction Patterns](../designs/constructor-deconstruction-patterns.md)
 
-**WHY**: Constructor destructuring patterns are essential for union type pattern matching, enabling field extraction from data constructors which is fundamental to algebraic data types.
+**WHY**: Constructor destructuring patterns are essential for union type pattern matching, enabling field extraction from data constructors which is fundamental to algebraic data types. Includes tuple pattern matching using constructor pattern infrastructure.
 
-**WHAT**: Implement field destructuring for constructor patterns with partial field matching support and nested destructuring capabilities.
+**WHAT**: Implement field destructuring for constructor patterns with partial field matching support, nested destructuring capabilities, and tuple pattern matching using Phase 1 approach (Tuple2, Tuple3, etc. classes).
 
 **SPECIFICATION COVERAGE**:
 ```rust
@@ -633,22 +633,25 @@ fn handleResponse(response: HttpResponse) => match response {
 - Extend constructor patterns with field extraction capabilities
 - Implement partial field matching syntax (`...`)
 - Add nested destructuring pattern support
+- Create tuple runtime classes (Tuple2, Tuple3, etc.) for Phase 1 tuple patterns
 - Update bytecode generation for constructor destructuring
-- Integrate with existing union type system
+- Integrate with existing union type system and tuple type infrastructure
 
 **SCOPE**:
-- Day 1: Design field extraction in constructor patterns  
-- Day 2: Implement partial field matching (`...`) syntax
+- Day 1: Design field extraction in constructor patterns and create tuple runtime classes
+- Day 2: Implement partial field matching (`...`) syntax and tuple constructor patterns
 - Day 3: Add nested destructuring pattern support
-- Day 4: Integration testing and validation
+- Day 4: Integration testing and validation for all pattern types
 
 **SUCCESS CRITERIA**:
 - ✅ Constructor field destructuring works correctly
 - ✅ Partial field matching (`...`) works  
 - ✅ Nested destructuring patterns work
+- ✅ Tuple patterns work as constructor patterns: `case Tuple2(a, b) => ...`
+- ✅ Tuple runtime classes (Tuple2, Tuple3, etc.) implemented
 - ✅ Type checking validates field access correctly
 - ✅ Variable binding works in destructured patterns
-- ✅ Integration with union type system
+- ✅ Integration with union type system and existing tuple infrastructure
 
 **RESOURCES**:
 - Rust pattern matching destructuring
