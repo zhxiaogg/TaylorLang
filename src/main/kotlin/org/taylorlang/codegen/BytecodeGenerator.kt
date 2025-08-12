@@ -154,6 +154,9 @@ class BytecodeGenerator {
         functionGenerator = FunctionBytecodeGenerator(currentClassName, variableSlotManager, 
             expressionGenerator, controlFlowGenerator, ::generateExpression)
         functionGenerator.setMethodVisitor(mv)
+        
+        // Set up try expression support with pattern compiler integration
+        expressionGenerator.setPatternCompiler(patternCompiler)
     }
     
     /**
@@ -398,6 +401,10 @@ class BytecodeGenerator {
             }
             is MatchExpression -> {
                 patternCompiler.generateMatchExpression(expression, expr.type)
+            }
+            is TryExpression -> {
+                // Try expressions are handled by the expression generator
+                expressionGenerator.generateExpression(expr)
             }
             else -> {
                 // Delegate to expression generator for basic expressions

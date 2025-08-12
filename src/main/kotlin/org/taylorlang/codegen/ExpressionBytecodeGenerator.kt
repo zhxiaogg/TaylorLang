@@ -13,6 +13,7 @@ import org.taylorlang.typechecker.*
  * - Binary and unary operations
  * - Arithmetic operations with type promotion
  * - Identifier resolution
+ * - Try expressions with Result type unwrapping
  * - Type inference integration
  */
 class ExpressionBytecodeGenerator(
@@ -20,6 +21,9 @@ class ExpressionBytecodeGenerator(
     private val variableSlotManager: VariableSlotManager,
     private val typeInferenceHelper: (Expression) -> Type
 ) {
+    
+    // Lazy initialization of try expression generator to avoid circular dependencies
+    private var tryExpressionGenerator: TryExpressionBytecodeGenerator? = null
     
     /**
      * Generate code for an expression
@@ -57,6 +61,10 @@ class ExpressionBytecodeGenerator(
                     // For now, load 0 as placeholder for unknown identifiers (e.g., functions)
                     methodVisitor.visitLdcInsn(0)
                 }
+            }
+            is TryExpression -> {
+                // Generate try expression with Result type unwrapping
+                getTryExpressionGenerator().generateTryExpression(expression, expr.type)
             }
             else -> {
                 // Unsupported expression - push default value
@@ -384,6 +392,41 @@ class ExpressionBytecodeGenerator(
             is Type.PrimitiveType -> type.name.lowercase() == "int"
             is Type.NamedType -> type.name.lowercase() == "int"
             else -> false
+        }
+    }
+    
+    /**
+     * Get or create the try expression generator.
+     * Lazy initialization to avoid circular dependencies.
+     */
+    private fun getTryExpressionGenerator(): TryExpressionBytecodeGenerator {
+        if (tryExpressionGenerator == null) {
+            tryExpressionGenerator = TryExpressionBytecodeGenerator(
+                methodVisitor = methodVisitor,
+                variableSlotManager = variableSlotManager,
+                expressionGenerator = this,
+                patternCompiler = null, // Will be set by BytecodeGenerator when available
+                generateExpression = { expr -> generateExpression(expr) }
+            )
+        }
+        return tryExpressionGenerator!!
+    }
+    
+    /**
+     * Set the pattern compiler for try expression catch clause handling.
+     * This is called by BytecodeGenerator during initialization.
+     */
+    fun setPatternCompiler(patternCompiler: PatternBytecodeCompiler) {
+        // Update existing try expression generator if it exists
+        tryExpressionGenerator?.let { generator ->
+            // Create a new generator with the pattern compiler
+            tryExpressionGenerator = TryExpressionBytecodeGenerator(
+                methodVisitor = methodVisitor,
+                variableSlotManager = variableSlotManager,
+                expressionGenerator = this,
+                patternCompiler = patternCompiler,
+                generateExpression = { expr -> generateExpression(expr) }
+            )
         }
     }
 }
