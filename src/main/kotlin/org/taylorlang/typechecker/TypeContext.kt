@@ -249,7 +249,7 @@ data class TypeContext(
                     parameterTypes = listOf(Type.NamedType("T")), // listOf(element)
                     returnType = Type.GenericType("List", kotlinx.collections.immutable.persistentListOf(Type.NamedType("T")))
                 ),
-                // listOf2 for two parameters - internal name, but we'll modify the type checker to resolve listOf calls by arity
+                // listOf2 for two parameters
                 "listOf2" to FunctionSignature(
                     typeParameters = listOf("T"),
                     parameterTypes = listOf(Type.NamedType("T"), Type.NamedType("T")), // listOf(elem1, elem2)
