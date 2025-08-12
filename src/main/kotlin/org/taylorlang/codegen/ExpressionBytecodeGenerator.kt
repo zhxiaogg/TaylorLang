@@ -66,6 +66,9 @@ class ExpressionBytecodeGenerator(
                 // Generate try expression with Result type unwrapping
                 getTryExpressionGenerator().generateTryExpression(expression, expr.type)
             }
+            is FunctionCall -> {
+                generateFunctionCall(expression, expr.type)
+            }
             else -> {
                 // Unsupported expression - push default value
                 when (getJvmType(expr.type)) {
@@ -473,6 +476,132 @@ class ExpressionBytecodeGenerator(
                 patternCompiler = patternCompiler,
                 generateExpression = { expr -> generateExpression(expr) }
             )
+        }
+    }
+    
+    /**
+     * Generate bytecode for function calls.
+     * Handles static method calls including TaylorResult.ok/error and constructor calls.
+     */
+    private fun generateFunctionCall(functionCall: FunctionCall, expectedType: Type) {
+        val target = functionCall.target
+        
+        when (target) {
+            is Identifier -> {
+                val functionName = target.name
+                
+                // Handle special static method calls
+                when {
+                    functionName == "TaylorResult.ok" -> {
+                        // Generate arguments first
+                        if (functionCall.arguments.isNotEmpty()) {
+                            generateExpression(TypedExpression(functionCall.arguments[0], inferExpressionType(functionCall.arguments[0])))
+                        } else {
+                            methodVisitor.visitInsn(ACONST_NULL)
+                        }
+                        
+                        // Call TaylorResult.ok(Object)
+                        methodVisitor.visitMethodInsn(
+                            INVOKESTATIC,
+                            "org/taylorlang/runtime/TaylorResult",
+                            "ok",
+                            "(Ljava/lang/Object;)Lorg/taylorlang/runtime/TaylorResult;",
+                            false
+                        )
+                    }
+                    
+                    functionName == "TaylorResult.error" -> {
+                        // Generate arguments first  
+                        if (functionCall.arguments.isNotEmpty()) {
+                            generateExpression(TypedExpression(functionCall.arguments[0], BuiltinTypes.THROWABLE))
+                        } else {
+                            // Create a default RuntimeException
+                            methodVisitor.visitTypeInsn(NEW, "java/lang/RuntimeException")
+                            methodVisitor.visitInsn(DUP)
+                            methodVisitor.visitLdcInsn("Unknown error")
+                            methodVisitor.visitMethodInsn(
+                                INVOKESPECIAL,
+                                "java/lang/RuntimeException",
+                                "<init>",
+                                "(Ljava/lang/String;)V",
+                                false
+                            )
+                        }
+                        
+                        // Call TaylorResult.error(Throwable)
+                        methodVisitor.visitMethodInsn(
+                            INVOKESTATIC,
+                            "org/taylorlang/runtime/TaylorResult",
+                            "error",
+                            "(Ljava/lang/Throwable;)Lorg/taylorlang/runtime/TaylorResult;",
+                            false
+                        )
+                    }
+                    
+                    functionName == "RuntimeException" -> {
+                        // Constructor call for RuntimeException
+                        methodVisitor.visitTypeInsn(NEW, "java/lang/RuntimeException")
+                        methodVisitor.visitInsn(DUP)
+                        
+                        // Generate constructor arguments
+                        if (functionCall.arguments.isNotEmpty()) {
+                            generateExpression(TypedExpression(functionCall.arguments[0], BuiltinTypes.STRING))
+                            methodVisitor.visitMethodInsn(
+                                INVOKESPECIAL,
+                                "java/lang/RuntimeException",
+                                "<init>",
+                                "(Ljava/lang/String;)V",
+                                false
+                            )
+                        } else {
+                            methodVisitor.visitMethodInsn(
+                                INVOKESPECIAL,
+                                "java/lang/RuntimeException",
+                                "<init>",
+                                "()V",
+                                false
+                            )
+                        }
+                    }
+                    
+                    functionName == "println" -> {
+                        // System.out.println
+                        methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;")
+                        
+                        if (functionCall.arguments.isNotEmpty()) {
+                            generateExpression(TypedExpression(functionCall.arguments[0], inferExpressionType(functionCall.arguments[0])))
+                        } else {
+                            methodVisitor.visitLdcInsn("")
+                        }
+                        
+                        methodVisitor.visitMethodInsn(
+                            INVOKEVIRTUAL,
+                            "java/io/PrintStream",
+                            "println",
+                            "(Ljava/lang/Object;)V",
+                            false
+                        )
+                    }
+                    
+                    else -> {
+                        // Unknown function call - generate placeholder based on expected type
+                        when (getJvmType(expectedType)) {
+                            "I", "Z" -> methodVisitor.visitLdcInsn(0)
+                            "D" -> methodVisitor.visitLdcInsn(0.0)
+                            else -> methodVisitor.visitInsn(ACONST_NULL)
+                        }
+                    }
+                }
+            }
+            
+            else -> {
+                // Complex target - generate placeholder
+                when (getJvmType(expectedType)) {
+                    "I", "Z" -> methodVisitor.visitLdcInsn(0)
+                    "D" -> methodVisitor.visitLdcInsn(0.0)
+                    else -> methodVisitor.visitInsn(ACONST_NULL)
+                }
+            }
         }
     }
 }

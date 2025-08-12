@@ -1,5 +1,0 @@
-println("before")
-while (false) {
-    println("loop")
-}
-println("after")

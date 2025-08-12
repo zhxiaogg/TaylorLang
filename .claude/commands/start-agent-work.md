@@ -49,12 +49,12 @@ Claude → Repeat step 3 until approved
 Claude → Launch @agent-tech-lead-architect for documentation:
 - Update project documentation for completed work
 - Commit documentation changes
-- Check if more tasks remain in docs/project/tasks.md
-- Return next task or completion status
+- Analyze project state and identify next priority task
+- Return next task or signal no further tasks available
 ```
 
 ## Continuous Loop
-Claude executes this loop until all tasks complete:
+Claude executes this loop until tech-lead-architect cannot find any further tasks:
 ```
 REPEAT:
   1. Claude gets task from tech-lead-architect
@@ -62,8 +62,8 @@ REPEAT:
   3. Claude gets code review from tech-lead-architect
   4. IF needs fixes: Claude sends feedback to engineer, GOTO 3
   5. Claude gets documentation update from tech-lead-architect  
-  6. IF more tasks exist: GOTO 1
-  7. ELSE: Workflow complete
+  6. IF tech-lead-architect identifies more tasks: GOTO 1
+  7. ELSE: Workflow complete (no further tasks available)
 ```
 
 ## Agent Responsibilities
@@ -85,7 +85,7 @@ REPEAT:
 - Agents should confirm understanding before proceeding
 
 ## Termination Condition
-Workflow continues until all tasks in docs/project/tasks.md are completed or project owner decides to stop.
+Workflow continues until @agent-tech-lead-architect cannot identify any further tasks to assign. The tech lead will analyze the entire project state, test results, documentation, and roadmap to determine if there are any remaining tasks worth pursuing.
 
 ## Usage
 Run this workflow to begin continuous development iterations between the tech lead and engineer agents.
