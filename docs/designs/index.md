@@ -4,7 +4,7 @@ This directory contains technical design documents for TaylorLang components.
 
 ## Design Documents
 
-- [Constructor Deconstruction Patterns](./constructor-deconstruction-patterns.md) - **ACTIVE** - Technical design for fixing list pattern failures and implementing constructor deconstruction pattern matching
+- [Constructor Deconstruction Patterns](./constructor-deconstruction-patterns.md) - **UPDATED** - Simplified technical design for completing constructor pattern bytecode TODO (96.8% complete infrastructure)
 - [Comprehensive Pattern Matching Design](./comprehensive-pattern-matching.md) - Complete analysis and implementation plan for pattern matching specification support
 - [Try Syntax Implementation](./try-syntax-implementation.md) - Technical design for functional error handling with try expressions and Result types
 - [Unification Algorithm](./unification-algorithm.md) - Type constraint solving and substitution generation for type inference
