@@ -274,9 +274,19 @@ class PatternBytecodeCompiler(
         // Duplicate the target value for instanceof check
         methodVisitor.visitInsn(DUP)
         methodVisitor.visitTypeInsn(INSTANCEOF, constructorClassName)
-        methodVisitor.visitJumpInsn(IFEQ, nextLabel) // If not instanceof, jump to next pattern
         
-        // Stack: [target_value] (DUP consumed by instanceof check)
+        // Create a label for when instanceof check succeeds
+        val instanceofSuccessLabel = org.objectweb.asm.Label()
+        methodVisitor.visitJumpInsn(IFNE, instanceofSuccessLabel) // If instanceof succeeds, jump to success
+        
+        // CRITICAL FIX: instanceof check failed - remove target value and jump to next pattern
+        // Stack: [target_value] (DUP consumed by instanceof, original value remains)
+        methodVisitor.visitInsn(POP) // Remove target value
+        methodVisitor.visitJumpInsn(GOTO, nextLabel) // Jump to next pattern with empty stack
+        
+        // instanceof check succeeded
+        methodVisitor.visitLabel(instanceofSuccessLabel)
+        // Stack: [target_value] (original value from DUP)
         
         // 2. Cast to constructor type for field access
         methodVisitor.visitTypeInsn(CHECKCAST, constructorClassName)
@@ -285,7 +295,7 @@ class PatternBytecodeCompiler(
         
         // 3. If no nested patterns, constructor pattern matches - jump to case
         if (pattern.patterns.isEmpty()) {
-            // Remove cast target from stack and jump to case
+            // Remove cast target from stack and jump to case with empty stack
             methodVisitor.visitInsn(POP)
             methodVisitor.visitJumpInsn(GOTO, caseLabel)
             return
@@ -302,8 +312,8 @@ class PatternBytecodeCompiler(
             // Load constructor object and access field
             methodVisitor.visitVarInsn(ALOAD, constructorSlot)
             
-            // Get field value (assuming fields are named field0, field1, etc.)
-            val fieldName = "field$index"
+            // Get field value based on constructor type and field index
+            val fieldName = getFieldName(pattern.constructor, index, targetType)
             val fieldType = getFieldType(pattern.constructor, index, targetType)
             val fieldDescriptor = getJvmTypeDescriptor(fieldType)
             
@@ -318,16 +328,18 @@ class PatternBytecodeCompiler(
             // Generate pattern test for this field
             generatePatternTest(fieldPattern, fieldType, fieldMatchLabel, fieldFailLabel)
             
-            // If field pattern failed, clean up and jump to next case
+            // If field pattern failed, clean up and jump to next case with empty stack
             methodVisitor.visitLabel(fieldFailLabel)
             variableSlotManager.releaseTemporarySlot(constructorSlot)
+            // Stack should be empty here from pattern test failure
             methodVisitor.visitJumpInsn(GOTO, nextLabel)
             
             // Field pattern succeeded, continue to next field
             methodVisitor.visitLabel(fieldMatchLabel)
+            // Stack should be empty here from pattern test success
         }
         
-        // 6. All nested patterns matched - clean up and jump to case
+        // 6. All nested patterns matched - clean up and jump to case with empty stack
         variableSlotManager.releaseTemporarySlot(constructorSlot)
         methodVisitor.visitJumpInsn(GOTO, caseLabel)
     }
@@ -483,7 +495,7 @@ class PatternBytecodeCompiler(
                         methodVisitor.visitVarInsn(ALOAD, constructorSlot)
                         
                         // Get field
-                        val fieldName = "field$index"
+                        val fieldName = getFieldName(pattern.constructor, index, targetType)
                         val fieldDescriptor = getJvmTypeDescriptor(fieldType)
                         methodVisitor.visitFieldInsn(GETFIELD, constructorClassName, fieldName, fieldDescriptor)
                         
@@ -500,7 +512,7 @@ class PatternBytecodeCompiler(
                     
                     // Load constructor and get field
                     methodVisitor.visitVarInsn(ALOAD, constructorSlot)
-                    val fieldName = "field$index"
+                    val fieldName = getFieldName(pattern.constructor, index, targetType)
                     val fieldDescriptor = getJvmTypeDescriptor(fieldType)
                     methodVisitor.visitFieldInsn(GETFIELD, constructorClassName, fieldName, fieldDescriptor)
                     
@@ -610,36 +622,103 @@ class PatternBytecodeCompiler(
     
     /**
      * Get the JVM class name for a constructor variant
-     * Following the design document pattern of simple class generation per variant
+     * Maps TaylorLang union types to their runtime implementations
      */
     private fun getConstructorClassName(constructorName: String, targetType: Type): String {
-        // For TaylorLang union types, generate class names like: Option$Some, Result$Ok, etc.
         val unionTypeName = when (targetType) {
             is Type.NamedType -> targetType.name
             is Type.UnionType -> targetType.name
             is Type.GenericType -> targetType.name
             else -> "UnknownType"
         }
-        return "$unionTypeName\$$constructorName"
+        
+        // Map TaylorLang types to their runtime implementations
+        val runtimeTypeName = when (unionTypeName) {
+            "Result" -> "org/taylorlang/runtime/TaylorResult"
+            "Option" -> "org/taylorlang/runtime/TaylorOption"
+            "Status" -> "org/taylorlang/runtime/TaylorStatus"
+            "Tuple2" -> "org/taylorlang/runtime/TaylorTuple2"
+            // Add other union types as they are implemented
+            else -> unionTypeName
+        }
+        
+        return "$runtimeTypeName\$$constructorName"
+    }
+    
+    /**
+     * Get the field name for a specific field in a constructor variant
+     */
+    private fun getFieldName(constructorName: String, fieldIndex: Int, targetType: Type): String {
+        val unionTypeName = when (targetType) {
+            is Type.NamedType -> targetType.name
+            is Type.UnionType -> targetType.name
+            is Type.GenericType -> targetType.name
+            else -> "UnknownType"
+        }
+        
+        // Map to known runtime implementations
+        return when (unionTypeName) {
+            "Result" -> when (constructorName) {
+                "Ok" -> "value"
+                "Error" -> "error"
+                else -> "field$fieldIndex"
+            }
+            "Option" -> when (constructorName) {
+                "Some" -> "value"
+                "None" -> "field$fieldIndex" // None has no fields
+                else -> "field$fieldIndex"
+            }
+            "Status" -> "field$fieldIndex" // Active, Inactive, Pending have no fields
+            "Tuple2" -> when (constructorName) {
+                "Pair" -> when (fieldIndex) {
+                    0 -> "first"
+                    1 -> "second"
+                    else -> "field$fieldIndex"
+                }
+                else -> "field$fieldIndex"
+            }
+            // Add other union types as they are implemented
+            else -> "field$fieldIndex"
+        }
     }
     
     /**
      * Get the type of a specific field in a constructor variant
-     * This requires lookup in the type context to find the variant definition
      */
     private fun getFieldType(constructorName: String, fieldIndex: Int, targetType: Type): Type {
-        // TODO: In a complete implementation, this would look up the union type definition
-        // and find the specific variant to get the correct field type.
-        // For now, return a generic Object type as a placeholder.
-        // This will need to be integrated with the type checker's TypeContext.
+        val unionTypeName = when (targetType) {
+            is Type.NamedType -> targetType.name
+            is Type.UnionType -> targetType.name
+            is Type.GenericType -> targetType.name
+            else -> "UnknownType"
+        }
         
-        // Placeholder implementation - assumes all fields are Objects
-        // Real implementation would:
-        // 1. Look up targetType in TypeContext
-        // 2. Find the UnionTypeDef 
-        // 3. Find the VariantDef with constructorName
-        // 4. Return variant.fields[fieldIndex]
-        
-        return Type.NamedType("Object")
+        // Map to known runtime implementations
+        return when (unionTypeName) {
+            "Result" -> when (constructorName) {
+                "Ok" -> {
+                    // For TaylorResult.Ok, the value field type depends on the generic parameter
+                    // For now, return Object as a safe default
+                    Type.NamedType("Object")
+                }
+                "Error" -> {
+                    // For TaylorResult.Error, use Object for better JVM compatibility
+                    Type.NamedType("Object")
+                }
+                else -> Type.NamedType("Object")
+            }
+            "Option" -> when (constructorName) {
+                "Some" -> Type.NamedType("Object") // Generic value
+                "None" -> Type.NamedType("Object") // No fields, but safe default
+                else -> Type.NamedType("Object")
+            }
+            "Status" -> Type.NamedType("Object") // No fields
+            "Tuple2" -> when (constructorName) {
+                "Pair" -> Type.NamedType("Object") // Generic fields
+                else -> Type.NamedType("Object")
+            }
+            // Add other union types as they are implemented
+            else -> Type.NamedType("Object")
+        }
     }
 }
