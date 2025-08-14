@@ -1,0 +1,33 @@
+// Extended arithmetic operations
+println(15 - 12)          // Should print: 3
+println(2.5 * 3.0)        // Should print: 7.5
+println(10 / 3.0)         // Should print: 3.333333333333333
+
+// Operator precedence
+println(2 + 3 * 4)        // Should print: 14 (not 20)
+println((2 + 3) * 4)      // Should print: 20
+
+// Comparison chains
+println(5 < 10 && 10 < 20)  // Should print: true
+println(1 == 1 && 2 != 3)   // Should print: true
+println(!(false || false))  // Should print: true
+
+// Mixed type comparisons
+println(5 == 5.0)         // Should print: true
+println(3.14 > 3)         // Should print: true
+
+// Additional arithmetic operations
+println(20 / 5)           // Should print: 4
+println(8 - 7)            // Should print: 1
+println(8.0 / 2.0)        // Should print: 4.0
+
+// More comparison operations
+println(10 >= 10)         // Should print: true
+println(5 <= 4)           // Should print: false
+println(3 != 4)           // Should print: true
+println(7 == 7)           // Should print: true
+
+// Complex expressions with precedence
+println(10 - 5 + 2)       // Should print: 7
+println(3 * 4 + 2 * 5)    // Should print: 22
+println(20 / 4 - 1)       // Should print: 4

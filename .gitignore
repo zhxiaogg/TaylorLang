@@ -52,3 +52,4 @@ src/test/generated/
 ### Temporary Files ###
 test-syntax.tl
 debug_test.kt
+*.class
