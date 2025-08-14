@@ -236,6 +236,11 @@ data class TypeContext(
                     parameterTypes = listOf(Type.NamedType("T")),
                     returnType = BuiltinTypes.UNIT
                 ),
+                "assert" to FunctionSignature(
+                    typeParameters = listOf(), // No generic type parameters
+                    parameterTypes = listOf(BuiltinTypes.BOOLEAN),
+                    returnType = BuiltinTypes.UNIT
+                ),
                 // List construction functions
                 "emptyList" to FunctionSignature(
                     typeParameters = listOf("T"), 

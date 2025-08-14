@@ -84,7 +84,7 @@ class FunctionBytecodeGenerator(
                     val isVoidExpression = when (val expr = body.expression.expression) {
                         is FunctionCall -> {
                             val functionName = (expr.target as? Identifier)?.name
-                            functionName == "println" // println returns void
+                            functionName == "println" || functionName == "assert" // println and assert return void
                         }
                         else -> false
                     }
@@ -137,6 +137,7 @@ class FunctionBytecodeGenerator(
         
         when (functionName) {
             "println" -> generatePrintlnCall(call)
+            "assert" -> generateAssertCall(call)
             else -> {
                 // User-defined function call
                 generateUserFunctionCall(call, functionName, resultType)
@@ -221,6 +222,58 @@ class FunctionBytecodeGenerator(
             methodDescriptor,
             false
         )
+    }
+    
+    /**
+     * Generate code for assert builtin function
+     */
+    fun generateAssertCall(call: FunctionCall) {
+        if (call.arguments.isEmpty()) {
+            // Invalid assert call - should have been caught by type checker
+            // Generate a runtime exception
+            methodVisitor.visitTypeInsn(NEW, "java/lang/RuntimeException")
+            methodVisitor.visitInsn(DUP)
+            methodVisitor.visitLdcInsn("assert() called without condition")
+            methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/RuntimeException", "<init>", "(Ljava/lang/String;)V", false)
+            methodVisitor.visitInsn(ATHROW)
+            return
+        }
+        
+        // Generate the condition expression
+        val conditionArg = call.arguments[0]
+        val conditionType = expressionGenerator.inferExpressionType(conditionArg)
+        generateExpression(TypedExpression(conditionArg, conditionType))
+        
+        // Create a label for when assertion passes
+        val assertPassLabel = org.objectweb.asm.Label()
+        
+        // If condition is true (1), jump to pass label
+        methodVisitor.visitJumpInsn(IFNE, assertPassLabel)
+        
+        // Assertion failed - print error message to stderr and exit
+        // Get System.err
+        methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "err", "Ljava/io/PrintStream;")
+        methodVisitor.visitLdcInsn("Assertion failed")
+        methodVisitor.visitMethodInsn(
+            INVOKEVIRTUAL,
+            "java/io/PrintStream",
+            "println",
+            "(Ljava/lang/String;)V",
+            false
+        )
+        
+        // Exit with code 1
+        methodVisitor.visitLdcInsn(1)
+        methodVisitor.visitMethodInsn(
+            INVOKESTATIC,
+            "java/lang/System",
+            "exit",
+            "(I)V",
+            false
+        )
+        
+        // Label for when assertion passes - continue execution
+        methodVisitor.visitLabel(assertPassLabel)
     }
     
     /**
@@ -357,6 +410,9 @@ class FunctionBytecodeGenerator(
                     "println" -> {
                         generatePrintlnCallWithLocalGenerators(expression, localExpressionGenerator)
                     }
+                    "assert" -> {
+                        generateAssertCallWithLocalGenerators(expression, localExpressionGenerator)
+                    }
                     else -> generateFunctionCall(expression, expr.type)
                 }
             }
@@ -406,6 +462,58 @@ class FunctionBytecodeGenerator(
             methodDescriptor,
             false
         )
+    }
+    
+    /**
+     * Generate assert call with local generators to ensure argument generation uses correct method visitor
+     */
+    private fun generateAssertCallWithLocalGenerators(call: FunctionCall, localExpressionGenerator: ExpressionBytecodeGenerator) {
+        if (call.arguments.isEmpty()) {
+            // Invalid assert call - should have been caught by type checker
+            // Generate a runtime exception
+            methodVisitor.visitTypeInsn(NEW, "java/lang/RuntimeException")
+            methodVisitor.visitInsn(DUP)
+            methodVisitor.visitLdcInsn("assert() called without condition")
+            methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/RuntimeException", "<init>", "(Ljava/lang/String;)V", false)
+            methodVisitor.visitInsn(ATHROW)
+            return
+        }
+        
+        // Generate the condition expression using local generator
+        val conditionArg = call.arguments[0]
+        val conditionType = localExpressionGenerator.inferExpressionType(conditionArg)
+        localExpressionGenerator.generateExpression(TypedExpression(conditionArg, conditionType))
+        
+        // Create a label for when assertion passes
+        val assertPassLabel = org.objectweb.asm.Label()
+        
+        // If condition is true (1), jump to pass label
+        methodVisitor.visitJumpInsn(IFNE, assertPassLabel)
+        
+        // Assertion failed - print error message to stderr and exit
+        // Get System.err
+        methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "err", "Ljava/io/PrintStream;")
+        methodVisitor.visitLdcInsn("Assertion failed")
+        methodVisitor.visitMethodInsn(
+            INVOKEVIRTUAL,
+            "java/io/PrintStream",
+            "println",
+            "(Ljava/lang/String;)V",
+            false
+        )
+        
+        // Exit with code 1
+        methodVisitor.visitLdcInsn(1)
+        methodVisitor.visitMethodInsn(
+            INVOKESTATIC,
+            "java/lang/System",
+            "exit",
+            "(I)V",
+            false
+        )
+        
+        // Label for when assertion passes - continue execution
+        methodVisitor.visitLabel(assertPassLabel)
     }
 }
 

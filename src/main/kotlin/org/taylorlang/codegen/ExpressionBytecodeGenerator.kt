@@ -583,6 +583,52 @@ class ExpressionBytecodeGenerator(
                         )
                     }
                     
+                    functionName == "assert" -> {
+                        // Assert function implementation
+                        if (functionCall.arguments.isEmpty()) {
+                            // Invalid assert call - should have been caught by type checker
+                            methodVisitor.visitTypeInsn(NEW, "java/lang/RuntimeException")
+                            methodVisitor.visitInsn(DUP)
+                            methodVisitor.visitLdcInsn("assert() called without condition")
+                            methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/RuntimeException", "<init>", "(Ljava/lang/String;)V", false)
+                            methodVisitor.visitInsn(ATHROW)
+                        } else {
+                            // Generate the condition expression
+                            val conditionArg = functionCall.arguments[0]
+                            generateExpression(TypedExpression(conditionArg, inferExpressionType(conditionArg)))
+                            
+                            // Create a label for when assertion passes
+                            val assertPassLabel = org.objectweb.asm.Label()
+                            
+                            // If condition is true (1), jump to pass label
+                            methodVisitor.visitJumpInsn(IFNE, assertPassLabel)
+                            
+                            // Assertion failed - print error message to stderr and exit
+                            methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "err", "Ljava/io/PrintStream;")
+                            methodVisitor.visitLdcInsn("Assertion failed")
+                            methodVisitor.visitMethodInsn(
+                                INVOKEVIRTUAL,
+                                "java/io/PrintStream",
+                                "println",
+                                "(Ljava/lang/String;)V",
+                                false
+                            )
+                            
+                            // Exit with code 1
+                            methodVisitor.visitLdcInsn(1)
+                            methodVisitor.visitMethodInsn(
+                                INVOKESTATIC,
+                                "java/lang/System",
+                                "exit",
+                                "(I)V",
+                                false
+                            )
+                            
+                            // Label for when assertion passes - continue execution
+                            methodVisitor.visitLabel(assertPassLabel)
+                        }
+                    }
+                    
                     else -> {
                         // Unknown function call - generate placeholder based on expected type
                         when (getJvmType(expectedType)) {

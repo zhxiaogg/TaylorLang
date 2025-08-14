@@ -257,8 +257,8 @@ class BytecodeGenerator {
                     val shouldPop = when (statement.expression.expression) {
                         is FunctionCall -> {
                             val call = statement.expression.expression as FunctionCall
-                            // println returns void, so no need to pop
-                            if (call.target is Identifier && call.target.name == "println") {
+                            // println and assert return void, so no need to pop
+                            if (call.target is Identifier && (call.target.name == "println" || call.target.name == "assert")) {
                                 false
                             } else {
                                 getJvmType(statement.expression.type) != "V"
@@ -499,37 +499,86 @@ class BytecodeGenerator {
         when (val expression = expr.expression) {
             is FunctionCall -> {
                 val functionName = (expression.target as? Identifier)?.name
-                if (functionName == "println") {
-                    // Generate println call
-                    methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;")
-                    
-                    if (expression.arguments.isNotEmpty()) {
-                        val arg = expression.arguments[0]
-                        val argType = exprGen.inferExpressionType(arg)
-                        exprGen.generateExpression(TypedExpression(arg, argType))
+                when (functionName) {
+                    "println" -> {
+                        // Generate println call
+                        methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;")
                         
-                        val methodDescriptor = when (argType) {
-                            BuiltinTypes.INT -> "(I)V"
-                            BuiltinTypes.DOUBLE -> "(D)V" 
-                            BuiltinTypes.BOOLEAN -> {
-                                controlFlowGen.convertBooleanToString()
-                                "(Ljava/lang/String;)V"
+                        if (expression.arguments.isNotEmpty()) {
+                            val arg = expression.arguments[0]
+                            val argType = exprGen.inferExpressionType(arg)
+                            exprGen.generateExpression(TypedExpression(arg, argType))
+                            
+                            val methodDescriptor = when (argType) {
+                                BuiltinTypes.INT -> "(I)V"
+                                BuiltinTypes.DOUBLE -> "(D)V" 
+                                BuiltinTypes.BOOLEAN -> {
+                                    controlFlowGen.convertBooleanToString()
+                                    "(Ljava/lang/String;)V"
+                                }
+                                BuiltinTypes.STRING -> "(Ljava/lang/String;)V"
+                                else -> "(Ljava/lang/Object;)V"
                             }
-                            BuiltinTypes.STRING -> "(Ljava/lang/String;)V"
-                            else -> "(Ljava/lang/Object;)V"
+                            
+                            methodVisitor.visitMethodInsn(
+                                INVOKEVIRTUAL,
+                                "java/io/PrintStream", 
+                                "println",
+                                methodDescriptor,
+                                false
+                            )
                         }
-                        
-                        methodVisitor.visitMethodInsn(
-                            INVOKEVIRTUAL,
-                            "java/io/PrintStream", 
-                            "println",
-                            methodDescriptor,
-                            false
-                        )
                     }
-                } else {
-                    // Other function calls - delegate to expression generator
-                    exprGen.generateExpression(expr)
+                    "assert" -> {
+                        // Generate assert call
+                        if (expression.arguments.isEmpty()) {
+                            // Invalid assert call - should have been caught by type checker
+                            methodVisitor.visitTypeInsn(NEW, "java/lang/RuntimeException")
+                            methodVisitor.visitInsn(DUP)
+                            methodVisitor.visitLdcInsn("assert() called without condition")
+                            methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/RuntimeException", "<init>", "(Ljava/lang/String;)V", false)
+                            methodVisitor.visitInsn(ATHROW)
+                        } else {
+                            // Generate the condition expression
+                            val conditionArg = expression.arguments[0]
+                            val conditionType = exprGen.inferExpressionType(conditionArg)
+                            exprGen.generateExpression(TypedExpression(conditionArg, conditionType))
+                            
+                            // Create a label for when assertion passes
+                            val assertPassLabel = org.objectweb.asm.Label()
+                            
+                            // If condition is true (1), jump to pass label
+                            methodVisitor.visitJumpInsn(IFNE, assertPassLabel)
+                            
+                            // Assertion failed - print error message to stderr and exit
+                            methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "err", "Ljava/io/PrintStream;")
+                            methodVisitor.visitLdcInsn("Assertion failed")
+                            methodVisitor.visitMethodInsn(
+                                INVOKEVIRTUAL,
+                                "java/io/PrintStream",
+                                "println",
+                                "(Ljava/lang/String;)V",
+                                false
+                            )
+                            
+                            // Exit with code 1
+                            methodVisitor.visitLdcInsn(1)
+                            methodVisitor.visitMethodInsn(
+                                INVOKESTATIC,
+                                "java/lang/System",
+                                "exit",
+                                "(I)V",
+                                false
+                            )
+                            
+                            // Label for when assertion passes - continue execution
+                            methodVisitor.visitLabel(assertPassLabel)
+                        }
+                    }
+                    else -> {
+                        // Other function calls - delegate to expression generator
+                        exprGen.generateExpression(expr)
+                    }
                 }
             }
             is IfExpression -> {
