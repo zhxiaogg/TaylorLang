@@ -120,55 +120,39 @@ class ExpressionBytecodeGenerator(
         when (binaryOp.operator) {
             BinaryOperator.PLUS -> {
                 if (isStringType(operandType)) {
-                    // String concatenation using StringBuilder for robustness
+                    // String concatenation using static String.valueOf and concat
                     // Stack: [left_operand, right_operand] -> [result_string]
                     
-                    // Create new StringBuilder
-                    methodVisitor.visitTypeInsn(NEW, "java/lang/StringBuilder")
-                    methodVisitor.visitInsn(DUP)
+                    // Convert left operand to string if it isn't already
                     methodVisitor.visitMethodInsn(
-                        INVOKESPECIAL,
-                        "java/lang/StringBuilder",
-                        "<init>",
-                        "()V",
+                        INVOKESTATIC,
+                        "java/lang/String",
+                        "valueOf",
+                        "(Ljava/lang/Object;)Ljava/lang/String;",
                         false
                     )
-                    // Stack: [left_operand, right_operand, StringBuilder]
+                    // Stack: [left_string, right_operand]
                     
-                    // Move StringBuilder to bottom of stack, then append left operand
-                    methodVisitor.visitInsn(DUP_X2)
-                    // Stack: [StringBuilder, left_operand, right_operand, StringBuilder]
-                    methodVisitor.visitInsn(POP)
-                    // Stack: [StringBuilder, left_operand, right_operand]
+                    // Convert right operand to string
                     methodVisitor.visitInsn(SWAP)
-                    // Stack: [StringBuilder, right_operand, left_operand]
+                    // Stack: [right_operand, left_string]
                     methodVisitor.visitMethodInsn(
-                        INVOKEVIRTUAL,
-                        "java/lang/StringBuilder",
-                        "append",
-                        "(Ljava/lang/Object;)Ljava/lang/StringBuilder;",
+                        INVOKESTATIC,
+                        "java/lang/String",
+                        "valueOf",
+                        "(Ljava/lang/Object;)Ljava/lang/String;",
                         false
                     )
-                    // Stack: [right_operand, StringBuilder]
+                    // Stack: [right_string, left_string]
                     
-                    // Append right operand
+                    // Swap back to correct order and concatenate
                     methodVisitor.visitInsn(SWAP)
-                    // Stack: [StringBuilder, right_operand]
+                    // Stack: [left_string, right_string]
                     methodVisitor.visitMethodInsn(
                         INVOKEVIRTUAL,
-                        "java/lang/StringBuilder",
-                        "append",
-                        "(Ljava/lang/Object;)Ljava/lang/StringBuilder;",
-                        false
-                    )
-                    // Stack: [StringBuilder]
-                    
-                    // Convert to string
-                    methodVisitor.visitMethodInsn(
-                        INVOKEVIRTUAL,
-                        "java/lang/StringBuilder",
-                        "toString",
-                        "()Ljava/lang/String;",
+                        "java/lang/String",
+                        "concat",
+                        "(Ljava/lang/String;)Ljava/lang/String;",
                         false
                     )
                     // Stack: [result_string]

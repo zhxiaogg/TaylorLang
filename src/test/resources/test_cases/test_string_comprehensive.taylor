@@ -1,0 +1,113 @@
+// Comprehensive string operations test case - Phase 1 Implementation
+// Tests all currently supported string operations in TaylorLang
+
+// =============================================================================
+// String Literals and Basic Assignment
+// =============================================================================
+
+// Basic string literals and assignment
+val basicString = "Hello, World!"
+assert(basicString == "Hello, World!")
+
+val emptyString = ""
+assert(emptyString == "")
+
+val singleCharString = "A"
+assert(singleCharString == "A")
+
+// =============================================================================
+// String Concatenation with + Operator
+// =============================================================================
+
+// Simple string concatenation
+val firstName = "Taylor"
+val lastName = "Lang"
+val fullName = firstName + " " + lastName
+assert(fullName == "Taylor Lang")
+
+// Multi-part concatenation
+val greeting = "Hello, " + "welcome to " + "TaylorLang!"
+assert(greeting == "Hello, welcome to TaylorLang!")
+
+// Empty string concatenation
+val withEmpty = "Start" + "" + "End"
+assert(withEmpty == "StartEnd")
+
+// =============================================================================
+// String Concatenation with Reassignment
+// =============================================================================
+
+// Variable string operations and reassignment
+var buildString = "Part"
+buildString = buildString + " One"
+assert(buildString == "Part One")
+
+buildString = buildString + " and Part Two"
+assert(buildString == "Part One and Part Two")
+
+// Complex reassignment pattern
+var accumulator = ""
+accumulator = accumulator + "A"
+accumulator = accumulator + "B"
+accumulator = accumulator + "C"
+assert(accumulator == "ABC")
+
+// =============================================================================
+// String Comparison Operations
+// =============================================================================
+
+// Equality comparison
+val testString1 = "Testing"
+val testString2 = "Testing" 
+val testString3 = "Different"
+assert(testString1 == testString2)
+assert(testString1 != testString3)
+
+// Empty string comparisons
+assert(emptyString == "")
+assert(emptyString != "non-empty")
+
+// Case sensitivity
+val caseTest1 = "Hello"
+val caseTest2 = "hello"
+assert(caseTest1 != caseTest2)
+
+// =============================================================================
+// Complex String Operations (String-to-String Only)
+// =============================================================================
+
+// Nested string operations
+val complex = ("Start" + "-") + ("Middle" + "-") + "End"
+assert(complex == "Start-Middle-End")
+
+// String operations in expressions
+val conditionalString = if (true) "True path" else "False path"
+assert(conditionalString == "True path")
+
+// =============================================================================
+// Advanced String Test Cases
+// =============================================================================
+
+// Long string concatenation
+val longString = "This" + " " + "is" + " " + "a" + " " + "very" + " " + "long" + " " + "string"
+assert(longString == "This is a very long string")
+
+// String with repeated patterns
+var repeated = ""
+repeated = repeated + "Ha"
+repeated = repeated + "Ha"
+repeated = repeated + "Ha"
+assert(repeated == "HaHaHa")
+
+// Mixed assignment and concatenation
+var final = "Start"
+val middle = " Middle "
+final = final + middle + "End"
+assert(final == "Start Middle End")
+
+// String concatenation chaining
+val chain = "A" + "B" + "C" + "D" + "E"
+assert(chain == "ABCDE")
+
+// NOTE: Mixed-type string concatenation (string + number, string + boolean) 
+// will be implemented in Phase 2 of the string operations feature.
