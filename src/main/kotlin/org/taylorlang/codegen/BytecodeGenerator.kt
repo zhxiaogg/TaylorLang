@@ -561,6 +561,21 @@ class BytecodeGenerator {
             is WhileExpression -> {
                 controlFlowGenerator.generateWhileExpression(expression, expr.type)
             }
+            is BlockExpression -> {
+                // Generate all statements in the block
+                for (statement in expression.statements) {
+                    generateStatementInBlock(statement)
+                }
+                
+                // Generate final expression (or default value)
+                if (expression.expression != null) {
+                    val finalExprType = inferExpressionType(expression.expression)
+                    generateExpression(TypedExpression(expression.expression, finalExprType))
+                } else {
+                    // No final expression - push Unit (represented as 0)
+                    methodVisitor!!.visitInsn(ICONST_0)
+                }
+            }
             is FunctionCall -> {
                 functionGenerator.generateFunctionCall(expression, expr.type)
             }
@@ -579,6 +594,70 @@ class BytecodeGenerator {
     }
     
     /**
+     * Generate code for a statement in a block expression
+     */
+    private fun generateStatementInBlock(statement: Statement) {
+        when (statement) {
+            is Assignment -> {
+                // Generate assignment value
+                val assignExprType = inferExpressionType(statement.value)
+                generateExpression(TypedExpression(statement.value, assignExprType))
+                
+                // Store in existing variable slot
+                val slot = variableSlotManager.getSlotOrThrow(statement.variable)
+                val storeInstruction = variableSlotManager.getStoreInstruction(assignExprType)
+                methodVisitor!!.visitVarInsn(storeInstruction, slot)
+            }
+            is Expression -> {
+                // Generate expression and pop its result (since we're in a block)
+                val exprType = inferExpressionType(statement)
+                generateExpression(TypedExpression(statement, exprType))
+                
+                // Pop result unless it's void
+                if (getJvmType(exprType) != "V") {
+                    methodVisitor!!.visitInsn(POP)
+                }
+            }
+            else -> {
+                // Other statement types not currently supported in block expressions
+                // This includes variable declarations, which would need special handling
+            }
+        }
+    }
+    
+    /**
+     * Infer the type of an expression (helper method)
+     */
+    private fun inferExpressionType(expr: Expression): Type {
+        return when (expr) {
+            is Literal.IntLiteral -> BuiltinTypes.INT
+            is Literal.FloatLiteral -> BuiltinTypes.DOUBLE
+            is Literal.BooleanLiteral -> BuiltinTypes.BOOLEAN
+            is Literal.StringLiteral -> BuiltinTypes.STRING
+            is FunctionCall -> {
+                // Check if it's a known void function
+                when {
+                    expr.target is Identifier && (expr.target as Identifier).name in setOf("println", "print", "assert") -> {
+                        Type.PrimitiveType("Unit") // Void functions
+                    }
+                    else -> BuiltinTypes.INT // Default for unknown functions
+                }
+            }
+            is BinaryOp -> {
+                when (expr.operator) {
+                    BinaryOperator.PLUS, BinaryOperator.MINUS, 
+                    BinaryOperator.MULTIPLY, BinaryOperator.DIVIDE -> BuiltinTypes.INT
+                    BinaryOperator.LESS_THAN, BinaryOperator.LESS_EQUAL,
+                    BinaryOperator.GREATER_THAN, BinaryOperator.GREATER_EQUAL,
+                    BinaryOperator.EQUAL, BinaryOperator.NOT_EQUAL -> BuiltinTypes.BOOLEAN
+                    else -> BuiltinTypes.INT
+                }
+            }
+            else -> BuiltinTypes.INT // Default fallback
+        }
+    }
+
+    /**
      * Map TaylorLang type to JVM type descriptor
      */
     private fun getJvmType(type: Type): String {
@@ -589,6 +668,7 @@ class BytecodeGenerator {
                     "double", "float" -> "D"
                     "boolean" -> "Z"
                     "string" -> "Ljava/lang/String;"
+                    "unit", "void" -> "V"
                     else -> "Ljava/lang/Object;"
                 }
             }

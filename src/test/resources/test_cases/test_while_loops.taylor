@@ -1,30 +1,56 @@
-// While loops test - simplified without actual while loops since they're not implemented
-// Testing iteration patterns using only basic language constructs
+// While loops test - using real while loop syntax
+// Testing all while loop patterns supported by TaylorLang
 
-// Test iteration pattern 1: Step-by-step simulation (like manual loop unrolling)
-val n1 = 3
-val n2 = n1 - 1
-val n3 = n2 - 1
-assert(n3 == 1)  // After 2 decrements: 3 -> 2 -> 1
+// Test 1: Basic counter pattern (counting down)
+var n = 3
+var decrementCount = 0
+while (decrementCount < 2) {
+    n = n - 1;
+    decrementCount = decrementCount + 1;
+}
+assert(n == 1)  // After 2 decrements: 3 -> 2 -> 1
 
-// Test iteration pattern 2: accumulation pattern
-val step1 = 1
-val step2 = step1 + 2
-val step3 = step2 + 3
-val finalSum = step3
-assert(finalSum == 6)  // Should be 1 + 2 + 3 = 6
+// Test 2: Accumulation pattern (sum calculation)
+var sum = 0
+var i = 1
+while (i <= 3) {
+    sum = sum + i;
+    i = i + 1;
+}
+assert(sum == 6)  // Should be 1 + 2 + 3 = 6
 
-// Test iteration pattern 3: counter pattern with conditional increments
-val counter = if (true) 1 else 0
-val counter2 = if (counter == 1) 2 else counter
-val counter3 = if (counter2 == 2) 3 else counter2
-assert(counter3 == 3)
+// Test 3: Counter pattern with threshold
+var counter = 0
+while (counter < 3) {
+    counter = counter + 1;
+}
+assert(counter == 3)
 
-// Test iteration pattern 4: conditional processing (loop-like behavior)
-val start = 5
-val processedOnce = if (start > 0) start - 1 else start
-val processedTwice = if (processedOnce > 0) processedOnce - 1 else processedOnce
-val processedThrice = if (processedTwice > 0) processedTwice - 1 else processedTwice
-assert(processedThrice == 2)  // 5 - 3 = 2
+// Test 4: Conditional processing with while loop
+var value = 5
+var iterations = 0
+while (value > 2 && iterations < 3) {
+    value = value - 1;
+    iterations = iterations + 1;
+}
+assert(value == 2)  // 5 - 3 = 2
+assert(iterations == 3)
 
-println("While loop simulation tests completed!")
+// Test 5: While loop that should not execute
+var shouldNotChange = 42
+while (false) {
+    shouldNotChange = 0;
+}
+assert(shouldNotChange == 42)  // Should remain unchanged
+
+// Test 6: Complex condition with multiple variables
+var x = 0
+var y = 5
+while (x < 3 && y > 2) {
+    x = x + 1;
+    y = y - 1;
+}
+assert(x == 3)
+assert(y == 2)
+
+println("While loop tests completed!")
