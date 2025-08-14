@@ -104,8 +104,8 @@ class BytecodeGenerator {
         className: String
     ): GenerationResult {
         // Create a new ClassWriter without frame computation
-        // Use Java 1.6 version which doesn't require stackmap frames
-        val classWriter = ClassWriter(ClassWriter.COMPUTE_MAXS)
+        // Use manual stack/locals computation to avoid all frame issues
+        val classWriter = ClassWriter(0) // No automatic computation
         
         generateClassContent(typedProgram, outputDirectory, className, classWriter, false)
         return writeClassFile(classWriter, outputDirectory, className)
@@ -123,7 +123,7 @@ class BytecodeGenerator {
         val bytecodeVersion = if (useFrames) {
             V1_8 // Use Java 1.8 with frames (more compatible than V17)
         } else {
-            V1_8 // Use Java 1.8 for fallback as well (V1_6 is too old for modern JVMs)
+            V1_7 // Use Java 1.7 for fallback - supports manual stack computation
         }
         
         classWriter.visit(
@@ -201,7 +201,7 @@ class BytecodeGenerator {
         val mv = methodVisitor!!
         
         // Create expression generator first with proper type inference
-        expressionGenerator = ExpressionBytecodeGenerator(mv, variableSlotManager) { expr ->
+        expressionGenerator = ExpressionBytecodeGenerator(mv, variableSlotManager, { expr ->
             when (expr) {
                 is Literal.IntLiteral -> BuiltinTypes.INT
                 is Literal.FloatLiteral -> BuiltinTypes.DOUBLE
@@ -209,7 +209,7 @@ class BytecodeGenerator {
                 is Literal.StringLiteral -> BuiltinTypes.STRING
                 else -> BuiltinTypes.INT
             }
-        }
+        }, currentClassName)
         
         // Create other generators that depend on expression generator
         controlFlowGenerator = ControlFlowBytecodeGenerator(mv, expressionGenerator, ::generateExpression)
@@ -354,6 +354,7 @@ class BytecodeGenerator {
         methodVisitor!!.visitCode()
         
         // CRITICAL FIX: Static methods need different slot allocation
+        // Slot 0 is for the args parameter in static main method
         // In static methods, slot 0 is for first parameter (String[] args), 
         // so variables start at slot 1. But the VariableSlotManager defaults to slot 1
         // thinking slot 0 is for 'this'. We need to reset it to account for static method.
@@ -487,7 +488,7 @@ class BytecodeGenerator {
                 
                 // Set up proper generators for this method
                 val functionSlotManager = VariableSlotManager()
-                val functionExprGen = ExpressionBytecodeGenerator(methodVisitor, functionSlotManager) { expr ->
+                val functionExprGen = ExpressionBytecodeGenerator(methodVisitor, functionSlotManager, { expr ->
                     when (expr) {
                         is Literal.IntLiteral -> BuiltinTypes.INT
                         is Literal.FloatLiteral -> BuiltinTypes.DOUBLE
@@ -495,7 +496,7 @@ class BytecodeGenerator {
                         is Literal.StringLiteral -> BuiltinTypes.STRING
                         else -> BuiltinTypes.INT
                     }
-                }
+                }, currentClassName)
                 val functionControlFlowGen = ControlFlowBytecodeGenerator(methodVisitor, functionExprGen) { expr ->
                     functionExprGen.generateExpression(expr)
                 }

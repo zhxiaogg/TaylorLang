@@ -19,7 +19,8 @@ import org.taylorlang.typechecker.*
 class ExpressionBytecodeGenerator(
     private val methodVisitor: MethodVisitor,
     private val variableSlotManager: VariableSlotManager,
-    private val typeInferenceHelper: (Expression) -> Type
+    private val typeInferenceHelper: (Expression) -> Type,
+    private val currentClassName: String = "Program"
 ) {
     
     // Lazy initialization of try expression generator to avoid circular dependencies
@@ -120,29 +121,37 @@ class ExpressionBytecodeGenerator(
         when (binaryOp.operator) {
             BinaryOperator.PLUS -> {
                 if (isStringType(operandType)) {
-                    // Store operands in local variables to avoid complex stack manipulation
-                    // This should be much easier for ASM frame analysis to handle
+                    // Fixed string concatenation: handle mixed types correctly
+                    // Stack at this point: [left_value, right_value]
                     
-                    // Store right operand
-                    val rightSlot = variableSlotManager.allocateTemporarySlot(operandType)
-                    methodVisitor.visitVarInsn(ASTORE, rightSlot)
+                    // Get actual types of left and right operands
+                    val leftType = inferExpressionType(binaryOp.left)
+                    val rightType = inferExpressionType(binaryOp.right)
                     
-                    // Store left operand  
-                    val leftSlot = variableSlotManager.allocateTemporarySlot(operandType)
-                    methodVisitor.visitVarInsn(ASTORE, leftSlot)
+                    // Store right operand in temporary slot with correct type
+                    val rightSlot = variableSlotManager.allocateTemporarySlot(rightType)
+                    val rightStoreOpcode = variableSlotManager.getStoreInstruction(rightType)
+                    methodVisitor.visitVarInsn(rightStoreOpcode, rightSlot)
+                    
+                    // Store left operand in temporary slot with correct type  
+                    val leftSlot = variableSlotManager.allocateTemporarySlot(leftType)
+                    val leftStoreOpcode = variableSlotManager.getStoreInstruction(leftType)
+                    methodVisitor.visitVarInsn(leftStoreOpcode, leftSlot)
                     
                     // Create StringBuilder
                     methodVisitor.visitTypeInsn(NEW, "java/lang/StringBuilder")
                     methodVisitor.visitInsn(DUP)
                     methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/StringBuilder", "<init>", "()V", false)
                     
-                    // Load and append left operand
-                    methodVisitor.visitVarInsn(ALOAD, leftSlot)
-                    methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Ljava/lang/Object;)Ljava/lang/StringBuilder;", false)
+                    // Load and append left operand with correct load instruction
+                    val leftLoadOpcode = variableSlotManager.getLoadInstruction(leftType)
+                    methodVisitor.visitVarInsn(leftLoadOpcode, leftSlot)
+                    appendToStringBuilder(leftType)
                     
-                    // Load and append right operand
-                    methodVisitor.visitVarInsn(ALOAD, rightSlot)
-                    methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Ljava/lang/Object;)Ljava/lang/StringBuilder;", false)
+                    // Load and append right operand with correct load instruction
+                    val rightLoadOpcode = variableSlotManager.getLoadInstruction(rightType)
+                    methodVisitor.visitVarInsn(rightLoadOpcode, rightSlot)
+                    appendToStringBuilder(rightType)
                     
                     // Convert to String
                     methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()Ljava/lang/String;", false)
@@ -449,11 +458,10 @@ class ExpressionBytecodeGenerator(
     /**
      * Generate string comparison operation that returns a boolean result
      * Stack: [string1, string2] -> [boolean_result]
+     * 
+     * Simplified version without conditional jumps to avoid ASM frame computation issues
      */
     private fun generateStringComparison(isEquality: Boolean) {
-        val trueLabel = org.objectweb.asm.Label()
-        val endLabel = org.objectweb.asm.Label()
-        
         // Use String.equals() for comparison
         // Stack: [string1, string2]
         methodVisitor.visitMethodInsn(
@@ -465,24 +473,69 @@ class ExpressionBytecodeGenerator(
         )
         // Stack: [boolean_result] (1 for equal, 0 for not equal)
         
-        if (isEquality) {
-            // For equality: if equals() returned true (1), jump to true label
-            methodVisitor.visitJumpInsn(IFNE, trueLabel)
-        } else {
-            // For inequality: if equals() returned false (0), jump to true label
-            methodVisitor.visitJumpInsn(IFEQ, trueLabel)
+        if (!isEquality) {
+            // For inequality (!= operator), invert the boolean result
+            // XOR with 1 to flip: 0 XOR 1 = 1, 1 XOR 1 = 0
+            methodVisitor.visitLdcInsn(1)
+            methodVisitor.visitInsn(IXOR)
         }
         
-        // False case: push 0 (false)
-        methodVisitor.visitLdcInsn(0)
-        methodVisitor.visitJumpInsn(GOTO, endLabel)
-        
-        // True case: push 1 (true)
-        methodVisitor.visitLabel(trueLabel)
-        methodVisitor.visitLdcInsn(1)
-        
-        // End
-        methodVisitor.visitLabel(endLabel)
+        // Result is already on stack (1 for true, 0 for false)
+    }
+    
+    /**
+     * Append a value to StringBuilder with correct method signature based on type
+     * Stack: [value, StringBuilder] -> [StringBuilder]
+     */
+    private fun appendToStringBuilder(valueType: Type) {
+        when {
+            isStringType(valueType) -> {
+                methodVisitor.visitMethodInsn(
+                    INVOKEVIRTUAL,
+                    "java/lang/StringBuilder", 
+                    "append", 
+                    "(Ljava/lang/String;)Ljava/lang/StringBuilder;",
+                    false
+                )
+            }
+            isIntegerType(valueType) -> {
+                methodVisitor.visitMethodInsn(
+                    INVOKEVIRTUAL,
+                    "java/lang/StringBuilder", 
+                    "append", 
+                    "(I)Ljava/lang/StringBuilder;",
+                    false
+                )
+            }
+            isDoubleType(valueType) -> {
+                methodVisitor.visitMethodInsn(
+                    INVOKEVIRTUAL,
+                    "java/lang/StringBuilder", 
+                    "append", 
+                    "(D)Ljava/lang/StringBuilder;",
+                    false
+                )
+            }
+            isBooleanType(valueType) -> {
+                methodVisitor.visitMethodInsn(
+                    INVOKEVIRTUAL,
+                    "java/lang/StringBuilder", 
+                    "append", 
+                    "(Z)Ljava/lang/StringBuilder;",
+                    false
+                )
+            }
+            else -> {
+                // Fallback to Object version for other types
+                methodVisitor.visitMethodInsn(
+                    INVOKEVIRTUAL,
+                    "java/lang/StringBuilder", 
+                    "append", 
+                    "(Ljava/lang/Object;)Ljava/lang/StringBuilder;",
+                    false
+                )
+            }
+        }
     }
     
     /**
@@ -520,6 +573,28 @@ class ExpressionBytecodeGenerator(
         return when (type) {
             is Type.PrimitiveType -> type.name.lowercase() == "int"
             is Type.NamedType -> type.name.lowercase() == "int"
+            else -> false
+        }
+    }
+    
+    /**
+     * Check if type is a double/float type
+     */
+    private fun isDoubleType(type: Type): Boolean {
+        return when (type) {
+            is Type.PrimitiveType -> type.name.lowercase() in listOf("double", "float")
+            is Type.NamedType -> type.name.lowercase() in listOf("double", "float")
+            else -> false
+        }
+    }
+    
+    /**
+     * Check if type is a boolean type
+     */
+    private fun isBooleanType(type: Type): Boolean {
+        return when (type) {
+            is Type.PrimitiveType -> type.name.lowercase() == "boolean"
+            is Type.NamedType -> type.name.lowercase() == "boolean"
             else -> false
         }
     }
@@ -675,7 +750,7 @@ class ExpressionBytecodeGenerator(
                     }
                     
                     functionName == "assert" -> {
-                        // Assert function implementation
+                        // Simplified assert implementation without conditional jumps to avoid ASM frame computation issues
                         if (functionCall.arguments.isEmpty()) {
                             // Invalid assert call - should have been caught by type checker
                             methodVisitor.visitTypeInsn(NEW, "java/lang/RuntimeException")
@@ -688,35 +763,16 @@ class ExpressionBytecodeGenerator(
                             val conditionArg = functionCall.arguments[0]
                             generateExpression(TypedExpression(conditionArg, inferExpressionType(conditionArg)))
                             
-                            // Create a label for when assertion passes
-                            val assertPassLabel = org.objectweb.asm.Label()
-                            
-                            // If condition is true (1), jump to pass label
-                            methodVisitor.visitJumpInsn(IFNE, assertPassLabel)
-                            
-                            // Assertion failed - print error message to stderr and exit
-                            methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "err", "Ljava/io/PrintStream;")
+                            // Use the assertHelper method to avoid conditional jumps entirely
+                            // Stack: [boolean_condition]
                             methodVisitor.visitLdcInsn("Assertion failed")
                             methodVisitor.visitMethodInsn(
-                                INVOKEVIRTUAL,
-                                "java/io/PrintStream",
-                                "println",
-                                "(Ljava/lang/String;)V",
-                                false
-                            )
-                            
-                            // Exit with code 1
-                            methodVisitor.visitLdcInsn(1)
-                            methodVisitor.visitMethodInsn(
                                 INVOKESTATIC,
-                                "java/lang/System",
-                                "exit",
-                                "(I)V",
+                                currentClassName,
+                                "assertHelper",
+                                "(ZLjava/lang/String;)V",
                                 false
                             )
-                            
-                            // Label for when assertion passes - continue execution
-                            methodVisitor.visitLabel(assertPassLabel)
                         }
                     }
                     
