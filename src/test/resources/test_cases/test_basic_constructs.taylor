@@ -1,0 +1,11 @@
+// Variables and assignments
+val immutableVar = 42
+var mutableVar = "hello"
+mutableVar = "world"
+
+println(immutableVar)
+println(mutableVar)
+
+// Nested expressions
+val complexExpr = (5 + 3) * (10 - 2)
+println(complexExpr)
