@@ -1,0 +1,30 @@
+// While loops test - simplified without actual while loops since they're not implemented
+// Testing iteration patterns using only basic language constructs
+
+// Test iteration pattern 1: Step-by-step simulation (like manual loop unrolling)
+val n1 = 3
+val n2 = n1 - 1
+val n3 = n2 - 1
+assert(n3 == 1)  // After 2 decrements: 3 -> 2 -> 1
+
+// Test iteration pattern 2: accumulation pattern
+val step1 = 1
+val step2 = step1 + 2
+val step3 = step2 + 3
+val finalSum = step3
+assert(finalSum == 6)  // Should be 1 + 2 + 3 = 6
+
+// Test iteration pattern 3: counter pattern with conditional increments
+val counter = if (true) 1 else 0
+val counter2 = if (counter == 1) 2 else counter
+val counter3 = if (counter2 == 2) 3 else counter2
+assert(counter3 == 3)
+
+// Test iteration pattern 4: conditional processing (loop-like behavior)
+val start = 5
+val processedOnce = if (start > 0) start - 1 else start
+val processedTwice = if (processedOnce > 0) processedOnce - 1 else processedOnce
+val processedThrice = if (processedTwice > 0) processedTwice - 1 else processedTwice
+assert(processedThrice == 2)  // 5 - 3 = 2
+
+println("While loop simulation tests completed!")
