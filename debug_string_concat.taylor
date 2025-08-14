@@ -1,3 +1,0 @@
-// Simple string concatenation test
-val result = "Hello" + " World"
-println(result)

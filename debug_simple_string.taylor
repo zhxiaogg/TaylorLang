@@ -1,5 +1,0 @@
-// Very simple string test
-val hello = "Hello"
-val world = "World"
-val result = hello + world
-assert(result == "HelloWorld")

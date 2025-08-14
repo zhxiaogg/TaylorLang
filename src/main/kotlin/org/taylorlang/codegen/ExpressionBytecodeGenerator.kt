@@ -617,6 +617,50 @@ class ExpressionBytecodeGenerator(
     }
     
     /**
+     * CRITICAL FIX: Box primitive types to their Object wrapper classes.
+     * This prevents VerifyError when passing primitives to methods expecting Objects.
+     * Stack: [primitive_value] -> [Object_value]
+     */
+    private fun boxPrimitiveToObject(type: Type) {
+        when {
+            isIntegerType(type) -> {
+                // int -> Integer
+                methodVisitor.visitMethodInsn(
+                    INVOKESTATIC,
+                    "java/lang/Integer",
+                    "valueOf",
+                    "(I)Ljava/lang/Integer;",
+                    false
+                )
+            }
+            isDoubleType(type) -> {
+                // double -> Double
+                methodVisitor.visitMethodInsn(
+                    INVOKESTATIC,
+                    "java/lang/Double",
+                    "valueOf",
+                    "(D)Ljava/lang/Double;",
+                    false
+                )
+            }
+            isBooleanType(type) -> {
+                // boolean (int 0/1) -> Boolean
+                methodVisitor.visitMethodInsn(
+                    INVOKESTATIC,
+                    "java/lang/Boolean",
+                    "valueOf",
+                    "(Z)Ljava/lang/Boolean;",
+                    false
+                )
+            }
+            // String and other Object types don't need boxing
+            else -> {
+                // Already an Object type - no boxing needed
+            }
+        }
+    }
+    
+    /**
      * Get or create the try expression generator.
      * Lazy initialization to avoid circular dependencies.
      */
@@ -737,11 +781,16 @@ class ExpressionBytecodeGenerator(
                     }
                     
                     functionName == "println" -> {
-                        // System.out.println
+                        // System.out.println - CRITICAL FIX: Box primitive types to Objects
                         methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;")
                         
                         if (functionCall.arguments.isNotEmpty()) {
-                            generateExpression(TypedExpression(functionCall.arguments[0], inferExpressionType(functionCall.arguments[0])))
+                            val argType = inferExpressionType(functionCall.arguments[0])
+                            generateExpression(TypedExpression(functionCall.arguments[0], argType))
+                            
+                            // CRITICAL FIX: Box primitive types to Objects before calling println
+                            // This prevents VerifyError: Type integer is not assignable to Object
+                            boxPrimitiveToObject(argType)
                         } else {
                             methodVisitor.visitLdcInsn("")
                         }
