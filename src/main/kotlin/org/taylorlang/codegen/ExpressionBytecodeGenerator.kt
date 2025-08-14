@@ -313,8 +313,14 @@ class ExpressionBytecodeGenerator(
                     BinaryOperator.EQUAL, BinaryOperator.NOT_EQUAL,
                     BinaryOperator.AND, BinaryOperator.OR -> BuiltinTypes.BOOLEAN
                     else -> {
-                        // Arithmetic operations
-                        if (isIntegerExpression(expr)) BuiltinTypes.INT else BuiltinTypes.DOUBLE
+                        // Arithmetic operations - handle string concatenation first
+                        val leftType = inferExpressionType(expr.left)
+                        val rightType = inferExpressionType(expr.right)
+                        when {
+                            leftType == BuiltinTypes.STRING || rightType == BuiltinTypes.STRING -> BuiltinTypes.STRING
+                            isIntegerExpression(expr) -> BuiltinTypes.INT
+                            else -> BuiltinTypes.DOUBLE
+                        }
                     }
                 }
             }
