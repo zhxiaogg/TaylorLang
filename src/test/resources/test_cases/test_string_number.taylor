@@ -1,0 +1,4 @@
+// Test string + number concatenation
+val number = 42
+val result = "Answer: " + number
+assert(result == "Answer: 42")

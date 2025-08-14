@@ -119,7 +119,60 @@ class ExpressionBytecodeGenerator(
         // Generate operation based on operand type
         when (binaryOp.operator) {
             BinaryOperator.PLUS -> {
-                if (isIntegerType(operandType)) {
+                if (isStringType(operandType)) {
+                    // String concatenation using StringBuilder for robustness
+                    // Stack: [left_operand, right_operand] -> [result_string]
+                    
+                    // Create new StringBuilder
+                    methodVisitor.visitTypeInsn(NEW, "java/lang/StringBuilder")
+                    methodVisitor.visitInsn(DUP)
+                    methodVisitor.visitMethodInsn(
+                        INVOKESPECIAL,
+                        "java/lang/StringBuilder",
+                        "<init>",
+                        "()V",
+                        false
+                    )
+                    // Stack: [left_operand, right_operand, StringBuilder]
+                    
+                    // Move StringBuilder to bottom of stack, then append left operand
+                    methodVisitor.visitInsn(DUP_X2)
+                    // Stack: [StringBuilder, left_operand, right_operand, StringBuilder]
+                    methodVisitor.visitInsn(POP)
+                    // Stack: [StringBuilder, left_operand, right_operand]
+                    methodVisitor.visitInsn(SWAP)
+                    // Stack: [StringBuilder, right_operand, left_operand]
+                    methodVisitor.visitMethodInsn(
+                        INVOKEVIRTUAL,
+                        "java/lang/StringBuilder",
+                        "append",
+                        "(Ljava/lang/Object;)Ljava/lang/StringBuilder;",
+                        false
+                    )
+                    // Stack: [right_operand, StringBuilder]
+                    
+                    // Append right operand
+                    methodVisitor.visitInsn(SWAP)
+                    // Stack: [StringBuilder, right_operand]
+                    methodVisitor.visitMethodInsn(
+                        INVOKEVIRTUAL,
+                        "java/lang/StringBuilder",
+                        "append",
+                        "(Ljava/lang/Object;)Ljava/lang/StringBuilder;",
+                        false
+                    )
+                    // Stack: [StringBuilder]
+                    
+                    // Convert to string
+                    methodVisitor.visitMethodInsn(
+                        INVOKEVIRTUAL,
+                        "java/lang/StringBuilder",
+                        "toString",
+                        "()Ljava/lang/String;",
+                        false
+                    )
+                    // Stack: [result_string]
+                } else if (isIntegerType(operandType)) {
                     methodVisitor.visitInsn(IADD)
                 } else {
                     methodVisitor.visitInsn(DADD)
@@ -160,10 +213,18 @@ class ExpressionBytecodeGenerator(
                 generateComparison(isIntegerType(operandType), IFGE)
             }
             BinaryOperator.EQUAL -> {
-                generateComparison(isIntegerType(operandType), IFEQ)
+                if (isStringType(operandType)) {
+                    generateStringComparison(true) // true for equality
+                } else {
+                    generateComparison(isIntegerType(operandType), IFEQ)
+                }
             }
             BinaryOperator.NOT_EQUAL -> {
-                generateComparison(isIntegerType(operandType), IFNE)
+                if (isStringType(operandType)) {
+                    generateStringComparison(false) // false for inequality
+                } else {
+                    generateComparison(isIntegerType(operandType), IFNE)
+                }
             }
             // Boolean operators - note: these are not truly short-circuit in current implementation
             BinaryOperator.AND -> {
@@ -226,6 +287,7 @@ class ExpressionBytecodeGenerator(
             BinaryOperator.EQUAL, BinaryOperator.NOT_EQUAL -> {
                 // For comparisons, promote to the wider type for comparison
                 when {
+                    leftType == BuiltinTypes.STRING || rightType == BuiltinTypes.STRING -> BuiltinTypes.STRING
                     leftType == BuiltinTypes.DOUBLE || rightType == BuiltinTypes.DOUBLE -> BuiltinTypes.DOUBLE
                     leftType == BuiltinTypes.INT && rightType == BuiltinTypes.INT -> BuiltinTypes.INT
                     else -> BuiltinTypes.INT // Default to int
@@ -236,8 +298,9 @@ class ExpressionBytecodeGenerator(
                 BuiltinTypes.BOOLEAN
             }
             else -> {
-                // For arithmetic operations, if either operand is double, the result is double
+                // For arithmetic operations, handle string concatenation first
                 when {
+                    leftType == BuiltinTypes.STRING || rightType == BuiltinTypes.STRING -> BuiltinTypes.STRING
                     leftType == BuiltinTypes.DOUBLE || rightType == BuiltinTypes.DOUBLE -> BuiltinTypes.DOUBLE
                     leftType == BuiltinTypes.INT && rightType == BuiltinTypes.INT -> BuiltinTypes.INT
                     else -> BuiltinTypes.INT // Default to int
@@ -406,6 +469,45 @@ class ExpressionBytecodeGenerator(
     }
     
     /**
+     * Generate string comparison operation that returns a boolean result
+     * Stack: [string1, string2] -> [boolean_result]
+     */
+    private fun generateStringComparison(isEquality: Boolean) {
+        val trueLabel = org.objectweb.asm.Label()
+        val endLabel = org.objectweb.asm.Label()
+        
+        // Use String.equals() for comparison
+        // Stack: [string1, string2]
+        methodVisitor.visitMethodInsn(
+            INVOKEVIRTUAL,
+            "java/lang/String",
+            "equals",
+            "(Ljava/lang/Object;)Z",
+            false
+        )
+        // Stack: [boolean_result] (1 for equal, 0 for not equal)
+        
+        if (isEquality) {
+            // For equality: if equals() returned true (1), jump to true label
+            methodVisitor.visitJumpInsn(IFNE, trueLabel)
+        } else {
+            // For inequality: if equals() returned false (0), jump to true label
+            methodVisitor.visitJumpInsn(IFEQ, trueLabel)
+        }
+        
+        // False case: push 0 (false)
+        methodVisitor.visitLdcInsn(0)
+        methodVisitor.visitJumpInsn(GOTO, endLabel)
+        
+        // True case: push 1 (true)
+        methodVisitor.visitLabel(trueLabel)
+        methodVisitor.visitLdcInsn(1)
+        
+        // End
+        methodVisitor.visitLabel(endLabel)
+    }
+    
+    /**
      * Map TaylorLang type to JVM type descriptor
      */
     private fun getJvmType(type: Type): String {
@@ -440,6 +542,17 @@ class ExpressionBytecodeGenerator(
         return when (type) {
             is Type.PrimitiveType -> type.name.lowercase() == "int"
             is Type.NamedType -> type.name.lowercase() == "int"
+            else -> false
+        }
+    }
+    
+    /**
+     * Check if type is a string type
+     */
+    private fun isStringType(type: Type): Boolean {
+        return when (type) {
+            is Type.PrimitiveType -> type.name.lowercase() == "string"
+            is Type.NamedType -> type.name.lowercase() == "string"
             else -> false
         }
     }

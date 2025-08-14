@@ -1,0 +1,8 @@
+// String test without assertions
+val basicString = "Hello, World!"
+println(basicString)
+
+val firstName = "Taylor"
+val lastName = "Lang"
+val fullName = firstName + " " + lastName
+println(fullName)

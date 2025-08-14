@@ -1,0 +1,3 @@
+// Test simple string assertion
+val result = "Hello"
+assert(result == "Hello")

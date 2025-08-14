@@ -82,7 +82,16 @@ class ArithmeticExpressionChecker(
      */
     private fun inferBinaryOpType(operator: BinaryOperator, leftType: Type, rightType: Type): Type? {
         return when (operator) {
-            BinaryOperator.PLUS, BinaryOperator.MINUS, 
+            BinaryOperator.PLUS -> {
+                // Handle string concatenation first
+                if (typesCompatible(leftType, BuiltinTypes.STRING) || typesCompatible(rightType, BuiltinTypes.STRING)) {
+                    BuiltinTypes.STRING
+                } else {
+                    // Numeric addition
+                    BuiltinTypes.getWiderNumericType(leftType, rightType)
+                }
+            }
+            BinaryOperator.MINUS, 
             BinaryOperator.MULTIPLY, BinaryOperator.DIVIDE, 
             BinaryOperator.MODULO -> {
                 BuiltinTypes.getWiderNumericType(leftType, rightType)

@@ -1,0 +1,11 @@
+// Basic string operations test - step by step
+val basicString = "Hello, World!"
+assert(basicString == "Hello, World!")
+
+val emptyString = ""
+assert(emptyString == "")
+
+val firstName = "Taylor"
+val lastName = "Lang"
+val fullName = firstName + " " + lastName
+assert(fullName == "Taylor Lang")

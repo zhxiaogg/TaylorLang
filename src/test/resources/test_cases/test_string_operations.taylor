@@ -1,0 +1,137 @@
+// Comprehensive string operations test case
+// Tests string literals, concatenation, comparison, and mixed operations
+
+// =============================================================================
+// String Literals and Basic Assignment
+// =============================================================================
+
+// Basic string literals and assignment
+val basicString = "Hello, World!"
+assert(basicString == "Hello, World!")
+
+val emptyString = ""
+assert(emptyString == "")
+
+val singleCharString = "A"
+assert(singleCharString == "A")
+
+// String with special characters
+val specialString = "Tab:\t New line:\n Quote:\" Backslash:\\"
+assert(specialString == "Tab:\t New line:\n Quote:\" Backslash:\\")
+
+// =============================================================================
+// String Concatenation with + Operator
+// =============================================================================
+
+// Simple string concatenation
+val firstName = "Taylor"
+val lastName = "Lang"
+val fullName = firstName + " " + lastName
+assert(fullName == "Taylor Lang")
+
+// Multi-part concatenation
+val greeting = "Hello, " + "welcome to " + "TaylorLang!"
+assert(greeting == "Hello, welcome to TaylorLang!")
+
+// Empty string concatenation
+val withEmpty = "Start" + "" + "End"
+assert(withEmpty == "StartEnd")
+
+// =============================================================================
+// String Concatenation with Reassignment
+// =============================================================================
+
+// Variable string operations and reassignment
+var buildString = "Part"
+buildString = buildString + " One"
+assert(buildString == "Part One")
+
+buildString = buildString + " and Part Two"
+assert(buildString == "Part One and Part Two")
+
+// Complex reassignment pattern
+var accumulator = ""
+accumulator = accumulator + "A"
+accumulator = accumulator + "B"
+accumulator = accumulator + "C"
+assert(accumulator == "ABC")
+
+// =============================================================================
+// String Comparison Operations
+// =============================================================================
+
+// Equality comparison
+val testString1 = "Testing"
+val testString2 = "Testing" 
+val testString3 = "Different"
+assert(testString1 == testString2)
+assert(testString1 != testString3)
+
+// Empty string comparisons
+assert(emptyString == "")
+assert(emptyString != "non-empty")
+
+// Case sensitivity
+val caseTest1 = "Hello"
+val caseTest2 = "hello"
+assert(caseTest1 != caseTest2)
+
+// =============================================================================
+// Mixed String Operations (String + Numbers)
+// =============================================================================
+
+// String concatenation with numbers
+val number = 42
+val mixedString = "Answer: " + number
+assert(mixedString == "Answer: 42")
+
+// Multiple numeric concatenations
+val calculation = "Result: " + (5 + 3) + " (calculated)"
+assert(calculation == "Result: 8 (calculated)")
+
+// Float number concatenation
+val pi = 3.14159
+val piString = "Pi is approximately " + pi
+assert(piString == "Pi is approximately 3.14159")
+
+// Boolean concatenation
+val isTrue = true
+val boolString = "The statement is " + isTrue
+assert(boolString == "The statement is true")
+
+// =============================================================================
+// Complex String Operations
+// =============================================================================
+
+// Nested string operations
+val complex = ("Start" + "-") + ("Middle" + "-") + "End"
+assert(complex == "Start-Middle-End")
+
+// String operations in expressions
+val conditionalString = if (true) "True path" else "False path"
+assert(conditionalString == "True path")
+
+// String with arithmetic
+val mathString = "Two plus three equals " + (2 + 3)
+assert(mathString == "Two plus three equals 5")
+
+// =============================================================================
+// Advanced String Test Cases
+// =============================================================================
+
+// Long string concatenation
+val longString = "This" + " " + "is" + " " + "a" + " " + "very" + " " + "long" + " " + "string"
+assert(longString == "This is a very long string")
+
+// String with repeated patterns
+var repeated = ""
+repeated = repeated + "Ha"
+repeated = repeated + "Ha"
+repeated = repeated + "Ha"
+assert(repeated == "HaHaHa")
+
+// Mixed assignment and concatenation
+var final = "Start"
+val middle = " Middle "
+final = final + middle + "End"
+assert(final == "Start Middle End")
