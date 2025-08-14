@@ -1,0 +1,24 @@
+// Complex If Expressions Test Case - Phase 2 Control Flow Implementation
+// Tests foundational if expression capabilities in TaylorLang
+
+// Basic boolean if expression - foundational test
+val result = if (true) "success" else "failure"
+assert(result == "success")
+
+// Numeric comparison in if expression
+val number = 42
+val check = if (number == 42) "correct" else "wrong"
+assert(check == "correct")
+
+// If-else if chain
+val score = 85
+val grade = if (score >= 90) "A" else if (score >= 80) "B" else "F"
+assert(grade == "B")
+
+// Nested if expression
+val nested = if (5 > 3) if (true) "inner" else "false" else "outer"
+assert(nested == "inner")
+
+// Arithmetic in condition
+val math = if ((10 + 5) > 12) "greater" else "lesser"
+assert(math == "greater")
