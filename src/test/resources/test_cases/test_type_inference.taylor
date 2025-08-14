@@ -1,0 +1,118 @@
+// Type Inference Validation Test Case - Phase 2 Advanced Functional Features
+// Demonstrates type system capabilities and inference rules through various expression patterns
+
+// Basic type inference with literals
+// Type system should infer Int for integer literals
+val integerValue = 42
+println("Integer inference test:")
+println(integerValue)
+assert(integerValue == 42)
+
+// Type system should infer Double for decimal literals
+val decimalValue = 3.14
+println("Decimal inference test:")
+println(decimalValue)
+assert(decimalValue == 3.14)
+
+// Type system should infer String for string literals
+val stringValue = "hello"
+println("String inference test:")  
+println(stringValue)
+assert(stringValue == "hello")
+
+// Type system should infer Boolean for boolean literals
+val booleanValue = true
+println("Boolean inference test:")
+println(booleanValue)
+assert(booleanValue == true)
+
+// Type inference with arithmetic operations
+// Should maintain Int type for integer arithmetic
+val intSum = 10 + 20
+val intProduct = 5 * 8
+val intDifference = 100 - 25
+println("Integer arithmetic inference:")
+println(intSum)
+println(intProduct) 
+println(intDifference)
+assert(intSum == 30)
+assert(intProduct == 40)
+assert(intDifference == 75)
+
+// Type inference with comparison operations
+// Should infer Boolean type for comparison results
+val greaterThan = 15 > 10
+val lessThan = 5 < 3
+val equalTo = 42 == 42
+println("Boolean comparison inference:")
+println(greaterThan)
+println(lessThan)
+println(equalTo)
+assert(greaterThan == true)
+assert(lessThan == false)
+assert(equalTo == true)
+
+// Type inference with string operations  
+// Should infer String type for concatenation
+val greeting = "Hello"
+val target = "World"
+val message = greeting + " " + target
+println("String concatenation inference:")
+println(message)
+assert(message == "Hello World")
+
+// Type inference in conditional expressions
+// Should infer common type from branches
+val conditionalInt = if (true) 100 else 200
+val conditionalString = if (false) "yes" else "no"
+val conditionalBool = if (5 > 3) true else false
+println("Conditional expression inference:")
+println(conditionalInt)
+println(conditionalString)
+println(conditionalBool)
+assert(conditionalInt == 100)
+assert(conditionalString == "no")
+assert(conditionalBool == true)
+
+// Type consistency in variable assignments
+// Variables should maintain consistent types
+val consistentInt = 1
+val anotherInt = consistentInt + 10
+val thirdInt = anotherInt * 2
+println("Type consistency validation:")
+println(consistentInt)
+println(anotherInt)
+println(thirdInt)
+assert(consistentInt == 1)
+assert(anotherInt == 11)
+assert(thirdInt == 22)
+
+// Complex expression type inference
+// Should handle nested expressions correctly
+val complex1 = (10 + 5) * (20 - 15)
+val complex2 = if ((3 + 2) > 4) "greater" else "lesser"
+val complex3 = (true && false) || (5 == 5)
+println("Complex expression inference:")
+println(complex1)
+println(complex2)
+println(complex3)
+assert(complex1 == 75)
+assert(complex2 == "greater")
+assert(complex3 == true)
+
+// Mixed-type string conversion scenarios
+// Should handle implicit string conversion in concatenation contexts
+val number = 123
+val stringified = "Value: " + number
+println("Mixed-type string conversion:")
+println(stringified)
+assert(stringified == "Value: 123")
+
+// Type inference with nested conditionals
+// Should maintain type consistency across nesting levels
+val nested = if (true) if (false) 1 else 2 else 3
+println("Nested conditional inference:")
+println(nested)
+assert(nested == 2)
+
+println("Type inference validation completed successfully!")
