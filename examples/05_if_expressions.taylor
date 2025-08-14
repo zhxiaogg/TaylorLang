@@ -1,0 +1,16 @@
+// If expressions (they return values)
+println(if (5 > 3) "Greater" else "Less")
+
+// Nested if expressions
+println(
+  if (10 > 5)
+    if (10 > 15) "Very big" else "Just big"
+  else
+    "Small"
+)
+
+// If with boolean operations
+println(if (true && (5 > 3)) "Both true" else "Not both true")
+
+// If expressions with arithmetic
+println(if (2 + 2 == 4) 100 else 0)

@@ -18,14 +18,14 @@ statement
     | expression
     ;
 
-// Function declarations: fun add(x: Int, y: Int): Int { return x + y }
+// Function declarations: fn add(x: Int, y: Int): Int { return x + y }
 functionDecl
-    : 'fun' IDENTIFIER typeParams? '(' paramList? ')' (':' type)? functionBody
+    : 'fn' IDENTIFIER typeParams? '(' paramList? ')' (':' type)? functionBody
     ;
 
 functionBody
     : '{' statement* '}'
-    | '=>' expression  // Still support single expression syntax
+    | '=>' expression
     ;
 
 // Return statement
@@ -156,18 +156,13 @@ pattern
     | IDENTIFIER                          // Variable binding
     | literal                            // Literal pattern
     | constructorPattern                 // Constructor pattern
-    | listPattern                        // List pattern
     | pattern 'if' expression           // Guard pattern
     ;
 
 constructorPattern: IDENTIFIER '(' (pattern (',' pattern)*)? ')';
 
-// List patterns: [], [x], [x, y], [first, ...rest]
-listPattern
-    : '[' ']'                                           // Empty list
-    | '[' pattern (',' pattern)* ']'                   // Fixed-length list
-    | '[' pattern (',' pattern)* ',' '...' IDENTIFIER ']'  // Head/tail pattern
-    ;
+// Note: Lists use regular constructor patterns: Cons(head, tail) | Nil()
+// No special list pattern syntax
 
 // Lambda expressions: x => x * 2, (x, y) => x + y
 lambdaExpr

@@ -66,7 +66,6 @@ class PatternTypeChecker(
             is Pattern.IdentifierPattern -> visitIdentifierPatternInternal(pattern, targetType)
             is Pattern.LiteralPattern -> visitLiteralPatternInternal(pattern, targetType)
             is Pattern.ConstructorPattern -> visitConstructorPatternInternal(pattern, targetType)
-            is Pattern.ListPattern -> visitListPatternInternal(pattern, targetType)
             is Pattern.GuardPattern -> visitGuardPatternInternal(pattern, targetType)
         }
     }
@@ -77,7 +76,6 @@ class PatternTypeChecker(
             is Pattern.IdentifierPattern -> visitIdentifierPattern(node)
             is Pattern.LiteralPattern -> visitLiteralPattern(node)
             is Pattern.ConstructorPattern -> visitConstructorPattern(node)
-            is Pattern.ListPattern -> visitListPattern(node)
             is Pattern.GuardPattern -> visitGuardPattern(node)
         }
     }
@@ -260,93 +258,6 @@ class PatternTypeChecker(
         }
     }
     
-    override fun visitListPattern(node: Pattern.ListPattern): Result<PatternInfo> {
-        return defaultResult()
-    }
-    
-    private fun visitListPatternInternal(node: Pattern.ListPattern, targetType: Type): Result<PatternInfo> {
-        // 1. Verify target type is a list type
-        val elementType = extractListElementType(targetType)
-            ?: return Result.failure(TypeError.TypeMismatch(
-                expected = Type.GenericType(
-                    name = "List",
-                    arguments = kotlinx.collections.immutable.persistentListOf(
-                        Type.TypeVar("T")
-                    )
-                ),
-                actual = targetType,
-                location = node.sourceLocation
-            ))
-        
-        // 2. Type check each element pattern against the element type
-        val allBindings = mutableMapOf<String, Type>()
-        val errors = mutableListOf<TypeError>()
-        
-        for (elementPattern in node.elements) {
-            val elementChecker = PatternTypeChecker(context, expressionChecker)
-            val elementResult = elementChecker.checkPattern(elementPattern, elementType)
-            elementResult.fold(
-                onSuccess = { elementInfo ->
-                    allBindings.putAll(elementInfo.bindings)
-                },
-                onFailure = { error ->
-                    errors.add(when (error) {
-                        is TypeError -> error
-                        else -> TypeError.InvalidOperation(
-                            error.message ?: "Unknown error in list pattern element",
-                            emptyList(),
-                            elementPattern.sourceLocation
-                        )
-                    })
-                }
-            )
-        }
-        
-        // 3. Handle rest variable binding with proper list subtype
-        if (node.restVariable != null) {
-            // Rest variable should be bound to List<ElementType>
-            val restType = Type.GenericType(
-                name = "List",
-                arguments = kotlinx.collections.immutable.persistentListOf(elementType),
-                sourceLocation = node.sourceLocation
-            )
-            allBindings[node.restVariable] = restType
-        }
-        
-        return if (errors.isNotEmpty()) {
-            Result.failure(
-                if (errors.size == 1) errors.first()
-                else TypeError.MultipleErrors(errors)
-            )
-        } else {
-            Result.success(PatternInfo(
-                bindings = allBindings,
-                coveredVariants = emptySet() // List patterns don't cover union variants
-            ))
-        }
-    }
-    
-    /**
-     * Extract the element type from a list type.
-     * Returns null if the target type is not a list type.
-     */
-    private fun extractListElementType(type: Type): Type? {
-        return when (type) {
-            is Type.GenericType -> {
-                if (type.name == "List" && type.arguments.size == 1) {
-                    type.arguments[0]
-                } else null
-            }
-            is Type.NamedType -> {
-                // Handle case where List is used without type arguments (should infer)
-                if (type.name == "List") {
-                    // Return a type variable that can be unified
-                    Type.TypeVar("ListElement_${System.currentTimeMillis()}")
-                } else null
-            }
-            else -> null
-        }
-    }
     
     override fun visitGuardPattern(node: Pattern.GuardPattern): Result<PatternInfo> {
         return defaultResult()

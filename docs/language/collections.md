@@ -2,25 +2,49 @@
 
 ## Lists
 
-### List Creation (Using Stdlib)
-```kotlin
-val numbers = List.of(1, 2, 3, 4, 5)
-val names = List.of("Alice", "Bob", "Charlie") 
-val empty: List<String> = List.empty()
+TaylorLang lists are implemented as union types following functional programming principles:
 
-// Alternative builder syntax
-val range = List.range(1, 10)
-val repeated = List.repeat(42, 5)      // [42, 42, 42, 42, 42]
+```kotlin
+// List type definition
+type List<T> = Cons(T, List<T>) | Nil()
 ```
 
-### List Operations
+### List Creation
 ```kotlin
+// Constructor-based creation
+val empty = Nil()
+val single = Cons(42, Nil())
+val numbers = Cons(1, Cons(2, Cons(3, Nil())))
+
+// Using stdlib factory functions (compile to constructors)
+val built = listOf3(1, 2, 3)        // Creates: Cons(1, Cons(2, Cons(3, Nil())))
+val fromEmpty = emptyList()         // Creates: Nil()
+val fromSingle = singletonList(42)  // Creates: Cons(42, Nil())
+```
+
+### List Pattern Matching
+```kotlin
+fn processList<T>(list: List<T>) => match list {
+  case Nil() => "Empty list"
+  case Cons(head, Nil()) => "Single element: ${head}"
+  case Cons(head, tail) => "Head: ${head}, has tail"
+}
+
+// Complex patterns
+fn getSecond<T>(list: List<T>) => match list {
+  case Cons(first, Cons(second, tail)) => Some(second)
+  case _ => None()
+}
+```
+
+### List Operations (Planned)
+```kotlin
+// Future functional operations
 val doubled = numbers.map(x => x * 2)
 val evens = numbers.filter(x => x % 2 == 0)
-val sum = numbers.reduce((a, b) => a + b)
-val first = numbers.head()           // Int?
-val tail = numbers.tail()            // List<Int>
-val appended = numbers.append(6)     // List<Int>
+val sum = numbers.fold(0, (a, b) => a + b)
+val first = numbers.head()           // T?
+val tail = numbers.tail()            // List<T>
 ```
 
 ## Maps

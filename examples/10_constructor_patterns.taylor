@@ -1,0 +1,51 @@
+// Constructor pattern matching in TaylorLang
+// Based on the constructor deconstruction design
+
+// Constructor pattern matching with Result type
+val result = Ok(42)
+match result {
+  case Ok(value) => println("Success: " + value)
+  case Error(msg) => println("Error: " + msg)
+}
+
+// Constructor pattern matching with Option type  
+val option = Some("Hello")
+match option {
+  case Some(value) => println("Value: " + value)
+  case None() => println("No value")
+}
+
+// Nested constructor patterns
+val nested = Some(Ok(100))
+match nested {
+  case Some(Ok(value)) => println("Nested success: " + value)
+  case Some(Error(msg)) => println("Nested error: " + msg)
+  case None() => println("No value")
+}
+
+// Lists as constructor patterns (simplified design approach)
+// type List<T> = Cons(T, List<T>) | Nil() - no special syntax
+
+val list = Cons(1, Cons(2, Nil()))
+match list {
+  case Cons(head, tail) => println("Head: " + head)
+  case Nil() => println("Empty list")
+}
+
+// More complex list patterns
+val longerList = Cons(1, Cons(2, Cons(3, Cons(4, Nil()))))
+match longerList {
+  case Nil() => println("Empty")
+  case Cons(head, Nil()) => println("Single: " + head)
+  case Cons(first, Cons(second, tail)) => println("First two: " + first + ", " + second)
+}
+
+// Tuple constructor patterns
+val tuple = Tuple2(10, 20)  
+match tuple {
+  case Tuple2(x, y) => println("Pair: " + x + ", " + y)
+}
+
+// Note: Constructor patterns depend on union type implementation.
+// The design docs show this as a planned feature for completing
+// the 96.8% implemented pattern matching infrastructure.

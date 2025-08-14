@@ -1,0 +1,14 @@
+// Boolean operations and comparisons
+println(true)
+println(false)
+println(true && false)
+println(true || false)
+println(!true)
+
+// Comparisons
+println(5 > 3)
+println(10 < 20)
+println(7 >= 7)
+println(8 <= 9)
+println(5 == 5)
+println(4 != 5)

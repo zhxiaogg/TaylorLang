@@ -1,0 +1,5 @@
+match 5 {
+  case 0 => println("Zero")
+  case 5 => println("Five!")
+  case _ => println("Other")
+}

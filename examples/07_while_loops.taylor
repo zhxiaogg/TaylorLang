@@ -1,0 +1,18 @@
+// While loops - counting from 1 to 5
+// Note: This example uses mutable state which is simulated
+// In pure functional TaylorLang, recursion would be preferred
+
+// Simple countdown
+var i = 5
+while (i > 0) {
+  println(i)
+  i = i - 1
+}
+println("Blast off!")
+
+// Count up with condition
+var j = 0
+while (j < 3) {
+  println("Count: " + j)
+  j = j + 1
+}

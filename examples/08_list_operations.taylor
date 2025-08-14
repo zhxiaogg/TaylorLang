@@ -1,0 +1,53 @@
+// List operations in TaylorLang using constructor patterns
+// Based on the simplified design: type List<T> = Cons(T, List<T>) | Nil()
+
+// Create lists using constructor functions
+val emptyList = Nil()
+val singleItem = Cons(42, Nil())
+val twoItems = Cons(1, Cons(2, Nil()))
+val threeItems = Cons(10, Cons(20, Cons(30, Nil())))
+
+println(emptyList)
+println(singleItem)
+println(twoItems)
+println(threeItems)
+
+// Pattern matching with constructor patterns
+match twoItems {
+  case Nil() => println("Empty list")
+  case Cons(head, Nil()) => println("Single element: " + head)
+  case Cons(head, tail) => println("Head: " + head + ", has tail")
+}
+
+// More sophisticated pattern matching
+match threeItems {
+  case Nil() => println("Empty")
+  case Cons(first, Cons(second, Nil())) => println("Two elements: " + first + ", " + second)
+  case Cons(first, Cons(second, Cons(third, Nil()))) => println("Three elements: " + first + ", " + second + ", " + third)
+  case Cons(head, tail) => println("List starting with: " + head)
+}
+
+// Nested pattern matching for head/tail processing (expression body)
+fn processList(list: List<Int>): String => match list {
+  case Nil() => "Empty list"
+  case Cons(head, tail) => "Head: " + head + ", Tail: " + processListTail(tail)
+}
+
+fn processListTail(list: List<Int>): String => match list {
+  case Nil() => "empty"
+  case Cons(head, tail) => "more elements starting with " + head
+}
+
+// Alternative: using current built-in functions (bridge to constructor approach)
+val builtinList = listOf3(1, 2, 3)
+// This could internally create: Cons(1, Cons(2, Cons(3, Nil())))
+
+// Pattern matching works the same way
+match builtinList {
+  case Nil() => println("Empty")
+  case Cons(head, tail) => println("Builtin list head: " + head)
+}
+
+// Note: This approach treats lists as regular union types, no special syntax.
+// List construction and pattern matching use standard constructor patterns.
+// This is consistent with the design principle of simplicity and no compiler coupling.

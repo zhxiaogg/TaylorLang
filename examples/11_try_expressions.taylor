@@ -1,0 +1,46 @@
+// Try expressions in TaylorLang
+// Based on the try syntax implementation design
+
+// Simple try expression (propagates error) - expression body
+fn processValue(x: Int): Result<String, Error> => {
+  val result = try someOperation(x)
+  Ok("Processed: " + result)
+}
+
+// Try with catch blocks
+fn safeOperation(x: Int): Result<Int, Error> {
+  return try {
+    val value = try dangerousOperation(x)
+    Ok(value * 2)
+  } catch {
+    case NetworkError(msg) => Error("Network failed: " + msg)
+    case ValidationError(field) => Error("Invalid field: " + field)
+    case _ => Error("Unknown error occurred")
+  }
+}
+
+// Chained try expressions - expression body
+fn processChain(id: String): Result<String, DatabaseError> => {
+  val user = try findUser(id)
+  val profile = try user.getProfile()  
+  val formatted = try profile.format()
+  Ok(formatted)
+}
+
+// Try expression with pattern matching in catch
+fn handleComplexError(data: String): Result<String, AppError> {
+  return try {
+    val parsed = try parseData(data)
+    val validated = try validateData(parsed)
+    Ok(validated.toString())
+  } catch {
+    case ParseError(line, msg) => Error("Parse failed at line " + line + ": " + msg)
+    case ValidationError(field, reason) => Error("Validation failed for " + field + ": " + reason)
+    case DatabaseError(code) if code > 500 => Error("Server error: " + code)
+    case DatabaseError(code) => Error("Client error: " + code)
+  }
+}
+
+// Note: Try expressions require functions to return Result<T, E> types.
+// Error types must extend Throwable according to the design.
+// This feature is planned but may not be fully implemented yet.

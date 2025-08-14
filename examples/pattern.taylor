@@ -1,0 +1,5 @@
+val a = 5
+match a {
+  case x if x % 2 == 0 => println("Even")
+  case _ => println("Odd")
+}

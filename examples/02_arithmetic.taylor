@@ -1,0 +1,11 @@
+// Basic arithmetic operations
+println(42)
+println(5 + 3)
+println(10 - 4)
+println(6 * 7)
+println(20 / 4)
+println(17 % 5)
+
+// More complex expressions
+println((5 + 3) * 2)
+println(100 / (2 + 3))

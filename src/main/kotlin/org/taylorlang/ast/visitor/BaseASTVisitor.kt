@@ -320,7 +320,6 @@ abstract class BaseASTVisitor<R> : ASTVisitor<R> {
             is Pattern.LiteralPattern -> visitLiteralPattern(node)
             is Pattern.ConstructorPattern -> visitConstructorPattern(node)
             is Pattern.GuardPattern -> visitGuardPattern(node)
-            is Pattern.ListPattern -> visitListPattern(node)
         }
     }
     
@@ -345,11 +344,6 @@ abstract class BaseASTVisitor<R> : ASTVisitor<R> {
         val patternResult = node.pattern.accept(this)
         val guardResult = node.guard.accept(this)
         return combine(patternResult, guardResult)
-    }
-    
-    override fun visitListPattern(node: Pattern.ListPattern): R {
-        val results = node.elements.map { it.accept(this) }
-        return combineResults(results)
     }
     
     // =============================================================================

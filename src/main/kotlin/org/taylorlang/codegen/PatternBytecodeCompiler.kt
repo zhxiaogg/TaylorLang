@@ -166,9 +166,6 @@ class PatternBytecodeCompiler(
             is Pattern.ConstructorPattern -> {
                 generateConstructorPatternMatch(pattern, targetType, caseLabel, nextLabel)
             }
-            is Pattern.ListPattern -> {
-                generateListPatternMatch(pattern, targetType, caseLabel, nextLabel)
-            }
             is Pattern.IdentifierPattern -> {
                 // Check if this is a nullary constructor or a variable binding
                 if (isNullaryConstructor(pattern.name, targetType)) {
@@ -358,99 +355,6 @@ class PatternBytecodeCompiler(
     /**
      * Generate list pattern matching
      */
-    private fun generateListPatternMatch(
-        pattern: Pattern.ListPattern,
-        targetType: Type,
-        caseLabel: org.objectweb.asm.Label,
-        nextLabel: org.objectweb.asm.Label
-    ) {
-        // Stack: [list]
-        
-        // Store the list in a temporary slot for multiple accesses
-        val listSlot = variableSlotManager.allocateTemporarySlot(targetType)
-        methodVisitor.visitInsn(DUP) // Duplicate list reference
-        methodVisitor.visitVarInsn(ASTORE, listSlot)
-        
-        // 1. Length validation for patterns without rest variable
-        if (pattern.restVariable == null) {
-            // For fixed-length patterns [a, b, c], list must have exactly this length
-            // Call list.size() method
-            methodVisitor.visitMethodInsn(
-                INVOKEINTERFACE,
-                "java/util/List",
-                "size",
-                "()I",
-                true
-            )
-            // Stack: [list_size]
-            
-            // Compare with expected length
-            methodVisitor.visitLdcInsn(pattern.elements.size)
-            // Stack: [list_size, expected_size]
-            
-            // If sizes don't match, jump to next pattern
-            methodVisitor.visitJumpInsn(IF_ICMPNE, nextLabel)
-            // Stack: [] (comparison consumes both values)
-        } else {
-            // For head/tail patterns [a, b, ...rest], list must have at least pattern.elements.size
-            // Call list.size() method
-            methodVisitor.visitMethodInsn(
-                INVOKEINTERFACE,
-                "java/util/List",
-                "size",
-                "()I",
-                true
-            )
-            // Stack: [list_size]
-            
-            // Compare with minimum length
-            methodVisitor.visitLdcInsn(pattern.elements.size)
-            // Stack: [list_size, min_size]
-            
-            // If list size < min required, jump to next pattern
-            methodVisitor.visitJumpInsn(IF_ICMPLT, nextLabel)
-            // Stack: [] (comparison consumes both values)
-        }
-        
-        // 2. Element pattern matching
-        for (i in pattern.elements.indices) {
-            val elementPattern = pattern.elements[i]
-            
-            // Load list and get element at index i
-            methodVisitor.visitVarInsn(ALOAD, listSlot)
-            methodVisitor.visitLdcInsn(i) // Load index
-            methodVisitor.visitMethodInsn(
-                INVOKEINTERFACE,
-                "java/util/List",
-                "get",
-                "(I)Ljava/lang/Object;",
-                true
-            )
-            // Stack: [element_i]
-            
-            // Get element type from list type
-            val elementType = extractElementType(targetType)
-            
-            // Create labels for element pattern matching
-            val elementMatchLabel = org.objectweb.asm.Label()
-            val elementFailLabel = org.objectweb.asm.Label()
-            
-            // Generate pattern test for this element
-            generatePatternTest(elementPattern, elementType, elementMatchLabel, elementFailLabel)
-            
-            // If element pattern failed, jump to next case
-            methodVisitor.visitLabel(elementFailLabel)
-            variableSlotManager.releaseTemporarySlot(listSlot)
-            methodVisitor.visitJumpInsn(GOTO, nextLabel)
-            
-            // Element pattern succeeded
-            methodVisitor.visitLabel(elementMatchLabel)
-        }
-        
-        // All element patterns matched - proceed to case body
-        variableSlotManager.releaseTemporarySlot(listSlot)
-        methodVisitor.visitJumpInsn(GOTO, caseLabel)
-    }
     
     /**
      * Extract element type from a list type
@@ -545,9 +449,6 @@ class PatternBytecodeCompiler(
                 // Bind variables from constructor pattern fields
                 bindConstructorPatternVariables(pattern, targetType, targetSlot)
             }
-            is Pattern.ListPattern -> {
-                bindListPatternVariables(pattern, targetType, targetSlot)
-            }
             // Wildcard and literal patterns don't bind variables
             else -> { }
         }
@@ -628,69 +529,6 @@ class PatternBytecodeCompiler(
     /**
      * Bind variables for list patterns
      */
-    private fun bindListPatternVariables(pattern: Pattern.ListPattern, targetType: Type, targetSlot: Int) {
-        val elementType = extractElementType(targetType)
-        
-        // Bind element variables
-        for (i in pattern.elements.indices) {
-            val elementPattern = pattern.elements[i]
-            
-            if (elementPattern is Pattern.IdentifierPattern && !isNullaryConstructor(elementPattern.name, elementType)) {
-                // Bind element variable - load list, get element at index i, store in new slot
-                val elementSlot = variableSlotManager.allocateSlot(elementPattern.name, elementType)
-                
-                // Load list from target slot
-                methodVisitor.visitVarInsn(ALOAD, targetSlot)
-                // Load index
-                methodVisitor.visitLdcInsn(i)
-                // Get element
-                methodVisitor.visitMethodInsn(
-                    INVOKEINTERFACE,
-                    "java/util/List",
-                    "get",
-                    "(I)Ljava/lang/Object;",
-                    true
-                )
-                // Store in element slot (may need casting for primitive types)
-                methodVisitor.visitVarInsn(ASTORE, elementSlot)
-            } else {
-                // Recursively bind nested patterns
-                // For now, we would need to handle the element extraction as above
-                // This is a simplified implementation
-            }
-        }
-        
-        // Bind rest variable if present
-        if (pattern.restVariable != null) {
-            val restType = Type.GenericType(
-                name = "List",
-                arguments = kotlinx.collections.immutable.persistentListOf(elementType)
-            )
-            val restSlot = variableSlotManager.allocateSlot(pattern.restVariable, restType)
-            
-            // Create sublist from remaining elements: list.subList(fixedElementCount, list.size())
-            methodVisitor.visitVarInsn(ALOAD, targetSlot) // Load original list
-            methodVisitor.visitLdcInsn(pattern.elements.size) // Start index
-            methodVisitor.visitVarInsn(ALOAD, targetSlot) // Load list again for size()
-            methodVisitor.visitMethodInsn(
-                INVOKEINTERFACE,
-                "java/util/List",
-                "size",
-                "()I",
-                true
-            )
-            // Call subList(int fromIndex, int toIndex)
-            methodVisitor.visitMethodInsn(
-                INVOKEINTERFACE,
-                "java/util/List",
-                "subList",
-                "(II)Ljava/util/List;",
-                true
-            )
-            // Store in rest slot
-            methodVisitor.visitVarInsn(ASTORE, restSlot)
-        }
-    }
     
     /**
      * Check if an identifier is a nullary constructor for the given type

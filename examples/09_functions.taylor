@@ -1,0 +1,70 @@
+// Function declarations in TaylorLang
+// Uses the 'fn' keyword syntax from the grammar
+
+// Simple function with expression body
+fn add(x: Int, y: Int): Int => x + y
+
+// Simple function with block body
+fn multiply(x: Int, y: Int): Int {
+  return x * y
+}
+
+// Function with block body
+fn greet(name: String): Unit {
+  println("Hello, " + name + "!")
+  println("Welcome to TaylorLang!")
+}
+
+// Function with pattern matching (expression body)
+fn describe(value: Int): String => match value {
+  case 0 => "Zero"
+  case 1 => "One"
+  case x if x > 10 => "Big number: " + x
+  case x if x < 0 => "Negative: " + x
+  case _ => "Some other number"
+}
+
+// Function with list pattern matching using constructor patterns (expression body)
+fn listLength(list: List<Int>): String => match list {
+  case Nil() => "Empty list"
+  case Cons(x, Nil()) => "Single element list"
+  case Cons(x, Cons(y, Nil())) => "Two element list"
+  case Cons(first, tail) => "List with " + first + " and more elements"
+}
+
+// Lambda expressions (anonymous functions)
+val double = x => x * 2
+val addTen = (x: Int) => x + 10
+val multiply = (x: Int, y: Int) => x * y
+
+// Multi-line lambda with block body
+val process = data => {
+  val cleaned = data.trim()
+  val uppercased = cleaned.toUpperCase()
+  uppercased + "!"
+}
+
+// Higher-order functions with lambdas (expression body)
+fn applyOperation(x: Int, operation: (Int) => Int): Int => operation(x)
+
+// Higher-order function with block body
+fn applyBinary(x: Int, y: Int, operation: (Int, Int) => Int): Int {
+  return operation(x, y)
+}
+
+// Function calls
+println(add(5, 3))
+greet("World")
+println(describe(42))
+println(describe(-5))
+println(listLength(Cons(1, Cons(2, Cons(3, Cons(4, Nil()))))))
+
+// Lambda usage examples
+println(double(7))
+println(addTen(5))
+println(multiply(4, 6))
+println(applyOperation(10, x => x * x))
+println(applyBinary(8, 3, (a, b) => a - b))
+
+// Note: The current compiler may have limitations with function declarations.
+// Top-level expressions are fully supported and recommended for current usage.

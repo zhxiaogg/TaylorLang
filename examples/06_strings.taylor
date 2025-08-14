@@ -1,0 +1,13 @@
+// String operations
+println("Hello")
+println("World")
+println("Hello, " + "World!")
+
+// String concatenation with toString
+println("The answer is: " + 42)
+println("5 + 3 = " + (5 + 3))
+
+// Multi-line strings can be done with multiple println calls
+println("Line 1")
+println("Line 2")
+println("Line 3")

@@ -4,24 +4,36 @@
 
 ### Basic Functions
 ```kotlin
-// Basic function with type annotations
+// Expression body syntax
 fn add(x: Int, y: Int): Int => x + y
 
+// Block body syntax  
+fn multiply(x: Int, y: Int): Int {
+  return x * y
+}
+
 // Type inference (annotations optional)
-fn multiply(x, y) => x * y
+fn subtract(x, y) => x - y
 
 // Multi-line function body
-fn factorial(n: Int): Int => {
-  if (n <= 1) 1
-  else n * factorial(n - 1)
+fn factorial(n: Int): Int {
+  if (n <= 1) {
+    return 1
+  } else {
+    return n * factorial(n - 1)
+  }
 }
 ```
 
 ### Generic Functions
 ```kotlin
+// Expression body
 fn identity<T>(x: T): T => x
-fn map<T, U>(list: List<T>, transform: (T) => U): List<U> => {
+
+// Block body
+fn map<T, U>(list: List<T>, transform: (T) => U): List<U> {
   // implementation
+  return transformedList
 }
 ```
 
@@ -48,7 +60,7 @@ val process = data => {
 
 ### Higher-order Functions
 ```kotlin
-val numbers = [1, 2, 3, 4, 5]
+val numbers = Cons(1, Cons(2, Cons(3, Cons(4, Cons(5, Nil())))))
 val doubled = numbers.map(x => x * 2)
 val evens = numbers.filter(x => x % 2 == 0)
 ```
@@ -64,8 +76,13 @@ val predicate: (String) => Boolean = s => s.length > 0
 
 ### Higher-order Function Parameters
 ```kotlin
+// Expression body
 fn applyTwice<T>(f: (T) => T, value: T): T => f(f(value))
-fn compose<A, B, C>(f: (B) => C, g: (A) => B): (A) => C => x => f(g(x))
+
+// Block body returning lambda
+fn compose<A, B, C>(f: (B) => C, g: (A) => B): (A) => C {
+  return x => f(g(x))
+}
 ```
 
 ## Function Composition

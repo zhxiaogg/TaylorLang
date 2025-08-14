@@ -1,0 +1,20 @@
+// Simple pattern matching with integer patterns
+match 42 {
+  case 0 => println("Zero")
+  case 1 => println("One")
+  case 42 => println("The answer!")
+  case _ => println("Something else")
+}
+
+// Pattern matching with boolean values
+match true {
+  case true => println("It's true!")
+  case false => println("It's false!")
+}
+
+// Pattern matching with expressions
+match (5 + 3) {
+  case 7 => println("Seven")
+  case 8 => println("Eight!")
+  case _ => println("Unexpected")
+}
