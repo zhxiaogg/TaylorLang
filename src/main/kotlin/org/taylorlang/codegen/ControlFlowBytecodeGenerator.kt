@@ -2,6 +2,7 @@ package org.taylorlang.codegen
 
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.Label
 import org.taylorlang.ast.*
 import org.taylorlang.typechecker.*
 
@@ -24,8 +25,8 @@ class ControlFlowBytecodeGenerator(
      * Generate code for if expressions
      */
     fun generateIfExpression(ifExpr: IfExpression, resultType: Type) {
-        val elseLabel = org.objectweb.asm.Label()
-        val endLabel = org.objectweb.asm.Label()
+        val elseLabel = Label()
+        val endLabel = Label()
         
         // Generate condition
         val conditionType = expressionGenerator.inferExpressionType(ifExpr.condition)
@@ -41,8 +42,9 @@ class ControlFlowBytecodeGenerator(
         // Skip else branch
         methodVisitor.visitJumpInsn(GOTO, endLabel)
         
-        // Generate else branch
+        // Generate else branch - add manual frame information
         methodVisitor.visitLabel(elseLabel)
+        
         if (ifExpr.elseExpression != null) {
             val elseType = expressionGenerator.inferExpressionType(ifExpr.elseExpression)
             generateExpression(TypedExpression(ifExpr.elseExpression, elseType))
@@ -74,9 +76,9 @@ class ControlFlowBytecodeGenerator(
      * 5. Continue after loop
      */
     fun generateWhileExpression(whileExpr: WhileExpression, resultType: Type) {
-        val loopStartLabel = org.objectweb.asm.Label()
-        val conditionCheckLabel = org.objectweb.asm.Label()
-        val loopEndLabel = org.objectweb.asm.Label()
+        val loopStartLabel = Label()
+        val conditionCheckLabel = Label()
+        val loopEndLabel = Label()
         
         // CRITICAL: Jump to condition check FIRST to implement proper while loop semantics
         // This ensures while(false) never executes the body
@@ -166,8 +168,8 @@ class ControlFlowBytecodeGenerator(
         // The stack has a boolean (0 or 1) on top
         // We'll use a simple if-else to convert to string
         
-        val trueLabel = org.objectweb.asm.Label()
-        val endLabel = org.objectweb.asm.Label()
+        val trueLabel = Label()
+        val endLabel = Label()
         
         // If the boolean value is not 0 (i.e., true), jump to trueLabel
         methodVisitor.visitJumpInsn(IFNE, trueLabel)

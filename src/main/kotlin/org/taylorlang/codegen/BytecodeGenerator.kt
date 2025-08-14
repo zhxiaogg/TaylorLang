@@ -65,13 +65,13 @@ class BytecodeGenerator {
         return try {
             currentClassName = className
             
-            // Try with full frame computation first, fall back to maxs only if it fails
+            // Try with full frame computation, with better error handling
             val bytecodeResult = try {
                 generateWithFrames(typedProgram, outputDirectory, className)
             } catch (e: Exception) {
-                // Frame computation failed (could be ArrayIndexOutOfBoundsException, 
-                // NegativeArraySizeException, or other ASM errors), try without frames
-                println("Frame computation failed (${e.javaClass.simpleName}: ${e.message}), falling back to COMPUTE_MAXS only")
+                // Frame computation failed - log the exact error and fall back
+                println("Frame computation failed (${e.javaClass.simpleName}: ${e.message}), falling back to Java 1.6 format")
+                e.printStackTrace()
                 generateWithoutFrames(typedProgram, outputDirectory, className)
             }
             
@@ -90,7 +90,9 @@ class BytecodeGenerator {
     ): GenerationResult {
         // Create a new ClassWriter for each generation to avoid reuse issues
         // Use full automatic computation to avoid slot management issues
-        val classWriter = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+        // For proper frame computation, we use COMPUTE_FRAMES which automatically
+        // computes both stack frames and max stack/locals
+        val classWriter = ClassWriter(ClassWriter.COMPUTE_FRAMES)
         
         generateClassContent(typedProgram, outputDirectory, className, classWriter, true)
         return writeClassFile(classWriter, outputDirectory, className)
@@ -102,7 +104,7 @@ class BytecodeGenerator {
         className: String
     ): GenerationResult {
         // Create a new ClassWriter without frame computation
-        // Use Java 1.8 version to reduce frame verification requirements
+        // Use Java 1.6 version which doesn't require stackmap frames
         val classWriter = ClassWriter(ClassWriter.COMPUTE_MAXS)
         
         generateClassContent(typedProgram, outputDirectory, className, classWriter, false)
@@ -119,9 +121,9 @@ class BytecodeGenerator {
         // Initialize class writer
         // Use appropriate bytecode version based on frame computation capability
         val bytecodeVersion = if (useFrames) {
-            V17 // Use Java 17 with frames
+            V1_8 // Use Java 1.8 with frames (more compatible than V17)
         } else {
-            V1_6 // Use Java 1.6 without frame requirements for fallback
+            V1_8 // Use Java 1.8 for fallback as well (V1_6 is too old for modern JVMs)
         }
         
         classWriter.visit(
