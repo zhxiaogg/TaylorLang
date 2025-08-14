@@ -120,42 +120,36 @@ class ExpressionBytecodeGenerator(
         when (binaryOp.operator) {
             BinaryOperator.PLUS -> {
                 if (isStringType(operandType)) {
-                    // String concatenation using static String.valueOf and concat
-                    // Stack: [left_operand, right_operand] -> [result_string]
+                    // Store operands in local variables to avoid complex stack manipulation
+                    // This should be much easier for ASM frame analysis to handle
                     
-                    // Convert left operand to string if it isn't already
-                    methodVisitor.visitMethodInsn(
-                        INVOKESTATIC,
-                        "java/lang/String",
-                        "valueOf",
-                        "(Ljava/lang/Object;)Ljava/lang/String;",
-                        false
-                    )
-                    // Stack: [left_string, right_operand]
+                    // Store right operand
+                    val rightSlot = variableSlotManager.allocateTemporarySlot(operandType)
+                    methodVisitor.visitVarInsn(ASTORE, rightSlot)
                     
-                    // Convert right operand to string
-                    methodVisitor.visitInsn(SWAP)
-                    // Stack: [right_operand, left_string]
-                    methodVisitor.visitMethodInsn(
-                        INVOKESTATIC,
-                        "java/lang/String",
-                        "valueOf",
-                        "(Ljava/lang/Object;)Ljava/lang/String;",
-                        false
-                    )
-                    // Stack: [right_string, left_string]
+                    // Store left operand  
+                    val leftSlot = variableSlotManager.allocateTemporarySlot(operandType)
+                    methodVisitor.visitVarInsn(ASTORE, leftSlot)
                     
-                    // Swap back to correct order and concatenate
-                    methodVisitor.visitInsn(SWAP)
-                    // Stack: [left_string, right_string]
-                    methodVisitor.visitMethodInsn(
-                        INVOKEVIRTUAL,
-                        "java/lang/String",
-                        "concat",
-                        "(Ljava/lang/String;)Ljava/lang/String;",
-                        false
-                    )
-                    // Stack: [result_string]
+                    // Create StringBuilder
+                    methodVisitor.visitTypeInsn(NEW, "java/lang/StringBuilder")
+                    methodVisitor.visitInsn(DUP)
+                    methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/StringBuilder", "<init>", "()V", false)
+                    
+                    // Load and append left operand
+                    methodVisitor.visitVarInsn(ALOAD, leftSlot)
+                    methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Ljava/lang/Object;)Ljava/lang/StringBuilder;", false)
+                    
+                    // Load and append right operand
+                    methodVisitor.visitVarInsn(ALOAD, rightSlot)
+                    methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Ljava/lang/Object;)Ljava/lang/StringBuilder;", false)
+                    
+                    // Convert to String
+                    methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()Ljava/lang/String;", false)
+                    
+                    // Release temporary slots
+                    variableSlotManager.releaseTemporarySlot(rightSlot)
+                    variableSlotManager.releaseTemporarySlot(leftSlot)
                 } else if (isIntegerType(operandType)) {
                     methodVisitor.visitInsn(IADD)
                 } else {
