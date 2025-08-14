@@ -1,0 +1,4 @@
+type MyList<T> = Cons(T, MyList<T>) | Nil
+
+val emptyList = Nil()
+println(emptyList)

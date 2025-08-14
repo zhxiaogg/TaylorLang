@@ -1,0 +1,6 @@
+type Option<T> = Some(T) | None
+
+val none = None()
+val some = Some(42)
+println(none)
+println(some)

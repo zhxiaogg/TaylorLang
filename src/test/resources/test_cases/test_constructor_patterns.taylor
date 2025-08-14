@@ -1,43 +1,54 @@
-// Constructor patterns test - simplified without actual constructor patterns
-// Testing constructor-like patterns using basic language constructs
+// Constructor patterns test - Real Taylor constructor pattern syntax
+// Testing actual constructor patterns with union types
 
-// Simulate constructor patterns with type identification using basic values
-// Pattern 1: Result type simulation (Ok/Error pattern)
-val resultType = "Ok"
-val resultValue = 42
+// Real union type definitions
+type Result<T, E> = Ok(T) | Error(E)
 
-val processedResult = if (resultType == "Ok") "Success: " + resultValue else "Error: " + resultValue
+// Pattern 1: Result type with constructor patterns  
+val result = Ok(42)
+val processedResult = match result {
+    case Ok(value) => "Success: " + value
+    case Error(err) => "Error: " + err
+}
 assert(processedResult == "Success: 42")
 
-// Pattern 2: Option type simulation (Some/None pattern)
-val optionType = "Some"
-val optionValue = "Hello"
+// Pattern 2: Option type with constructor patterns
+type Option<T> = Some(T) | None
 
-val processedOption = if (optionType == "Some") "Value: " + optionValue else "No value"
+val option = Some("Hello")
+val processedOption = match option {
+    case Some(value) => "Value: " + value
+    case None() => "No value"
+}
 assert(processedOption == "Value: Hello")
 
-// Pattern 3: List pattern simulation (Cons/Nil pattern)
-val listType = "Cons"
-val listHead = 1
-val hasTail = true
+// Pattern 3: Simple union type without recursion
+type Status = Active | Inactive | Pending  
 
-val processedList = if (listType == "Cons") "Head: " + listHead else "Empty list"
-assert(processedList == "Head: 1")
+val status = Active()
+val processedStatus = match status {
+    case Active() => "System is active"
+    case Inactive() => "System is inactive" 
+    case Pending() => "System is pending"
+}
+assert(processedStatus == "System is active")
 
-// Pattern 4: Nested constructor pattern simulation
-val outerType = "Some"
-val innerType = "Ok"
-val innerValue = 100
+// Pattern 4: Constructor patterns demonstrating real syntax  
+// (Simplified to avoid complex nested patterns until bytecode is implemented)
+val simpleResult = Error("not found")
+val errorMessage = match simpleResult {
+    case Ok(data) => "Got: " + data
+    case Error(msg) => "Error: " + msg
+}
+assert(errorMessage == "Error: not found")
 
-val nestedResult = if (outerType == "Some") 
-  if (innerType == "Ok") "Nested success: " + innerValue else "Nested error: " + innerValue
-  else "No value"
-assert(nestedResult == "Nested success: 100")
+// Pattern 5: Tuple constructor patterns (Phase 1 approach from design)
+type Tuple2<A, B> = Pair(A, B)
 
-// Pattern 5: Tuple pattern simulation
-val tupleFirst = 10
-val tupleSecond = 20
-val tupleSum = tupleFirst + tupleSecond
+val tuple = Pair(10, 20)  
+val tupleSum = match tuple {
+    case Pair(x, y) => x + y
+}
 assert(tupleSum == 30)
 
-println("Constructor pattern simulation tests completed!")
+println("Constructor pattern tests completed!")
