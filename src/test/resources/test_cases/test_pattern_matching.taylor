@@ -1,26 +1,74 @@
-// Pattern matching test - simplified to use only working if-else chains
-// Based on working examples from test_complex_if_expressions.taylor
+// Pattern matching test using real Taylor match expressions
+// Testing comprehensive pattern matching functionality
 
-// Simulate pattern matching with if-else chains since match expressions aren't implemented
+// Test 1: Basic literal pattern matching
 val value = 42
-
-// Pattern matching simulation - matching specific values
-val result1 = if (value == 0) "Zero" else if (value == 42) "The answer!" else "Something else"
+val result1 = match value {
+    case 0 => "Zero"
+    case 42 => "The answer!"
+    case _ => "Something else"
+}
 assert(result1 == "The answer!")
 
-// Boolean pattern matching simulation
+// Test 2: Boolean pattern matching
 val flag = true
-val result2 = if (flag == true) "It's true!" else "It's false!"
+val result2 = match flag {
+    case true => "It's true!"
+    case false => "It's false!"
+}
 assert(result2 == "It's true!")
 
-// Expression pattern matching simulation
+// Test 3: Expression pattern matching
 val expr = (5 + 3)
-val result3 = if (expr == 7) "Seven" else if (expr == 8) "Eight!" else "Unexpected"
+val result3 = match expr {
+    case 7 => "Seven"
+    case 8 => "Eight!"
+    case _ => "Unexpected"
+}
 assert(result3 == "Eight!")
 
-// Variable binding simulation
+// Test 4: Variable binding pattern
 val testValue = 42
-val bindingResult = if (testValue == 42) testValue else 0
+val bindingResult = match testValue {
+    case x => x
+}
 assert(bindingResult == 42)
+
+// Test 5: Guard patterns with conditions
+val number = 15
+val guardResult = match number {
+    case x if x > 20 => "large"
+    case x if x > 10 => "medium"
+    case x if x > 0 => "small"
+    case _ => "zero or negative"
+}
+assert(guardResult == "medium")
+
+// Test 6: String pattern matching
+val greeting = "hello"
+val stringResult = match greeting {
+    case "hi" => "informal"
+    case "hello" => "formal"
+    case name => "unknown: " + name
+}
+assert(stringResult == "formal")
+
+// Test 7: Nested match expressions (if supported)
+val category = match 5 {
+    case x => match x {
+        case y if y < 10 => "single digit"
+        case _ => "multiple digits"
+    }
+}
+assert(category == "single digit")
+
+// Test 8: Complex guard conditions
+val age = 25
+val status = match age {
+    case a if a >= 18 && a < 65 => "adult"
+    case a if a >= 65 => "senior"
+    case _ => "minor"
+}
+assert(status == "adult")
 
 println("Pattern matching tests completed!")
