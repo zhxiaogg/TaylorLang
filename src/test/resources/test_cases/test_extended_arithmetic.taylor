@@ -1,33 +1,33 @@
 // Extended arithmetic operations
-println(15 - 12)          // Should print: 3
-println(2.5 * 3.0)        // Should print: 7.5
-println(10 / 3.0)         // Should print: 3.333333333333333
+assert(15 - 12 == 3)
+assert(2.5 * 3.0 == 7.5)
+assert(10 / 3.0 == 3.3333333333333335)
 
 // Operator precedence
-println(2 + 3 * 4)        // Should print: 14 (not 20)
-println((2 + 3) * 4)      // Should print: 20
+assert(2 + 3 * 4 == 14)        // Should be: 14 (not 20)
+assert((2 + 3) * 4 == 20)
 
 // Comparison chains
-println(5 < 10 && 10 < 20)  // Should print: true
-println(1 == 1 && 2 != 3)   // Should print: true
-println(!(false || false))  // Should print: true
+assert((5 < 10 && 10 < 20) == true)
+assert((1 == 1 && 2 != 3) == true)
+assert(!(false || false) == true)
 
 // Mixed type comparisons
-println(5 == 5.0)         // Should print: true
-println(3.14 > 3)         // Should print: true
+assert((5 == 5.0) == true)
+assert((3.14 > 3) == true)
 
 // Additional arithmetic operations
-println(20 / 5)           // Should print: 4
-println(8 - 7)            // Should print: 1
-println(8.0 / 2.0)        // Should print: 4.0
+assert(20 / 5 == 4)
+assert(8 - 7 == 1)
+assert(8.0 / 2.0 == 4.0)
 
 // More comparison operations
-println(10 >= 10)         // Should print: true
-println(5 <= 4)           // Should print: false
-println(3 != 4)           // Should print: true
-println(7 == 7)           // Should print: true
+assert((10 >= 10) == true)
+assert((5 <= 4) == false)
+assert((3 != 4) == true)
+assert((7 == 7) == true)
 
 // Complex expressions with precedence
-println(10 - 5 + 2)       // Should print: 7
-println(3 * 4 + 2 * 5)    // Should print: 22
-println(20 / 4 - 1)       // Should print: 4
+assert(10 - 5 + 2 == 7)
+assert(3 * 4 + 2 * 5 == 22)
+assert(20 / 4 - 1 == 4)

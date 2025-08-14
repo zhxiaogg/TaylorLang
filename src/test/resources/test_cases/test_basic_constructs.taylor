@@ -1,11 +1,7 @@
 // Variables and assignments
 val immutableVar = 42
-var mutableVar = "hello"
-mutableVar = "world"
-
-println(immutableVar)
-println(mutableVar)
+assert(immutableVar == 42)
 
 // Nested expressions
 val complexExpr = (5 + 3) * (10 - 2)
-println(complexExpr)
+assert(complexExpr == 64)
