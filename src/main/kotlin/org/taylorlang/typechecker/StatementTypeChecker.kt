@@ -187,8 +187,22 @@ class StatementTypeChecker(
         // Type check function body
         val typedBody = when (node.body) {
             is FunctionBody.ExpressionBody -> {
-                val expressionChecker = ExpressionTypeChecker(paramContext)
-                node.body.expression.accept(expressionChecker).fold(
+                // CRITICAL FIX: Use the strategy-based approach instead of ExpressionTypeChecker
+                // This ensures TryExpression unwrapping works correctly in constraint-based mode
+                val expressionResult = if (expressionStrategy != null) {
+                    // Use strategy with expected return type to enable try expression validation
+                    expressionStrategy.typeCheckExpressionWithExpected(
+                        node.body.expression, 
+                        declaredReturnType, 
+                        paramContext
+                    )
+                } else {
+                    // Fallback to ExpressionTypeChecker for algorithmic mode
+                    val expressionChecker = ExpressionTypeChecker(paramContext)
+                    node.body.expression.accept(expressionChecker)
+                }
+                
+                expressionResult.fold(
                     onSuccess = { typedExpr ->
                         // Validate return type matches function body type
                         if (!typesCompatible(typedExpr.type, declaredReturnType)) {

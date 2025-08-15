@@ -188,13 +188,20 @@ class TryExpressionBytecodeTest {
             catchClauses = persistentListOf()
         )
         
+        // CRITICAL FIX: Wrap the try expression result in TaylorResult.ok() 
+        // Functions returning Result<T, E> must return Result, not T directly
+        val wrappedResult = FunctionCall(
+            target = Identifier("TaylorResult.ok"),
+            arguments = persistentListOf(tryExpr)
+        )
+        
         val mainFunction = FunctionDecl(
             name = "main",
             parameters = persistentListOf(
                 Parameter("args", BuiltinTypes.STRING)
             ),
             returnType = BuiltinTypes.createResultType(BuiltinTypes.INT, BuiltinTypes.THROWABLE),
-            body = FunctionBody.ExpressionBody(tryExpr)
+            body = FunctionBody.ExpressionBody(wrappedResult)
         )
         
         val program = Program(persistentListOf(okFunction, mainFunction))

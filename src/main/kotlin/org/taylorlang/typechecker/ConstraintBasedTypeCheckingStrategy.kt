@@ -63,6 +63,7 @@ class ConstraintBasedTypeCheckingStrategy : TypeCheckingStrategy {
     ): Result<TypedExpression> {
         return try {
             val inferenceContext = InferenceContext.fromTypeContext(context)
+                .withFunctionReturnType(expectedType) // CRITICAL FIX: Set function return type for try expression validation
             val constraintResult = constraintCollector.collectConstraintsWithExpected(
                 expression, 
                 expectedType, 
