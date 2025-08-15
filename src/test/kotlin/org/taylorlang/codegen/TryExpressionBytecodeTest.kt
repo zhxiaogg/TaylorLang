@@ -313,11 +313,20 @@ class TryExpressionBytecodeTest {
     private fun compileAndTest(program: Program, className: String): Result<GenerationResult> {
         val typedProgramResult = typeChecker.typeCheck(program)
         if (typedProgramResult.isFailure) {
-            return Result.failure(Exception("Type checking failed: ${typedProgramResult.exceptionOrNull()}"))
+            val error = typedProgramResult.exceptionOrNull()
+            println("DEBUG: Type checking failed for $className: ${error?.message}")
+            error?.printStackTrace()
+            return Result.failure(Exception("Type checking failed: $error"))
         }
         
         val typedProgram = typedProgramResult.getOrThrow()
-        return bytecodeGenerator.generateBytecode(typedProgram, tempDir, className)
+        val result = bytecodeGenerator.generateBytecode(typedProgram, tempDir, className)
+        if (result.isFailure) {
+            val error = result.exceptionOrNull()
+            println("DEBUG: Bytecode generation failed for $className: ${error?.message}")
+            error?.printStackTrace()
+        }
+        return result
     }
 
     /**
