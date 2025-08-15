@@ -300,7 +300,7 @@ class TryExpressionBytecodeTest {
             parameters = persistentListOf(
                 Parameter("args", BuiltinTypes.STRING)
             ),
-            returnType = BuiltinTypes.createResultType(returnType, BuiltinTypes.THROWABLE),
+            returnType = returnType, // Try expression returns the unwrapped type, not a Result type
             body = FunctionBody.ExpressionBody(tryExpr)
         )
         

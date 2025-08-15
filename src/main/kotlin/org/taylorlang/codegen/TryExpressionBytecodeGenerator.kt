@@ -53,7 +53,9 @@ class TryExpressionBytecodeGenerator(
         val sourceLocation = tryExpr.sourceLocation?.let { "${it.file}:${it.line}:${it.column}" } ?: "unknown"
         
         // Generate the inner expression - this should produce a Result<T, E>
-        generateExpression(TypedExpression(tryExpr.expression, expectedType))
+        // We need to infer the actual type of the inner expression (which should be a Result type)
+        val innerExpressionType = inferInnerExpressionType(tryExpr.expression, expectedType)
+        generateExpression(TypedExpression(tryExpr.expression, innerExpressionType))
         
         // Duplicate the Result on the stack for testing
         methodVisitor.visitInsn(DUP)
@@ -380,5 +382,39 @@ class TryExpressionBytecodeGenerator(
      */
     private fun getResultErrorType(type: Type): Type? {
         return BuiltinTypes.getResultErrorType(type)
+    }
+    
+    /**
+     * Infer the actual type of the inner expression in a try expression.
+     * This should be a Result<T, E> type where T matches the expected type.
+     */
+    private fun inferInnerExpressionType(expr: Expression, expectedType: Type): Type {
+        return when (expr) {
+            is FunctionCall -> {
+                val target = expr.target
+                if (target is Identifier) {
+                    when (target.name) {
+                        "TaylorResult.ok" -> {
+                            // TaylorResult.ok(value) returns Result<T, Nothing>
+                            BuiltinTypes.createResultType(expectedType, BuiltinTypes.THROWABLE)
+                        }
+                        "TaylorResult.error" -> {
+                            // TaylorResult.error(throwable) returns Result<Nothing, E>
+                            BuiltinTypes.createResultType(expectedType, BuiltinTypes.THROWABLE)
+                        }
+                        else -> {
+                            // Other function calls - assume they return Result<expectedType, Throwable>
+                            BuiltinTypes.createResultType(expectedType, BuiltinTypes.THROWABLE)
+                        }
+                    }
+                } else {
+                    BuiltinTypes.createResultType(expectedType, BuiltinTypes.THROWABLE)
+                }
+            }
+            else -> {
+                // For other expressions, assume they return Result<expectedType, Throwable>
+                BuiltinTypes.createResultType(expectedType, BuiltinTypes.THROWABLE)
+            }
+        }
     }
 }

@@ -239,7 +239,7 @@ class ScopedExpressionConstraintVisitor(
             allConstraints = allConstraints.merge(unificationConstraints)
         }
         
-        return ConstraintResult(resultType, allConstraints) // Return the Result type for constraint system
+        return ConstraintResult(tryValueType, allConstraints) // Return the unwrapped value type from the try expression
     }
     
     // =============================================================================
