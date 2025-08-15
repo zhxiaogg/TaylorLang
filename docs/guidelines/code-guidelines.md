@@ -151,6 +151,9 @@ Rationale: Why this change matters
 - **Monolithic bytecode generators**: Single files handling multiple bytecode generation concerns
 - **Debug file contamination**: Temporary .taylor files, debug artifacts committed to repository
 - **Type inference inconsistency**: Identifier expressions not checking variable slot types
+- **Mega files**: Files exceeding 500 lines - ExpressionBytecodeGenerator (1106 lines), BytecodeGenerator (851 lines) require immediate refactoring
+- **Test failure tolerance**: Accepting partial test success rates - zero tolerance policy means 100% pass rate required
+- **Arithmetic type inference defects**: Int+Int operations returning Double instead of Int indicates type promotion bugs
 
 ### Code Smells
 - **Feature envy**: Classes accessing other classes' data excessively
@@ -197,5 +200,8 @@ Rationale: Why this change matters
 - **Missing .gitignore entries**: Generated files not properly excluded
 - **Non-exhaustive pattern matching**: Using `else` branches when exhaustive patterns are possible
 - **Silent pattern failures**: Missing cases that could cause unexpected test behavior
+- **Mega file violations**: Files > 1000 lines require immediate breaking into modules
+- **Type system regressions**: Arithmetic operations returning incorrect types (Int+Int≠Double)
+- **Test suite degradation**: Any reduction from 100% pass rate is blocking
 
 **NO EXCEPTIONS POLICY**: Previous issues do not excuse new violations. All code must meet standards regardless of existing codebase state.
