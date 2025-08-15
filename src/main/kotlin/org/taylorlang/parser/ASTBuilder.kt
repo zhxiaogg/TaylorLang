@@ -393,6 +393,7 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
                 )
             }
             ctx.tupleLiteral() != null -> visit(ctx.tupleLiteral()) as Literal.TupleLiteral
+            ctx.listLiteral() != null -> visit(ctx.listLiteral()) as Literal.ListLiteral
             ctx.text == "null" -> Literal.NullLiteral
             else -> throw IllegalStateException("Unknown literal type")
         }
@@ -404,6 +405,18 @@ class ASTBuilder : TaylorLangBaseVisitor<ASTNode>() {
             .toPersistentList()
         
         return Literal.TupleLiteral(
+            elements = elements,
+            sourceLocation = ctx.toSourceLocation()
+        )
+    }
+
+    override fun visitListLiteral(ctx: TaylorLangParser.ListLiteralContext): Literal.ListLiteral {
+        val elements = ctx.expression()
+            ?.map { visit(it) as Expression }
+            ?.toPersistentList()
+            ?: persistentListOf()
+        
+        return Literal.ListLiteral(
             elements = elements,
             sourceLocation = ctx.toSourceLocation()
         )

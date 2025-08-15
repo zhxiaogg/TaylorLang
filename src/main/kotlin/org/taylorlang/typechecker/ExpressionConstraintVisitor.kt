@@ -148,6 +148,59 @@ class ExpressionConstraintVisitor(
         }
     }
     
+    fun handleListLiteral(
+        literal: Literal.ListLiteral,
+        expectedType: Type?,
+        context: InferenceContext
+    ): ConstraintResult {
+        if (literal.elements.isEmpty()) {
+            // Empty list: create a fresh type variable for element type
+            val freshVar = TypeVar.fresh()
+            val elementType = Type.NamedType(freshVar.id)
+            val listType = Type.GenericType("List", persistentListOf(elementType))
+            
+            return if (expectedType != null) {
+                val constraint = Constraint.Equality(listType, expectedType, literal.sourceLocation)
+                ConstraintResult.withConstraint(listType, constraint)
+            } else {
+                ConstraintResult.withType(listType)
+            }
+        }
+        
+        // Non-empty list: collect constraints from all elements
+        val elementResults = literal.elements.map { element ->
+            collector.collectConstraints(element, context)
+        }
+        
+        // Merge all constraints from elements
+        val allConstraints = elementResults.fold(ConstraintSet.empty()) { acc, result ->
+            acc.merge(result.constraints)
+        }
+        
+        // All elements should have the same type - create fresh type variable for element type
+        val freshVar = TypeVar.fresh()
+        val elementType = Type.NamedType(freshVar.id)
+        
+        // Add constraints that all elements must have the same type
+        val typeUnificationConstraints = elementResults.map { result ->
+            Constraint.Equality(result.type, elementType, literal.sourceLocation)
+        }
+        
+        val finalConstraints = typeUnificationConstraints.fold(allConstraints) { acc, constraint ->
+            acc.add(constraint)
+        }
+        
+        // The list type is List<ElementType>
+        val listType = Type.GenericType("List", persistentListOf(elementType))
+        
+        return if (expectedType != null) {
+            val constraint = Constraint.Equality(listType, expectedType, literal.sourceLocation)
+            ConstraintResult(listType, finalConstraints.add(constraint))
+        } else {
+            ConstraintResult(listType, finalConstraints)
+        }
+    }
+    
     // =============================================================================
     // Variable and Identifier Handlers
     // =============================================================================

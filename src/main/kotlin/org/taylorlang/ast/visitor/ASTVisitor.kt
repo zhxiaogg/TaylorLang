@@ -84,6 +84,7 @@ interface ASTVisitor<R> {
     fun visitStringLiteral(node: Literal.StringLiteral): R
     fun visitBooleanLiteral(node: Literal.BooleanLiteral): R
     fun visitTupleLiteral(node: Literal.TupleLiteral): R
+    fun visitListLiteral(node: Literal.ListLiteral): R
     fun visitNullLiteral(node: Literal.NullLiteral): R
     
     // =============================================================================

@@ -126,10 +126,12 @@ literal
     | StringLiteral
     | BooleanLiteral
     | tupleLiteral
+    | listLiteral
     | 'null'
     ;
 
 tupleLiteral: '(' expression (',' expression)+ ')';
+listLiteral: '[' (expression (',' expression)*)? ']';
 
 // Constructor calls: Ok(value)
 constructorCall: IDENTIFIER '(' argList? ')';

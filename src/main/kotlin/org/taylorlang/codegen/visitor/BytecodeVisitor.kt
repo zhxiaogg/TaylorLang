@@ -104,6 +104,51 @@ class BytecodeVisitor(
             methodVisitor.visitInsn(AASTORE)
         }
     }
+
+    override fun visitListLiteral(node: Literal.ListLiteral): Unit {
+        // Create a TaylorList from the elements
+        if (node.elements.isEmpty()) {
+            // Empty list: call TaylorList.empty()
+            methodVisitor.visitMethodInsn(
+                INVOKESTATIC,
+                "org/taylorlang/stdlib/collections/TaylorList",
+                "empty",
+                "()Lorg/taylorlang/stdlib/collections/TaylorList;",
+                false
+            )
+        } else {
+            // Non-empty list: create ArrayList first, then convert to TaylorList
+            // Create new ArrayList
+            methodVisitor.visitTypeInsn(NEW, "java/util/ArrayList")
+            methodVisitor.visitInsn(DUP)
+            methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/util/ArrayList", "<init>", "()V", false)
+            
+            // Add each element to the ArrayList
+            node.elements.forEach { element ->
+                methodVisitor.visitInsn(DUP) // Duplicate the ArrayList reference
+                element.accept(this)
+                // Box primitive types if needed
+                boxPrimitiveIfNeeded(typeInferenceHelper(element))
+                methodVisitor.visitMethodInsn(
+                    INVOKEINTERFACE,
+                    "java/util/List",
+                    "add",
+                    "(Ljava/lang/Object;)Z",
+                    true
+                )
+                methodVisitor.visitInsn(POP) // Remove boolean return value
+            }
+            
+            // Convert ArrayList to TaylorList using from() method
+            methodVisitor.visitMethodInsn(
+                INVOKESTATIC,
+                "org/taylorlang/stdlib/collections/TaylorList",
+                "from",
+                "(Ljava/util/Collection;)Lorg/taylorlang/stdlib/collections/TaylorList;",
+                false
+            )
+        }
+    }
     
     // =============================================================================
     // Identifiers and Variables
@@ -159,6 +204,22 @@ class BytecodeVisitor(
     // =============================================================================
     
     override fun visitBinaryOp(node: BinaryOp): Unit {
+        // Special handling for logical operators that need short-circuit evaluation
+        when (node.operator) {
+            BinaryOperator.AND -> {
+                generateLogicalAnd(node)
+                return
+            }
+            BinaryOperator.OR -> {
+                generateLogicalOr(node)
+                return
+            }
+            else -> {
+                // Fall through to normal binary operator handling
+            }
+        }
+        
+        // For all other operators, generate both operands first
         // Generate left operand
         node.left.accept(this)
         
@@ -230,10 +291,12 @@ class BytecodeVisitor(
             BinaryOperator.EQUAL -> generateComparison(IF_ICMPEQ)
             BinaryOperator.NOT_EQUAL -> generateComparison(IF_ICMPNE)
             
-            // Logical operations
-            BinaryOperator.AND -> generateLogicalAnd(node)
-            BinaryOperator.OR -> generateLogicalOr(node)
+            // Other operations
             BinaryOperator.NULL_COALESCING -> generateNullCoalescing(node)
+            else -> {
+                // This should not happen as we handled logical operators above
+                throw RuntimeException("Unsupported binary operator: ${node.operator}")
+            }
         }
     }
     
@@ -482,6 +545,7 @@ class BytecodeVisitor(
     
     /**
      * Generate logical AND with short-circuit evaluation
+     * CRITICAL FIX: Use explicit stack management to ensure consistent frame states
      */
     private fun generateLogicalAnd(node: BinaryOp) {
         val falseLabel = Label()
@@ -489,19 +553,25 @@ class BytecodeVisitor(
         
         // Generate left operand
         node.left.accept(this)
+        
+        // Duplicate left operand for testing
         methodVisitor.visitInsn(DUP)
+        
+        // If left operand is false (0), jump to false result
         methodVisitor.visitJumpInsn(IFEQ, falseLabel)
         
-        // Left is true, generate right operand
-        methodVisitor.visitInsn(POP) // Remove duplicate left value
+        // Left operand is true, pop the duplicate and evaluate right operand
+        methodVisitor.visitInsn(POP)
         node.right.accept(this)
         methodVisitor.visitJumpInsn(GOTO, endLabel)
         
-        // Left is false, result is false
+        // Left operand is false - the duplicate value (0) is the result
         methodVisitor.visitLabel(falseLabel)
-        // Stack already has 0 from left operand
+        // Stack has the false value (0) from the duplicate
+        // No additional instructions needed - this is the final result
         
         methodVisitor.visitLabel(endLabel)
+        // Stack state: exactly one integer (0 or 1) representing the boolean result
     }
     
     /**
