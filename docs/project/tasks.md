@@ -71,11 +71,68 @@
 - Pattern matching bytecode generation patterns in other JVM languages (Kotlin, Scala)
 - JVM verification error debugging techniques and tools
 
-### NEXT PRIORITY: HIGHER-ORDER FUNCTIONS CONVERSION - HIGH PRIORITY (After Regression Fix)
+### ACTIVE PRIORITY: HIGHER-ORDER FUNCTIONS REAL SYNTAX CONVERSION - HIGH PRIORITY (2025-08-15)
 
-**STATUS**: 🔵 **NEXT CONVERSION TARGET** - Queued after regression fix  
-**DISCOVERY**: Lambda expressions test already uses REAL syntax and PASSES! test_higher_order_functions.taylor is the actual next conversion target
-**STRATEGIC IMPORTANCE**: Continue systematic test conversion from simulation to real syntax per user requirements
+**STATUS**: 🟢 **ACTIVE CONVERSION TARGET** - Pattern Matching milestone achieved (95.5% success)
+**DISCOVERY**: Lambda expressions infrastructure COMPLETE (`test_lambda_expressions.taylor` passing with real syntax)
+**STRATEGIC IMPORTANCE**: Continue systematic test conversion approach that delivered pattern matching success
+
+#### Task: Convert Higher-Order Functions from Simulation to Real Syntax
+**Status**: 🔵 **HIGH PRIORITY ACTIVE** (2025-08-15)
+**Assignee**: kotlin-java-engineer
+**Component**: Higher-Order Functions - Collection Operations Implementation
+**Effort**: Medium (2-3 days)
+**Priority**: HIGH - Next systematic conversion target
+
+**WHY**: The `test_higher_order_functions.taylor` currently uses step-by-step simulation instead of real collection operations with lambdas. Converting to real syntax will provide developers with modern functional programming capabilities including map(), filter(), and reduce() operations on collections. Lambda expressions infrastructure is already complete and working.
+
+**WHAT**: Transform the simulation-based higher-order function patterns in `test_higher_order_functions.taylor` to real TaylorLang collection syntax with method calls and lambda expressions. Implement the missing collection types and method call infrastructure needed to support the real syntax.
+
+**CURRENT STATE ANALYSIS**:
+```taylor
+// CURRENT SIMULATION (Lines 4-18):
+val list1 = 1; val list2 = 2; val list3 = 3
+val mapped1 = if (true) list1 * 2 else 0
+val mapped2 = if (true) list2 * 2 else 0
+val mapped3 = if (true) list3 * 2 else 0
+
+// TARGET REAL SYNTAX:
+val numbers = [1, 2, 3]
+val doubled = numbers.map(x => x * 2)
+```
+
+**HOW**: 
+1. **Research Collection Implementation Requirements**: Study existing List type definition in docs/language/collections.md and determine gaps
+2. **Analyze Method Call Infrastructure**: Research how method calls (`.map()`, `.filter()`, `.reduce()`) should integrate with existing lambda expressions
+3. **Collection Literal Syntax**: Implement `[1, 2, 3]` syntax for list creation (currently uses `Cons(1, Cons(2, Cons(3, Nil())))`)
+4. **Method Call Bytecode**: Implement bytecode generation for collection method calls with lambda parameters
+5. **Standard Library Integration**: Connect with functional collection operations following the established List<T> type patterns
+
+**SCOPE - SYSTEMATIC CONVERSION REQUIREMENTS**:
+1. **Day 1**: Research and design collection literal syntax and method call infrastructure
+2. **Day 2**: Implement collection creation syntax `[1, 2, 3]` and basic method call parsing
+3. **Day 3**: Implement .map(), .filter(), .reduce() method calls with lambda parameter support and bytecode generation
+
+**SUCCESS CRITERIA** (ALL MUST BE MET):
+- ✅ `test_higher_order_functions.taylor` uses real collection syntax: `[1, 2, 3].map(x => x * 2)`
+- ✅ Collection literal syntax `[1, 2, 3]` creates proper List<T> instances
+- ✅ Method calls `.map()`, `.filter()`, `.reduce()` work with lambda expressions
+- ✅ All existing functionality remains working (zero regressions)
+- ✅ Integration test maintains 95.5% success rate or better
+- ✅ Project builds successfully with improved test coverage
+
+**TECHNICAL RESEARCH REQUIRED**:
+- Collection literal syntax parsing and AST representation
+- Method call syntax integration with existing expression parsing
+- Collection method bytecode generation patterns
+- Lambda parameter passing to collection operations
+- Standard library integration for functional operations
+
+**DEPENDENCIES**:
+- ✅ Lambda expressions infrastructure (COMPLETE - `test_lambda_expressions.taylor` passing)
+- ✅ Type inference system (COMPLETE - `test_type_inference.taylor` passing)
+- 🔲 Collection types implementation (research required)
+- 🔲 Method call syntax infrastructure (implementation required)
 
 #### Task: Implement assert() Built-in Function for Test Validation
 **Status**: 🔴 **CRITICAL HIGH PRIORITY** (2025-08-14)
