@@ -1,0 +1,5 @@
+// Test Pair creation without pattern matching
+type Tuple2<A, B> = Pair(A, B)
+
+val tuple = Pair(10, 20)  
+println("Pair created successfully")

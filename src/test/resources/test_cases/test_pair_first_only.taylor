@@ -1,0 +1,8 @@
+// Test Pair with accessing only first field 
+type Tuple2<A, B> = Pair(A, B)
+
+val tuple = Pair(10, 20)  
+val result = match tuple {
+    case Pair(x, _) => x
+}
+println(result)
