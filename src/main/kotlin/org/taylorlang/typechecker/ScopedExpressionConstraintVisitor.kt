@@ -176,72 +176,39 @@ class ScopedExpressionConstraintVisitor(
             allConstraints = allConstraints.add(errorConstraint)
         }
         
-        // Determine the expected Result type with enhanced inference
-        val (expectedValueType, expectedErrorType, resultTypeInfo) = inferTryExpressionTypes(
-            expectedType, 
-            functionReturnType, 
-            tryExpr
-        )
-        
-        // Collect constraints from the try expression with bidirectional type checking
-        val tryResult = collector.collectConstraintsWithExpected(
-            tryExpr.expression, 
-            expectedValueType, 
-            context
-        )
+        // Collect constraints from the try expression
+        val tryResult = collector.collectConstraints(tryExpr.expression, context)
         allConstraints = allConstraints.merge(tryResult.constraints)
         
-        // Enhanced constraint generation: try expression must return a Result type
-        if (!BuiltinTypes.isResultType(tryResult.type)) {
-            val resultConstraint = Constraint.Equality(
-                tryResult.type,
-                BuiltinTypes.createResultType(expectedValueType ?: tryResult.type, expectedErrorType ?: BuiltinTypes.THROWABLE),
-                tryExpr.expression.sourceLocation
-            )
-            allConstraints = allConstraints.add(resultConstraint)
-        }
-        
-        // The try expression should evaluate to the value type (unwrapped from Result)
-        val tryValueType = if (BuiltinTypes.isResultType(tryResult.type)) {
-            val extractedValueType = BuiltinTypes.getResultValueType(tryResult.type)
-            extractedValueType ?: run {
-                // Create fresh type variable if we can't extract the value type
-                val freshVar = TypeVar.fresh()
-                Type.NamedType(freshVar.id)
-            }
+        // CRITICAL FIX: Try expressions must unwrap Result types to their value types
+        val unwrappedType = if (BuiltinTypes.isResultType(tryResult.type)) {
+            BuiltinTypes.getResultValueType(tryResult.type) ?: tryResult.type
         } else {
+            // Non-Result expressions return their type directly
             tryResult.type
         }
         
         // Process catch clauses with enhanced error type checking
         val catchProcessingResult = processCatchClauses(
             tryExpr.catchClauses,
-            tryValueType,
-            expectedErrorType,
+            unwrappedType,
+            null, // Error type will be inferred from catch clauses
             context
         )
         allConstraints = allConstraints.merge(catchProcessingResult.constraints)
         
-        // Create the final Result type with proper type inference for internal validation
-        val finalErrorType = catchProcessingResult.unifiedErrorType ?: expectedErrorType ?: BuiltinTypes.THROWABLE
-        val internalResultType = BuiltinTypes.createResultType(tryValueType, finalErrorType)
-        
-        // Add constraint that the inferred error type is a Throwable subtype
-        val throwableConstraints = generateThrowableConstraints(finalErrorType, tryExpr.sourceLocation)
-        allConstraints = allConstraints.merge(throwableConstraints)
-        
         // Enhanced bidirectional type checking: if we have an expected type, unify with the unwrapped value type
         if (expectedType != null) {
             val unificationConstraint = Constraint.Equality(
-                tryValueType, 
+                unwrappedType, 
                 expectedType, 
                 tryExpr.sourceLocation
             )
             allConstraints = allConstraints.add(unificationConstraint)
         }
         
-        // Try expressions return the unwrapped value type, not the Result type
-        return ConstraintResult(tryValueType, allConstraints)
+        // CRITICAL: Try expressions return the unwrapped value type (String, Int, etc.), NOT Result types
+        return ConstraintResult(unwrappedType, allConstraints)
     }
     
     // =============================================================================

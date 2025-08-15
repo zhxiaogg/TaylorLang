@@ -428,6 +428,10 @@ class ExpressionConstraintVisitor(
         rightType: Type,
         location: SourceLocation?
     ): Pair<Type, ConstraintSet> {
+        // CRITICAL FIX: Unwrap Result types before applying arithmetic operations
+        val leftUnwrapped = unwrapResultType(leftType)
+        val rightUnwrapped = unwrapResultType(rightType)
+        
         return when (operator) {
             BinaryOperator.PLUS, BinaryOperator.MINUS, 
             BinaryOperator.MULTIPLY, BinaryOperator.DIVIDE, BinaryOperator.MODULO -> {
@@ -437,28 +441,31 @@ class ExpressionConstraintVisitor(
                 // Handle string concatenation for PLUS operator
                 if (operator == BinaryOperator.PLUS) {
                     // If both operands are String, result is String
-                    if (TypeOperations.areEqual(leftType, BuiltinTypes.STRING) && 
-                        TypeOperations.areEqual(rightType, BuiltinTypes.STRING)) {
+                    if (TypeOperations.areEqual(leftUnwrapped, BuiltinTypes.STRING) && 
+                        TypeOperations.areEqual(rightUnwrapped, BuiltinTypes.STRING)) {
                         val resultType = BuiltinTypes.STRING
                         return Pair(resultType, ConstraintSet.empty())
                     }
                 }
                 
-                // For numeric operations, always promote to Double for consistent type inference
+                // For numeric operations, use proper type promotion rules
                 val resultType = when {
-                    // Use type promotion rules - always promote to Double for arithmetic operations
-                    BuiltinTypes.isNumeric(leftType) && BuiltinTypes.isNumeric(rightType) -> {
-                        // Generate subtype constraints to ensure operands are numeric
-                        constraints.add(Constraint.Subtype(leftType, BuiltinTypes.DOUBLE, location))
-                        constraints.add(Constraint.Subtype(rightType, BuiltinTypes.DOUBLE, location))
-                        BuiltinTypes.DOUBLE // Always promote to Double for arithmetic operations
+                    // Both operands are the same numeric type - preserve type for simple cases like Int + Int = Int
+                    TypeOperations.areEqual(leftUnwrapped, rightUnwrapped) && BuiltinTypes.isNumeric(leftUnwrapped) -> {
+                        leftUnwrapped // Preserve the original type for Int + Int = Int
+                    }
+                    
+                    // Use type promotion rules when types differ
+                    BuiltinTypes.isNumeric(leftUnwrapped) && BuiltinTypes.isNumeric(rightUnwrapped) -> {
+                        val promotedType = BuiltinTypes.getWiderNumericType(leftUnwrapped, rightUnwrapped)
+                        promotedType ?: BuiltinTypes.DOUBLE // Fallback to Double
                     }
                     
                     // For type variables or unresolved types, use constraints
                     else -> {
                         // Generate subtype constraints to ensure operands are numeric
-                        constraints.add(Constraint.Subtype(leftType, BuiltinTypes.DOUBLE, location))
-                        constraints.add(Constraint.Subtype(rightType, BuiltinTypes.DOUBLE, location))
+                        constraints.add(Constraint.Subtype(leftUnwrapped, BuiltinTypes.DOUBLE, location))
+                        constraints.add(Constraint.Subtype(rightUnwrapped, BuiltinTypes.DOUBLE, location))
                         BuiltinTypes.DOUBLE // Default fallback
                     }
                 }
@@ -471,24 +478,24 @@ class ExpressionConstraintVisitor(
                 // Comparison operations: require numeric types, result is Boolean
                 val constraints = mutableListOf<Constraint>()
                 
-                // Always generate subtype constraints for consistent behavior
-                constraints.add(Constraint.Subtype(leftType, BuiltinTypes.DOUBLE, location))
-                constraints.add(Constraint.Subtype(rightType, BuiltinTypes.DOUBLE, location))
+                // Apply constraints to unwrapped types
+                constraints.add(Constraint.Subtype(leftUnwrapped, BuiltinTypes.DOUBLE, location))
+                constraints.add(Constraint.Subtype(rightUnwrapped, BuiltinTypes.DOUBLE, location))
                 
                 Pair(BuiltinTypes.BOOLEAN, ConstraintSet.fromCollection(constraints))
             }
             
             BinaryOperator.EQUAL, BinaryOperator.NOT_EQUAL -> {
                 // Equality operations: operands should be same type, result is Boolean
-                val equalityConstraint = Constraint.Equality(leftType, rightType, location)
+                val equalityConstraint = Constraint.Equality(leftUnwrapped, rightUnwrapped, location)
                 
                 Pair(BuiltinTypes.BOOLEAN, ConstraintSet.of(equalityConstraint))
             }
             
             BinaryOperator.AND, BinaryOperator.OR -> {
                 // Logical operations: operands should be Boolean, result is Boolean
-                val boolConstraint1 = Constraint.Equality(leftType, BuiltinTypes.BOOLEAN, location)
-                val boolConstraint2 = Constraint.Equality(rightType, BuiltinTypes.BOOLEAN, location)
+                val boolConstraint1 = Constraint.Equality(leftUnwrapped, BuiltinTypes.BOOLEAN, location)
+                val boolConstraint2 = Constraint.Equality(rightUnwrapped, BuiltinTypes.BOOLEAN, location)
                 
                 Pair(BuiltinTypes.BOOLEAN, ConstraintSet.of(boolConstraint1, boolConstraint2))
             }
@@ -498,9 +505,9 @@ class ExpressionConstraintVisitor(
                 val freshVar = TypeVar.fresh()
                 val baseType = Type.NamedType(freshVar.id)
                 val nullableType = Type.NullableType(baseType)
-                val nullableConstraint = Constraint.Equality(leftType, nullableType, location)
+                val nullableConstraint = Constraint.Equality(leftUnwrapped, nullableType, location)
                 
-                Pair(rightType, ConstraintSet.of(nullableConstraint))
+                Pair(rightUnwrapped, ConstraintSet.of(nullableConstraint))
             }
         }
     }
@@ -513,16 +520,19 @@ class ExpressionConstraintVisitor(
         operandType: Type,
         location: SourceLocation?
     ): Pair<Type, ConstraintSet> {
+        // CRITICAL FIX: Unwrap Result types before applying unary operations
+        val operandUnwrapped = unwrapResultType(operandType)
+        
         return when (operator) {
             UnaryOperator.MINUS -> {
                 // Numeric negation: operand should be numeric, result is same type
-                val numericConstraint = Constraint.Subtype(operandType, BuiltinTypes.DOUBLE, location)
-                Pair(operandType, ConstraintSet.of(numericConstraint))
+                val numericConstraint = Constraint.Subtype(operandUnwrapped, BuiltinTypes.DOUBLE, location)
+                Pair(operandUnwrapped, ConstraintSet.of(numericConstraint))
             }
             
             UnaryOperator.NOT -> {
                 // Logical negation: operand should be Boolean, result is Boolean
-                val boolConstraint = Constraint.Equality(operandType, BuiltinTypes.BOOLEAN, location)
+                val boolConstraint = Constraint.Equality(operandUnwrapped, BuiltinTypes.BOOLEAN, location)
                 Pair(BuiltinTypes.BOOLEAN, ConstraintSet.of(boolConstraint))
             }
         }
@@ -556,5 +566,17 @@ class ExpressionConstraintVisitor(
         }
         
         return Pair(resultType, ConstraintSet.fromCollection(constraints))
+    }
+    
+    /**
+     * Unwrap Result types to their value types for use in arithmetic operations.
+     * This is critical for Taylor language semantics where try expressions return unwrapped types.
+     */
+    private fun unwrapResultType(type: Type): Type {
+        return if (BuiltinTypes.isResultType(type)) {
+            BuiltinTypes.getResultValueType(type) ?: type
+        } else {
+            type
+        }
     }
 }
