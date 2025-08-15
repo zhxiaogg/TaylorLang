@@ -82,7 +82,12 @@ class FunctionCallBytecodeGenerator(
     private fun generateTaylorResultOk(functionCall: FunctionCall) {
         // Generate arguments first
         if (functionCall.arguments.isNotEmpty()) {
-            generateExpression(TypedExpression(functionCall.arguments[0], typeHelper.inferExpressionType(functionCall.arguments[0])))
+            val argType = typeHelper.inferExpressionType(functionCall.arguments[0])
+            generateExpression(TypedExpression(functionCall.arguments[0], argType))
+            
+            // CRITICAL FIX: Box primitive types to Objects before calling TaylorResult.ok(Object)
+            // This prevents VerifyError: Type integer is not assignable to Object
+            typeHelper.boxPrimitiveToObject(argType)
         } else {
             methodVisitor.visitInsn(ACONST_NULL)
         }

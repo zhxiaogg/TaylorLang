@@ -119,7 +119,7 @@ class TryExpressionBytecodeTest {
                 name = "e"
             ),
             guardExpression = null,
-            body = Literal.StringLiteral("caught error")
+            body = createOkResultExpression("caught error")
         )
         
         val tryExpr = TryExpression(
@@ -143,7 +143,7 @@ class TryExpressionBytecodeTest {
                 name = "iae"
             ),
             guardExpression = null,
-            body = Literal.StringLiteral("illegal argument")
+            body = createOkResultExpression("illegal argument")
         )
         
         val catchClause2 = CatchClause(
@@ -151,7 +151,7 @@ class TryExpressionBytecodeTest {
                 name = "e"
             ),
             guardExpression = null,
-            body = Literal.StringLiteral("general error")
+            body = createOkResultExpression("general error")
         )
         
         val tryExpr = TryExpression(
@@ -213,19 +213,23 @@ class TryExpressionBytecodeTest {
         // Test try expressions integrate properly with basic language features
         // We create a function that uses try expression to unwrap a Result and then do arithmetic on it
         
-        val tryExpr = TryExpression(
-            expression = BinaryOp(
-                left = Literal.IntLiteral(20),
-                operator = BinaryOperator.PLUS,
-                right = TryExpression(
-                    expression = createOkResultExpression(22),
-                    catchClauses = persistentListOf()
-                )
-            ),
+        // Create a simple try expression that unwraps a Result value
+        // This should return 42 (Int), not Result<Int, Throwable>
+        val innerTryExpr = TryExpression(
+            expression = createOkResultExpression(22),
             catchClauses = persistentListOf()
         )
         
-        val program = createProgramWithTryExpression(tryExpr, BuiltinTypes.INT)
+        // Create a binary operation that adds 20 + (try Result.ok(22))
+        // The try expression should unwrap to 22, so this becomes 20 + 22 = 42
+        val binaryOp = BinaryOp(
+            left = Literal.IntLiteral(20),
+            operator = BinaryOperator.PLUS,
+            right = innerTryExpr
+        )
+        
+        // Wrap the binary operation in an Ok Result to match the function return type
+        val program = createProgramWithBinaryOpResult(binaryOp)
         val result = compileAndTest(program, "IntegrationTest")
         
         assertTrue(result.isSuccess, "Try expression with arithmetic should compile successfully")
@@ -305,6 +309,30 @@ class TryExpressionBytecodeTest {
             ),
             returnType = resultReturnType, // Main function returns Result<T, E> to allow try expressions
             body = FunctionBody.ExpressionBody(tryExpr)
+        )
+        
+        return Program(persistentListOf(mainFunction))
+    }
+
+    /**
+     * Create a program with a binary operation wrapped in a Result in the main function.
+     */
+    private fun createProgramWithBinaryOpResult(binaryOp: BinaryOp): Program {
+        // Wrap the binary operation in a TaylorResult.ok() call
+        val resultExpression = FunctionCall(
+            target = Identifier("TaylorResult.ok"),
+            arguments = persistentListOf(binaryOp)
+        )
+        
+        val resultReturnType = BuiltinTypes.createResultType(BuiltinTypes.INT, BuiltinTypes.THROWABLE)
+        
+        val mainFunction = FunctionDecl(
+            name = "main",
+            parameters = persistentListOf(
+                Parameter("args", BuiltinTypes.STRING)
+            ),
+            returnType = resultReturnType,
+            body = FunctionBody.ExpressionBody(resultExpression)
         )
         
         return Program(persistentListOf(mainFunction))
