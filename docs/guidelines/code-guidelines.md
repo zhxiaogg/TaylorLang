@@ -169,6 +169,11 @@ Rationale: Why this change matters
 - **False success rate claims**: Implementation status claims (e.g., "100% test success rate") must be verified against actual test execution results before code review acceptance
 - **Test execution validation failure**: Claims of complete test success must be validated by running full test suite, not just isolated subset tests
 - **Status misrepresentation anti-pattern**: Reporting success statistics from narrow test subsets while ignoring broader test suite failures undermines review integrity
+- **Build failure masking**: Claiming implementation success while project build fails with 17 test failures (97% success vs required 100%)
+- **Test isolation validation error**: TryExpression tests passing in isolation does not validate overall codebase health
+- **Mega file proliferation**: Multiple files exceeding 500-line limit - TypeCheckerTest.kt (978 lines), BytecodeGenerator.kt (859 lines), EndToEndExecutionTest.kt (770 lines)
+- **Critical file size violations**: Files between 600-978 lines requiring immediate decomposition into focused modules
+- **Type system integration regressions**: Test failures in core type checking functionality indicating system instability
 
 ### Code Smells
 - **Feature envy**: Classes accessing other classes' data excessively
