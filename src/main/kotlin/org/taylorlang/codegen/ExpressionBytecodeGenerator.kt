@@ -903,7 +903,8 @@ class ExpressionBytecodeGenerator(
                         if (arg != null) {
                             val argType = typeInferenceHelper(arg)
                             
-                            if (argType is Type.NamedType && argType.name == "String") {
+                            if ((argType is Type.NamedType && argType.name == "String") || 
+                                (argType is Type.PrimitiveType && argType.name == "String")) {
                                 // Create RuntimeException from string
                                 methodVisitor.visitTypeInsn(NEW, "java/lang/RuntimeException")
                                 methodVisitor.visitInsn(DUP)
@@ -956,6 +957,8 @@ class ExpressionBytecodeGenerator(
                         if (arg != null) {
                             val argType = typeInferenceHelper(arg)
                             generateExpression(TypedExpression(arg, argType))
+                            // CRITICAL FIX: Box primitive types to Object for constructor
+                            boxPrimitiveToObject(argType)
                         } else {
                             methodVisitor.visitInsn(ACONST_NULL)
                         }
@@ -1021,6 +1024,8 @@ class ExpressionBytecodeGenerator(
                         if (firstArg != null) {
                             val argType = typeInferenceHelper(firstArg)
                             generateExpression(TypedExpression(firstArg, argType))
+                            // CRITICAL FIX: Box primitive types to Object for constructor
+                            boxPrimitiveToObject(argType)
                         } else {
                             methodVisitor.visitInsn(ACONST_NULL)
                         }
@@ -1030,6 +1035,8 @@ class ExpressionBytecodeGenerator(
                         if (secondArg != null) {
                             val argType = typeInferenceHelper(secondArg)
                             generateExpression(TypedExpression(secondArg, argType))
+                            // CRITICAL FIX: Box primitive types to Object for constructor
+                            boxPrimitiveToObject(argType)
                         } else {
                             methodVisitor.visitInsn(ACONST_NULL)
                         }

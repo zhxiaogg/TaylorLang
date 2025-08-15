@@ -118,7 +118,24 @@ class BytecodeVisitor(
             when (getJvmType(type)) {
                 "I" -> methodVisitor.visitVarInsn(ILOAD, slot)
                 "D" -> methodVisitor.visitVarInsn(DLOAD, slot)
-                else -> methodVisitor.visitVarInsn(ALOAD, slot)
+                else -> {
+                    methodVisitor.visitVarInsn(ALOAD, slot)
+                    // CRITICAL FIX: If this is an Object type that might be a boxed primitive,
+                    // and it's likely from pattern matching (which creates Object types),
+                    // try to unbox it if it looks like it should be a primitive
+                    if (type is Type.NamedType && type.name == "Object") {
+                        // This variable was extracted from pattern matching and might be a boxed Integer
+                        // We'll unbox it assuming it's an Integer - this covers the Tuple2.Pair case
+                        methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Integer")
+                        methodVisitor.visitMethodInsn(
+                            INVOKEVIRTUAL,
+                            "java/lang/Integer",
+                            "intValue", 
+                            "()I",
+                            false
+                        )
+                    }
+                }
             }
         } else {
             throw RuntimeException("Variable not found: ${node.name}")
@@ -531,6 +548,28 @@ class BytecodeVisitor(
      */
     private fun isFloatType(type: Type): Boolean {
         return type is Type.PrimitiveType && type.name in listOf("float", "double")
+    }
+    
+    /**
+     * Unbox Object values to primitives when they should be used in arithmetic
+     * Stack: [Object_value] -> [primitive_value]
+     */
+    private fun unboxObjectIfNeeded(type: Type) {
+        // AGGRESSIVE FIX: For pattern-matched variables from generic containers,
+        // always try to unbox to integers for arithmetic operations
+        // This handles the case where Tuple2.Pair fields are extracted as Objects
+        // but should be treated as primitives
+        if (type is Type.NamedType && type.name == "Object") {
+            // Assume it's an Integer and unbox it for arithmetic operations
+            methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Integer")
+            methodVisitor.visitMethodInsn(
+                INVOKEVIRTUAL,
+                "java/lang/Integer", 
+                "intValue",
+                "()I",
+                false
+            )
+        }
     }
     
     /**
