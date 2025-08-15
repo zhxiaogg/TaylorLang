@@ -15,6 +15,11 @@ type User = SystemUser | Customer | Guest
 // Standard library types (provided by stdlib)
 // type Result<T, E> = Ok(T) | Error(E)  // This is defined in stdlib
 
+// Custom domain-specific types
+type ApiResponse = 
+  | Success(data: String)
+  | Failed(message: String)
+
 type HttpResponse = 
   | Success(status: Int, body: String)
   | Redirect(url: String) 
@@ -134,75 +139,32 @@ match (user1, user2) {
 
 ## Result Types and Error Handling
 
-### Result Type Definition
+TaylorLang provides a Result type for explicit error handling that directly integrates with JVM's exception hierarchy:
 
 ```kotlin
-// Standard library type (provided by stdlib)
-// type Result<T, E> = Ok(T) | Error(E)  // This is defined in stdlib
+// Standard library Result type (provided by stdlib)
+type Result<T, E extends Throwable> = Ok(T) | Error(E)
 
-type DatabaseError = 
-  | ConnectionFailed(message: String)
-  | UserNotFound(id: String)
-  | ValidationError(field: String, reason: String)
-```
-
-### Using try for Error Propagation
-
-```kotlin
-// Basic try syntax - unwraps Result or propagates error
-fn findUserSafe(id: String): Result<User?, DatabaseError> => {
-  val user = try database.findUser(id)  // database.findUser returns Result
-  Ok(user)
+// Using specific JVM exception types
+fn readFile(path: String): Result<String, IOException> => {
+  try File(path).readText()
 }
 
-// try with null handling
-fn getUserName(id: String): Result<String?, DatabaseError> => {
-  val userName = try database.findUser(id)?.name
-  Ok(userName)
-}
-
-// Explicit error handling
-fn findUserWithLogging(id: String): Result<User?, DatabaseError> => {
-  try {
-    val user = try database.findUser(id)
-    Ok(user)
-  } catch {
-    case ConnectionFailed(msg) => {
-      log.error("Database connection failed: ${msg}")
-      Error(ConnectionFailed(msg))
-    }
-    case err => Error(err)
-  }
+fn parseNumber(input: String): Result<Int, NumberFormatException> => {
+  try Integer.parseInt(input)
 }
 ```
 
-### Error Propagation Rules
-
-1. **Functions returning Result**: Can use `try` to unwrap other Results
-2. **Functions not returning Result**: Compile error when using `try`
-3. **Automatic propagation**: Errors bubble up automatically unless caught
+### Pattern Matching with Results
 
 ```kotlin
-// Valid - function returns Result
-fn processUser(id: String): Result<String, DatabaseError> => {
-  val user = try database.findUser(id)
-  Ok(user?.name ?: "Anonymous")
-}
-
-// Compile error - function doesn't return Result
-fn processUser(id: String): String => {
-  val user = try database.findUser(id)  // ERROR: No Result in return type
-  user?.name ?: "Anonymous"
-}
-
-// Valid - explicit unwrap with error handling
-fn processUser(id: String): String => {
-  match database.findUser(id) {
-    case Ok(user) => user?.name ?: "Anonymous"
-    case Error(_) => "Error occurred"
-  }
+fn processResult<T>(result: Result<T, Exception>) => match result {
+  case Ok(value) => println("Success: ${value}")
+  case Error(error) => println("Failed: ${error.message}")
 }
 ```
+
+For comprehensive documentation on error handling patterns, try expressions, and JVM integration, see [Error Handling](error-handling.md).
 
 ## Pattern Matching with Types
 

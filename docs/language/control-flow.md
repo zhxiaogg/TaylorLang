@@ -52,3 +52,35 @@ val numbers = List.of(1, 2, 3, 4, 5)
 val processed = numbers.map(x => x * 2)
 ```
 
+## Error Handling with Try Expressions
+
+TaylorLang provides try expressions for type-safe error handling. For comprehensive documentation on error handling, see [Error Handling](error-handling.md).
+
+### Basic Try Expression Usage
+
+```kotlin
+// Try expressions work with any expression type
+fn getTimestamp(): Result<Long, Throwable> => {
+  try System.currentTimeMillis()  // Wraps result or catches exceptions
+}
+
+// Result type pass-through
+fn processFiles(): Result<String, IOException> => {
+  val content = try readFile("data.txt")  // Result<String, IOException> -> String
+  Ok(content.toUpperCase())
+}
+
+// Exception handling
+fn robustOperation(): Result<Data, Exception> => {
+  try {
+    val data = loadData()  // May throw various exceptions
+    Ok(data)
+  } catch {
+    case IOException(e) => Error(e)
+    case e: RuntimeException => throw e  // Re-throw unexpected errors
+  }
+}
+```
+
+For detailed error handling patterns, type rules, and JVM integration, see the [Error Handling](error-handling.md) documentation.
+
