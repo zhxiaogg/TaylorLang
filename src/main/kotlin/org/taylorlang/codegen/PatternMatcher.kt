@@ -44,14 +44,24 @@ class PatternMatcher(
             is Pattern.WildcardPattern -> {
                 // Wildcard patterns always match - they match any value
                 // Pop the target value that was loaded for comparison since wildcards don't need to compare
-                methodVisitor.visitInsn(POP)
+                // CRITICAL FIX: Use POP2 for double values (they occupy 2 stack slots)
+                if (targetType == BuiltinTypes.DOUBLE || (targetType is Type.PrimitiveType && targetType.name.lowercase() in listOf("double", "float"))) {
+                    methodVisitor.visitInsn(POP2)
+                } else {
+                    methodVisitor.visitInsn(POP)
+                }
                 methodVisitor.visitJumpInsn(GOTO, successLabel)
             }
             is Pattern.IdentifierPattern -> {
                 // Identifier patterns always match - they just bind the value
                 // Pop the target value that was loaded for comparison
                 // since identifier patterns don't need to compare, just bind
-                methodVisitor.visitInsn(POP)
+                // CRITICAL FIX: Use POP2 for double values (they occupy 2 stack slots)
+                if (targetType == BuiltinTypes.DOUBLE || (targetType is Type.PrimitiveType && targetType.name.lowercase() in listOf("double", "float"))) {
+                    methodVisitor.visitInsn(POP2)
+                } else {
+                    methodVisitor.visitInsn(POP)
+                }
                 methodVisitor.visitJumpInsn(GOTO, successLabel)
             }
             is Pattern.ConstructorPattern -> {
