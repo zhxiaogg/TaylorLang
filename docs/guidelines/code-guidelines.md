@@ -23,6 +23,12 @@
 - **Nesting limit**: Maximum 3-4 levels of nesting
 - **Length limit**: Functions under 50 lines preferred
 
+### Pattern Matching Requirements
+- **Exhaustive patterns**: All pattern matching MUST be exhaustive - cover every possible case
+- **No else branches**: NEVER use `else` branches when exhaustive pattern matching is possible
+- **Explicit unimplemented cases**: For unsupported branches, throw explicit errors like `TODO()` or `NotImplementedError()`
+- **Prevent silent failures**: Ensure no unexpected behavior when running tests due to missing cases
+
 ### Variable and Naming
 - **Self-documenting**: Names explain intent without comments
 - **Consistent conventions**: Follow established patterns in codebase
@@ -106,6 +112,8 @@ Rationale: Why this change matters
 - [ ] **No critical security or correctness issues**: Zero tolerance
 - [ ] **Proper error handling for all edge cases**: Must be comprehensive
 - [ ] **Consistent with project conventions**: No deviations allowed
+- [ ] **Exhaustive pattern matching**: All pattern matches must be exhaustive with no `else` branches
+- [ ] **Explicit unimplemented cases**: Unsupported branches must throw explicit errors, not fail silently
 
 ### Code Should Have
 - [ ] Self-documenting variable and function names
@@ -138,6 +146,11 @@ Rationale: Why this change matters
 - **Deep nesting**: More than 4 levels of indentation
 - **Magic numbers**: Unexplained constants throughout code
 - **Shotgun surgery**: Changes requiring edits across many files
+- **Non-exhaustive patterns**: Using `else` branches instead of explicit pattern matching
+- **Silent pattern failures**: Missing cases that cause unexpected behavior during testing
+- **Monolithic bytecode generators**: Single files handling multiple bytecode generation concerns
+- **Debug file contamination**: Temporary .taylor files, debug artifacts committed to repository
+- **Type inference inconsistency**: Identifier expressions not checking variable slot types
 
 ### Code Smells
 - **Feature envy**: Classes accessing other classes' data excessively
@@ -182,5 +195,7 @@ Rationale: Why this change matters
 - **Repository contamination**: Temporary files, debug code, commented code, IDE files
 - **Dirty working directory**: Uncommitted changes, untracked temporary files
 - **Missing .gitignore entries**: Generated files not properly excluded
+- **Non-exhaustive pattern matching**: Using `else` branches when exhaustive patterns are possible
+- **Silent pattern failures**: Missing cases that could cause unexpected test behavior
 
 **NO EXCEPTIONS POLICY**: Previous issues do not excuse new violations. All code must meet standards regardless of existing codebase state.
