@@ -10,11 +10,11 @@
 
 ### COMPLETED CONVERSIONS
 
-#### ✅ Constructor Pattern Matching - COMPLETED (2025-08-14)
-**STATUS**: **EXCEPTIONAL SUCCESS** - Constructor patterns fully operational
-**ACHIEVEMENT**: 5/5 ConstructorPatternBytecodeTest tests passing (100% success rate)
-**TECH IMPACT**: Critical VerifyError "Inconsistent stackmap frames" RESOLVED
-**PROJECT HEALTH**: 762/795 tests passing (95.8% success rate - stable)
+#### 🔴 Constructor Pattern Matching - REGRESSION DETECTED (2025-08-15)
+**STATUS**: **CRITICAL REGRESSION** - VerifyError returned in test_constructor_patterns.taylor
+**FAILURE**: "Inconsistent stackmap frames at branch target 165" in runtime execution
+**IMPACT**: Previously working pattern matching now failing in integration tests
+**ROOT CAUSE**: Bytecode generation regression affecting stackmap frame consistency
 
 **TECHNICAL COMPLETION**:
 - ✅ Complete `PatternBytecodeCompiler.generateConstructorPatternMatch()` implementation
@@ -30,15 +30,45 @@
 - ✅ Integration with union type system (ACHIEVED)
 - ✅ Type checking validates field access correctly (ACHIEVED)
 
-### NEXT PRIORITY TARGET
+### IMMEDIATE CRITICAL PRIORITY
 
-#### 🔴 Lambda Expressions Implementation - HIGH PRIORITY (Active)
-**STATUS**: **NEXT SYSTEMATIC CONVERSION TARGET** 
-**ASSIGNEE**: kotlin-java-engineer
-**COMPONENT**: Language Features - Functional Programming
-**EFFORT**: Large (5-7 days)
-**PRIORITY**: HIGH - Core modern language feature
-**TEST FILE**: `test_lambda_expressions.taylor` (needs conversion from simulation to real syntax)
+#### 🔴 Constructor Pattern Regression Fix - CRITICAL BLOCKING (Active)
+**STATUS**: **CRITICAL REGRESSION BLOCKING ALL PROGRESS**
+**ASSIGNEE**: kotlin-java-engineer  
+**COMPONENT**: Pattern Matching - Bytecode Generation
+**EFFORT**: Medium (2-3 days)
+**PRIORITY**: CRITICAL - Blocking all test conversion progress
+**TEST FILE**: `test_constructor_patterns.taylor` (VerifyError in runtime execution)
+
+**WHY**: Constructor pattern matching was previously working but now has runtime VerifyError. This represents a critical regression that must be resolved before any new feature development.
+
+**WHAT**: Fix the "Inconsistent stackmap frames at branch target 165" VerifyError in constructor pattern bytecode generation to restore functionality.
+
+**HOW**: Debug JVM bytecode generation in PatternBytecodeCompiler, analyze stackmap frame consistency, research JVM verification requirements for pattern matching branches.
+
+**SUCCESS CRITERIA**:
+- ✅ test_constructor_patterns.taylor runs without VerifyError
+- ✅ All constructor pattern integration tests pass
+- ✅ No regressions in other pattern matching functionality
+- ✅ Stackmap frames are consistent across all pattern branches
+- ✅ JVM verification passes for all generated pattern bytecode
+
+### NEXT SYSTEMATIC TARGET (After Regression Fix)
+
+#### 🔵 Higher-Order Functions Conversion - HIGH PRIORITY (Queued)
+**STATUS**: **NEXT CONVERSION TARGET AFTER REGRESSION FIX**
+**PRIORITY**: HIGH - Real syntax conversion per user requirements
+**TEST FILE**: `test_higher_order_functions.taylor` (currently uses simulation syntax)
+
+**DISCOVERY**: Lambda expressions test (`test_lambda_expressions.taylor`) already uses REAL syntax and PASSES completely! This means:
+- ✅ Lambda parsing is working
+- ✅ Lambda type checking is working  
+- ✅ Lambda creation works in runtime
+- ✅ Test conversion for lambdas is ALREADY COMPLETE
+
+**ACTUAL STATUS**: The user's requirement to "convert test cases from simulation to real syntax" reveals that `test_higher_order_functions.taylor` is the NEXT case needing conversion (currently uses `if (true)` simulation patterns).
+
+**STRATEGIC INSIGHT**: Lambda foundation is solid - higher-order functions (map/filter/reduce) need real collection types and lambda application bytecode for complete conversion.
 
 **WHY**: Lambda expressions are fundamental to functional programming and enable higher-order functions, collection operations, and modern coding patterns essential for developer adoption. This continues our proven systematic conversion approach.
 

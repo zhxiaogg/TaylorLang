@@ -26,11 +26,49 @@
 **PROJECT HEALTH**: 762/795 tests passing (95.8% success rate - stable)
 **IMPACT**: Production-ready constructor pattern matching for union types now operational
 
-### NEXT PRIORITY: LAMBDA EXPRESSIONS IMPLEMENTATION - HIGH PRIORITY (2025-08-15)
+### CRITICAL REGRESSION: CONSTRUCTOR PATTERN VERIFYERROR - BLOCKING (2025-08-15)
 
-**STATUS**: 🔴 **CRITICAL HIGH PRIORITY** - Next systematic conversion target
-**CURRENT SITUATION**: test_lambda_expressions.taylor needs conversion from simulation to real syntax
-**STRATEGIC IMPORTANCE**: Lambda expressions are fundamental for modern functional programming and enable higher-order functions
+**STATUS**: 🔴 **CRITICAL REGRESSION BLOCKING ALL PROGRESS**
+**CURRENT SITUATION**: test_constructor_patterns.taylor failing with VerifyError "Inconsistent stackmap frames at branch target 165"
+**BLOCKING IMPACT**: Previously working pattern matching now fails in integration tests - must be fixed before any new development
+
+#### Task: Fix Constructor Pattern VerifyError Regression
+**Status**: 🔴 **CRITICAL BLOCKING PRIORITY** (2025-08-15)
+**Assignee**: kotlin-java-engineer
+**Component**: Pattern Matching - Bytecode Generation Regression
+**Effort**: Medium (2-3 days)
+**Priority**: CRITICAL - Blocking all test conversion progress
+
+**WHY**: Constructor pattern matching was previously working with 100% test success rate but now has runtime VerifyError. This represents a critical regression that blocks all further development and test conversion work.
+
+**WHAT**: Fix the "Inconsistent stackmap frames at branch target 165" VerifyError in constructor pattern bytecode generation to restore functional pattern matching.
+
+**HOW**: 
+1. Debug JVM bytecode generation in PatternBytecodeCompiler.generateConstructorPatternMatch()
+2. Analyze stackmap frame consistency across pattern matching branches  
+3. Research JVM verification requirements for complex pattern matching control flow
+4. Verify bytecode instruction sequences maintain proper stack frame states
+5. Test against various pattern matching scenarios to ensure comprehensive fix
+
+**SUCCESS CRITERIA**:
+- ✅ test_constructor_patterns.taylor runs without VerifyError
+- ✅ All constructor pattern integration tests pass (5/5 ConstructorPatternBytecodeTest)
+- ✅ No regressions in other pattern matching functionality
+- ✅ Stackmap frames are consistent across all pattern branches
+- ✅ JVM verification passes for all generated pattern bytecode
+- ✅ Manual execution of pattern matching programs works correctly
+
+**RESOURCES**:
+- JVM specification stackmap frame requirements
+- ASM bytecode generation best practices for control flow
+- Pattern matching bytecode generation patterns in other JVM languages
+- JVM verification error debugging techniques
+
+### NEXT PRIORITY: HIGHER-ORDER FUNCTIONS CONVERSION - HIGH PRIORITY (After Regression Fix)
+
+**STATUS**: 🔵 **NEXT CONVERSION TARGET** - Queued after regression fix  
+**DISCOVERY**: Lambda expressions test already uses REAL syntax and PASSES! test_higher_order_functions.taylor is the actual next conversion target
+**STRATEGIC IMPORTANCE**: Continue systematic test conversion from simulation to real syntax per user requirements
 
 #### Task: Implement assert() Built-in Function for Test Validation
 **Status**: 🔴 **CRITICAL HIGH PRIORITY** (2025-08-14)
