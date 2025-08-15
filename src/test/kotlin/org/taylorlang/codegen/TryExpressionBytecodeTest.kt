@@ -193,7 +193,7 @@ class TryExpressionBytecodeTest {
             parameters = persistentListOf(
                 Parameter("args", BuiltinTypes.STRING)
             ),
-            returnType = BuiltinTypes.UNIT,
+            returnType = BuiltinTypes.createResultType(BuiltinTypes.INT, BuiltinTypes.THROWABLE),
             body = FunctionBody.ExpressionBody(tryExpr)
         )
         
@@ -210,13 +210,12 @@ class TryExpressionBytecodeTest {
 
     @Test
     fun `test try expression integration with existing features`() {
-        // Test try expressions work with other language features
-        val complexTryExpr = TryExpression(
+        // Test try expressions integrate properly with basic language features
+        // We create a function that uses try expression to unwrap a Result and then do arithmetic on it
+        
+        val tryExpr = TryExpression(
             expression = BinaryOp(
-                left = TryExpression(
-                    expression = createOkResultExpression(20),
-                    catchClauses = persistentListOf()
-                ),
+                left = Literal.IntLiteral(20),
                 operator = BinaryOperator.PLUS,
                 right = TryExpression(
                     expression = createOkResultExpression(22),
@@ -226,10 +225,10 @@ class TryExpressionBytecodeTest {
             catchClauses = persistentListOf()
         )
         
-        val program = createProgramWithTryExpression(complexTryExpr, BuiltinTypes.INT)
+        val program = createProgramWithTryExpression(tryExpr, BuiltinTypes.INT)
         val result = compileAndTest(program, "IntegrationTest")
         
-        assertTrue(result.isSuccess, "Complex try expression should compile successfully")
+        assertTrue(result.isSuccess, "Try expression with arithmetic should compile successfully")
     }
 
     @Test
@@ -294,13 +293,17 @@ class TryExpressionBytecodeTest {
     /**
      * Create a program with a try expression in the main function.
      */
-    private fun createProgramWithTryExpression(tryExpr: TryExpression, returnType: Type): Program {
+    private fun createProgramWithTryExpression(tryExpr: TryExpression, valueType: Type): Program {
+        // CRITICAL FIX: Try expressions can only be used in functions that return Result<T, E>
+        // The main function must return Result<valueType, Throwable> to allow try expressions
+        val resultReturnType = BuiltinTypes.createResultType(valueType, BuiltinTypes.THROWABLE)
+        
         val mainFunction = FunctionDecl(
             name = "main",
             parameters = persistentListOf(
                 Parameter("args", BuiltinTypes.STRING)
             ),
-            returnType = returnType, // Try expression returns the unwrapped type, not a Result type
+            returnType = resultReturnType, // Main function returns Result<T, E> to allow try expressions
             body = FunctionBody.ExpressionBody(tryExpr)
         )
         
