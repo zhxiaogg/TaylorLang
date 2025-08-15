@@ -71,7 +71,8 @@ sealed class TypedFunctionBody {
  */
 class StatementTypeChecker(
     private var context: TypeContext,
-    private val scopeManager: ScopeManager = ScopeManager()
+    private val scopeManager: ScopeManager = ScopeManager(),
+    private val expressionStrategy: TypeCheckingStrategy? = null
 ) : BaseASTVisitor<Result<TypedStatement>>() {
     
     override fun defaultResult(): Result<TypedStatement> {
@@ -252,8 +253,15 @@ class StatementTypeChecker(
     }
     
     override fun visitValDecl(node: ValDecl): Result<TypedStatement> {
-        val expressionChecker = ExpressionTypeChecker(context)
-        return node.initializer.accept(expressionChecker).mapCatching { typedInitializer ->
+        // Use the provided expression strategy if available, otherwise fall back to ExpressionTypeChecker
+        val typedInitializerResult = if (expressionStrategy != null) {
+            expressionStrategy.typeCheckExpression(node.initializer, context)
+        } else {
+            val expressionChecker = ExpressionTypeChecker(context)
+            node.initializer.accept(expressionChecker)
+        }
+        
+        return typedInitializerResult.mapCatching { typedInitializer ->
             val inferredType = typedInitializer.type
             
             // Check declared type matches inferred type if provided
@@ -288,8 +296,15 @@ class StatementTypeChecker(
     }
     
     override fun visitVarDecl(node: VarDecl): Result<TypedStatement> {
-        val expressionChecker = ExpressionTypeChecker(context)
-        return node.initializer.accept(expressionChecker).mapCatching { typedInitializer ->
+        // Use the provided expression strategy if available, otherwise fall back to ExpressionTypeChecker
+        val typedInitializerResult = if (expressionStrategy != null) {
+            expressionStrategy.typeCheckExpression(node.initializer, context)
+        } else {
+            val expressionChecker = ExpressionTypeChecker(context)
+            node.initializer.accept(expressionChecker)
+        }
+        
+        return typedInitializerResult.mapCatching { typedInitializer ->
             val inferredType = typedInitializer.type
             
             // Check declared type matches inferred type if provided

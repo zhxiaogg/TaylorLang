@@ -171,7 +171,7 @@ class RefactoredTypeChecker(
         val sharedScopeManager = ScopeManager()
         
         for (statement in statements) {
-            val statementChecker = StatementTypeChecker(currentContext, sharedScopeManager)
+            val statementChecker = StatementTypeChecker(currentContext, sharedScopeManager, strategy)
             val result = statement.accept(statementChecker)
             
             result.fold(
