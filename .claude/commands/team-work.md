@@ -33,6 +33,7 @@ Claude → Determine agent based on task type and launch appropriate agent:
 - @agent-code-reviewer: Code quality assessment, review processes, guideline enforcement  
 - @agent-system-design-architect: Architecture decisions, design patterns, system boundaries
 - @agent-jvm-bytecode-expert: JVM issues, bytecode analysis, verification errors
+- @agent-taylor-lang-expert: Taylor language design compliance, language specification validation
 
 Pass complete task specification to selected agent:
 - Agent executes task following project standards
@@ -40,7 +41,18 @@ Pass complete task specification to selected agent:
 - Agent returns completion status and outcome details
 ```
 
-### 4. Code Review (MANDATORY)
+### 4. Taylor Language Design Review (MANDATORY)
+```
+Claude → Launch @agent-taylor-lang-expert:
+- Review implementations for Taylor language design compliance
+- Ensure code aligns with Taylor's language principles and patterns
+- Validate that test cases properly exercise Taylor language features
+- Check consistency with Taylor language specifications
+- Return APPROVE/REJECT with detailed feedback
+- If REJECT: provide specific language design compliance requirements
+```
+
+### 5. Code Review (MANDATORY)
 ```
 Claude → Launch @agent-code-reviewer:
 - Review all code changes for quality, maintainability, and standards
@@ -50,7 +62,7 @@ Claude → Launch @agent-code-reviewer:
 - If REJECT: provide specific improvement requirements
 ```
 
-### 5. Architecture Review (CONDITIONAL)
+### 6. Architecture Review (CONDITIONAL)
 ```
 IF task involves system design, architecture, or significant structural changes:
   Claude → Launch @agent-system-design-architect:
@@ -60,20 +72,22 @@ IF task involves system design, architecture, or significant structural changes:
   - Return APPROVE/REJECT with architectural feedback
 ```
 
-### 6. Document Knowledge (MANDATORY)
+### 7. Document Knowledge (MANDATORY)
 ```
 Each agent maintains their own documentation:
 - Implementation agents update relevant docs with patterns discovered
 - Code reviewer updates code guidelines with new rules
 - System architect updates architecture guidelines with new patterns
 - JVM expert updates JVM knowledge base with insights
+- Taylor language expert updates language specification and design documentation
 - All documentation must be concise and crisp, focused on intention over verbose details
 ```
 
-### 7. Tech Lead Final Approval
+### 8. Tech Lead Final Approval
 ```
 Claude → Launch @agent-tech-lead with comprehensive outcome:
 - Pass completed work details and status
+- Include Taylor language design review results (APPROVE/REJECT + feedback)
 - Include code review results (APPROVE/REJECT + feedback)
 - Include architecture review results (if applicable)
 - Include agent self-documentation status
@@ -82,7 +96,7 @@ Claude → Launch @agent-tech-lead with comprehensive outcome:
 - Tech lead prepares for next iteration of workflow loop
 ```
 
-### 8. Loop Continuation
+### 9. Loop Continuation
 ```
 REPEAT from step 1:
 Continue until @agent-tech-lead indicates no further tasks available
@@ -96,13 +110,14 @@ WHILE (project not complete):
        BREAK  // Project fully implemented
   3. agent = determine_appropriate_agent(task)
   4. outcome = execute_task_with_agent(agent, task)
-  5. code_review = review_code_with_code_reviewer(outcome)
-  6. IF task_requires_architecture_review(task):
+  5. taylor_lang_review = review_taylor_language_design(outcome)
+  6. code_review = review_code_with_code_reviewer(outcome)
+  7. IF task_requires_architecture_review(task):
        architecture_review = review_architecture_with_architect(outcome)
-  7. self_documentation = agents_maintain_own_docs(outcome, reviews)
-  8. final_approval = get_tech_lead_approval(outcome, code_review, architecture_review, self_documentation)
-  9. IF final_approval == REJECT:
-       CONTINUE  // Return to step 3 with feedback for rework
+  8. self_documentation = agents_maintain_own_docs(outcome, reviews)
+  9. final_approval = get_tech_lead_approval(outcome, taylor_lang_review, code_review, architecture_review, self_documentation)
+  10. IF final_approval == REJECT:
+        CONTINUE  // Return to step 3 with feedback for rework
 END WHILE
 
 Project delivery complete - no remaining tasks
@@ -141,6 +156,13 @@ Project delivery complete - no remaining tasks
 - **Verification Issues**: Resolve JVM verification errors and class loading problems
 - **Performance Analysis**: Optimize JVM-specific performance bottlenecks
 
+### @agent-taylor-lang-expert
+- **Language Design Compliance**: Ensure all implementations align with Taylor language design
+- **Specification Validation**: Verify code follows Taylor language principles and patterns
+- **Test Case Review**: Validate that test cases properly exercise Taylor language features
+- **Consistency Enforcement**: Check consistency with Taylor language specifications
+- **Documentation Authority**: Own and maintain Taylor language design documentation
+
 ## Workflow Coordination Rules
 
 ### Task Handoff Protocol
@@ -149,14 +171,16 @@ Project delivery complete - no remaining tasks
 3. Agent receives full context and requirements
 4. Agent executes task independently
 5. Agent reports completion with detailed outcome
-6. **MANDATORY**: Code reviewer reviews all code changes
-7. **CONDITIONAL**: Architecture reviewer reviews structural changes (if applicable)
-8. Each agent maintains their own documentation concisely
-9. Tech lead makes final approval based on all review results
-10. If approved: proceed to next task; if rejected: rework with feedback
+6. **MANDATORY**: Taylor language expert reviews for language design compliance
+7. **MANDATORY**: Code reviewer reviews all code changes
+8. **CONDITIONAL**: Architecture reviewer reviews structural changes (if applicable)
+9. Each agent maintains their own documentation concisely
+10. Tech lead makes final approval based on all review results
+11. If approved: proceed to next task; if rejected: rework with feedback
 
 ### Quality Assurance
 - Each agent maintains responsibility for quality within their domain
+- **MANDATORY Taylor language design review** ensures all changes align with language specifications
 - **MANDATORY code review** ensures all changes meet quality standards
 - **CONDITIONAL architecture review** ensures structural integrity for significant changes
 - **Tech lead final approval** acts as quality gate combining all review inputs
