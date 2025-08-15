@@ -87,14 +87,14 @@ class ArithmeticExpressionChecker(
                 if (typesCompatible(leftType, BuiltinTypes.STRING) || typesCompatible(rightType, BuiltinTypes.STRING)) {
                     BuiltinTypes.STRING
                 } else {
-                    // Numeric addition
-                    BuiltinTypes.getWiderNumericType(leftType, rightType)
+                    // Numeric addition (including type variables)
+                    getWiderNumericTypeWithTypeVars(leftType, rightType)
                 }
             }
             BinaryOperator.MINUS, 
             BinaryOperator.MULTIPLY, BinaryOperator.DIVIDE, 
             BinaryOperator.MODULO -> {
-                BuiltinTypes.getWiderNumericType(leftType, rightType)
+                getWiderNumericTypeWithTypeVars(leftType, rightType)
             }
             
             BinaryOperator.LESS_THAN, BinaryOperator.LESS_EQUAL,
@@ -126,6 +126,9 @@ class ArithmeticExpressionChecker(
         return when (operator) {
             UnaryOperator.MINUS -> {
                 if (BuiltinTypes.isNumeric(operandType)) {
+                    operandType
+                } else if (operandType is Type.NamedType && isTypeVariable(operandType.name)) {
+                    // Assume type variable can be numeric
                     operandType
                 } else null
             }
@@ -169,5 +172,44 @@ class ArithmeticExpressionChecker(
                 TypeOperations.getWiderType(type1, type2)
             }
         }
+    }
+    
+    /**
+     * Handle numeric type promotion including type variables.
+     * If either operand is a type variable, assume it can be numeric.
+     */
+    private fun getWiderNumericTypeWithTypeVars(leftType: Type, rightType: Type): Type? {
+        // First try the normal numeric type promotion
+        val normalResult = BuiltinTypes.getWiderNumericType(leftType, rightType)
+        if (normalResult != null) {
+            return normalResult
+        }
+        
+        // If that fails, check if we have type variables
+        val leftIsTypeVar = leftType is Type.NamedType && isTypeVariable(leftType.name)
+        val rightIsTypeVar = rightType is Type.NamedType && isTypeVariable(rightType.name)
+        
+        return when {
+            leftIsTypeVar && rightIsTypeVar -> {
+                // Both are type variables - return the left one (arbitrary choice)
+                leftType
+            }
+            leftIsTypeVar && BuiltinTypes.isNumeric(rightType) -> {
+                // Left is type variable, right is numeric - constrain left to be the right type
+                rightType
+            }
+            BuiltinTypes.isNumeric(leftType) && rightIsTypeVar -> {
+                // Left is numeric, right is type variable - constrain right to be the left type
+                leftType
+            }
+            else -> null
+        }
+    }
+    
+    /**
+     * Check if a name looks like a type variable (starts with T followed by digits).
+     */
+    private fun isTypeVariable(name: String): Boolean {
+        return name.matches(Regex("T\\d+"))
     }
 }

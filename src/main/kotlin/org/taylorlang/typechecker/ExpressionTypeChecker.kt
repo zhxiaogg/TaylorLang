@@ -1,5 +1,6 @@
 package org.taylorlang.typechecker
 
+import kotlinx.collections.immutable.toPersistentList
 import org.taylorlang.ast.*
 import org.taylorlang.ast.visitor.BaseASTVisitor
 
@@ -53,6 +54,7 @@ class ExpressionTypeChecker(
             is WhileExpression -> controlFlowChecker.visitWhileExpression(node)
             is MatchExpression -> controlFlowChecker.visitMatchExpression(node)
             is BlockExpression -> visitBlockExpression(node)
+            is LambdaExpression -> visitLambdaExpression(node)
             is Literal -> literalChecker.visitLiteral(node)
             else -> defaultResult()
         }
@@ -178,6 +180,33 @@ class ExpressionTypeChecker(
         }
         
         return Result.success(TypedExpression(node, blockType))
+    }
+    
+    override fun visitLambdaExpression(node: LambdaExpression): Result<TypedExpression> {
+        // Create fresh type variables for each parameter
+        val parameterTypes = node.parameters.map { TypeVar.fresh() }
+        
+        // Create new context with parameter bindings
+        var lambdaContext = context
+        node.parameters.zip(parameterTypes).forEach { (paramName, paramType) ->
+            lambdaContext = lambdaContext.withVariable(paramName, Type.NamedType(paramType.id))
+        }
+        
+        // Type check the lambda body in the new context
+        val bodyChecker = ExpressionTypeChecker(lambdaContext)
+        return node.body.accept(bodyChecker).fold(
+            onSuccess = { typedBody ->
+                // Create function type from parameter types and body type
+                val functionType = Type.FunctionType(
+                    parameterTypes = parameterTypes.map { Type.NamedType(it.id) }.toPersistentList(),
+                    returnType = typedBody.type
+                )
+                Result.success(TypedExpression(node, functionType))
+            },
+            onFailure = { error ->
+                Result.failure(error)
+            }
+        )
     }
     
     // =============================================================================
