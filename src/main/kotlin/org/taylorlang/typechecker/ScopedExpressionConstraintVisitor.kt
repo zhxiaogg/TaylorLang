@@ -207,8 +207,36 @@ class ScopedExpressionConstraintVisitor(
             allConstraints = allConstraints.add(unificationConstraint)
         }
         
-        // CRITICAL: Try expressions return the unwrapped value type (String, Int, etc.), NOT Result types
-        return ConstraintResult(unwrappedType, allConstraints)
+        // CRITICAL: Try expressions return Result<T, E> types, not unwrapped value types
+        val errorType = catchProcessingResult.unifiedErrorType ?: BuiltinTypes.THROWABLE
+        val resultType = BuiltinTypes.createResultType(unwrappedType, errorType)
+        
+        // Add constraint to ensure Result type consistency with function return type
+        if (functionReturnType != null && BuiltinTypes.isResultType(functionReturnType)) {
+            val returnTypeValueType = BuiltinTypes.getResultValueType(functionReturnType)
+            val returnTypeErrorType = BuiltinTypes.getResultErrorType(functionReturnType)
+            
+            // Generate constraints to unify Result components
+            if (returnTypeValueType != null) {
+                val valueTypeConstraint = Constraint.Equality(
+                    unwrappedType,
+                    returnTypeValueType,
+                    tryExpr.sourceLocation
+                )
+                allConstraints = allConstraints.add(valueTypeConstraint)
+            }
+            
+            if (returnTypeErrorType != null) {
+                val errorTypeConstraint = Constraint.Equality(
+                    errorType,
+                    returnTypeErrorType,
+                    tryExpr.sourceLocation
+                )
+                allConstraints = allConstraints.add(errorTypeConstraint)
+            }
+        }
+        
+        return ConstraintResult(resultType, allConstraints)
     }
     
     // =============================================================================
