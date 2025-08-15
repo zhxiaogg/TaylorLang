@@ -139,18 +139,24 @@ class TryExpressionBytecodeGenerator(
      * @param endLabel label to jump to after propagation
      */
     private fun generateErrorPropagation(sourceLocation: String, endLabel: Label) {
-        // Enhance error with location information
-        methodVisitor.visitLdcInsn(sourceLocation)
+        // CRITICAL FIX: For try expressions without catch clauses that are supposed to unwrap values,
+        // we need to extract the error and throw it as an exception, not return a Result.
+        // This ensures consistent stack types at the merge point.
+        
+        // Cast to TaylorResult.Error and extract the error
+        methodVisitor.visitTypeInsn(CHECKCAST, "org/taylorlang/runtime/TaylorResult\$Error")
         methodVisitor.visitMethodInsn(
-            INVOKESTATIC,
-            "org/taylorlang/runtime/TryLocationTracker",
-            "propagateError",
-            "(Lorg/taylorlang/runtime/TaylorResult;Ljava/lang/String;)Lorg/taylorlang/runtime/TaylorResult;",
+            INVOKEVIRTUAL,
+            "org/taylorlang/runtime/TaylorResult\$Error",
+            "getError", 
+            "()Ljava/lang/Throwable;",
             false
         )
         
-        // The enhanced Result is already on the stack, ready to return
-        methodVisitor.visitJumpInsn(GOTO, endLabel)
+        // Throw the extracted error as a RuntimeException
+        methodVisitor.visitInsn(ATHROW)
+        
+        // Note: No GOTO needed because ATHROW never returns
     }
     
     /**

@@ -1,0 +1,280 @@
+Initialized native services in: /Users/xiaoguang/.gradle/native
+Initialized jansi services in: /Users/xiaoguang/.gradle/native
+Received JVM installation metadata from '/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home': {JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home, JAVA_VERSION=17.0.6, JAVA_VENDOR=Eclipse Adoptium, RUNTIME_NAME=OpenJDK Runtime Environment, RUNTIME_VERSION=17.0.6+10, VM_NAME=OpenJDK 64-Bit Server VM, VM_VERSION=17.0.6+10, VM_VENDOR=Eclipse Adoptium, OS_ARCH=aarch64}
+The client will now receive all logging from the daemon (pid: 65421). The daemon log file: /Users/xiaoguang/.gradle/daemon/8.10/daemon-65421.out.log
+Starting 241st build in daemon [uptime: 6 hrs 57 mins 6.362 secs, performance: 100%, GC rate: 0.00/s, heap usage: 11% of 512 MiB, non-heap usage: 31% of 384 MiB]
+Using 10 worker leases.
+Now considering [/Users/xiaoguang/work/repos/bloomstack/taylor/TaylorLang] as hierarchies to watch
+Watching the file system is configured to be enabled if available
+File system watching is active
+Starting Build
+Transforming foojay-resolver-0.8.0.jar (org.gradle.toolchains:foojay-resolver:0.8.0) with InstrumentationAnalysisTransform
+Transforming gson-2.10.1.jar (com.google.code.gson:gson:2.10.1) with InstrumentationAnalysisTransform
+Transforming foojay-resolver-0.8.0.jar (org.gradle.toolchains:foojay-resolver:0.8.0) with InstrumentationAnalysisTransform
+Transforming foojay-resolver-0.8.0.jar (org.gradle.toolchains:foojay-resolver:0.8.0) with MergeInstrumentationAnalysisTransform
+Transforming gson-2.10.1.jar (com.google.code.gson:gson:2.10.1) with InstrumentationAnalysisTransform
+Transforming gson-2.10.1.jar (com.google.code.gson:gson:2.10.1) with MergeInstrumentationAnalysisTransform
+Transforming foojay-resolver-0.8.0.jar (org.gradle.toolchains:foojay-resolver:0.8.0) with ExternalDependencyInstrumentingArtifactTransform
+Transforming gson-2.10.1.jar (com.google.code.gson:gson:2.10.1) with ExternalDependencyInstrumentingArtifactTransform
+Settings evaluated using settings file '/Users/xiaoguang/work/repos/bloomstack/taylor/TaylorLang/settings.gradle.kts'.
+Projects loaded. Root project using build file '/Users/xiaoguang/work/repos/bloomstack/taylor/TaylorLang/build.gradle.kts'.
+Included projects: [root project 'TaylorLang']
+
+> Configure project :
+Evaluating root project 'TaylorLang' using build file '/Users/xiaoguang/work/repos/bloomstack/taylor/TaylorLang/build.gradle.kts'.
+Transforming kotlin-gradle-plugin-model-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-model:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-api-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-2.1.10-gradle85.jar (org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-idea-proto-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea-proto:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-idea-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-klib-commonizer-api-2.1.10.jar (org.jetbrains.kotlin:kotlin-klib-commonizer-api:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-build-statistics-2.1.10.jar (org.jetbrains.kotlin:kotlin-build-statistics:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-util-klib-metadata-2.1.10.jar (org.jetbrains.kotlin:kotlin-util-klib-metadata:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-compiler-runner-2.1.10.jar (org.jetbrains.kotlin:kotlin-compiler-runner:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-annotations-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-annotations:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-native-utils-2.1.10.jar (org.jetbrains.kotlin:kotlin-native-utils:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-tooling-core-2.1.10.jar (org.jetbrains.kotlin:kotlin-tooling-core:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-build-tools-api-2.1.10.jar (org.jetbrains.kotlin:kotlin-build-tools-api:2.1.10) with InstrumentationAnalysisTransform
+Transforming gson-2.8.9.jar (com.google.code.gson:gson:2.8.9) with InstrumentationAnalysisTransform
+Transforming kotlin-util-klib-2.1.10.jar (org.jetbrains.kotlin:kotlin-util-klib:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-util-io-2.1.10.jar (org.jetbrains.kotlin:kotlin-util-io:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-daemon-client-2.1.10.jar (org.jetbrains.kotlin:kotlin-daemon-client:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlinx-coroutines-core-jvm-1.6.4.jar (org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.4) with InstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-model-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-model:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-model-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-model:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-api-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-api-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-model-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-model:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-gradle-plugin-2.1.10-gradle85.jar (org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-2.1.10-gradle85.jar (org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-api-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-gradle-plugin-idea-proto-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea-proto:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-idea-proto-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea-proto:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-2.1.10-gradle85.jar (org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-gradle-plugin-idea-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-idea-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-idea-proto-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea-proto:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-klib-commonizer-api-2.1.10.jar (org.jetbrains.kotlin:kotlin-klib-commonizer-api:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-klib-commonizer-api-2.1.10.jar (org.jetbrains.kotlin:kotlin-klib-commonizer-api:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-idea-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-build-statistics-2.1.10.jar (org.jetbrains.kotlin:kotlin-build-statistics:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-build-statistics-2.1.10.jar (org.jetbrains.kotlin:kotlin-build-statistics:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-klib-commonizer-api-2.1.10.jar (org.jetbrains.kotlin:kotlin-klib-commonizer-api:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-util-klib-metadata-2.1.10.jar (org.jetbrains.kotlin:kotlin-util-klib-metadata:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-build-statistics-2.1.10.jar (org.jetbrains.kotlin:kotlin-build-statistics:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-util-klib-metadata-2.1.10.jar (org.jetbrains.kotlin:kotlin-util-klib-metadata:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-compiler-runner-2.1.10.jar (org.jetbrains.kotlin:kotlin-compiler-runner:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-compiler-runner-2.1.10.jar (org.jetbrains.kotlin:kotlin-compiler-runner:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-util-klib-metadata-2.1.10.jar (org.jetbrains.kotlin:kotlin-util-klib-metadata:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-gradle-plugin-annotations-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-annotations:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-annotations-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-annotations:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-native-utils-2.1.10.jar (org.jetbrains.kotlin:kotlin-native-utils:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-native-utils-2.1.10.jar (org.jetbrains.kotlin:kotlin-native-utils:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-gradle-plugin-annotations-2.1.10.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-annotations:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-compiler-runner-2.1.10.jar (org.jetbrains.kotlin:kotlin-compiler-runner:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-tooling-core-2.1.10.jar (org.jetbrains.kotlin:kotlin-tooling-core:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-tooling-core-2.1.10.jar (org.jetbrains.kotlin:kotlin-tooling-core:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-build-tools-api-2.1.10.jar (org.jetbrains.kotlin:kotlin-build-tools-api:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-tooling-core-2.1.10.jar (org.jetbrains.kotlin:kotlin-tooling-core:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-build-tools-api-2.1.10.jar (org.jetbrains.kotlin:kotlin-build-tools-api:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming gson-2.8.9.jar (com.google.code.gson:gson:2.8.9) with InstrumentationAnalysisTransform
+Transforming kotlin-native-utils-2.1.10.jar (org.jetbrains.kotlin:kotlin-native-utils:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-build-tools-api-2.1.10.jar (org.jetbrains.kotlin:kotlin-build-tools-api:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming gson-2.8.9.jar (com.google.code.gson:gson:2.8.9) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-util-klib-2.1.10.jar (org.jetbrains.kotlin:kotlin-util-klib:2.1.10) with InstrumentationAnalysisTransform
+Transforming gson-2.8.9.jar (com.google.code.gson:gson:2.8.9) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-util-klib-2.1.10.jar (org.jetbrains.kotlin:kotlin-util-klib:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-util-io-2.1.10.jar (org.jetbrains.kotlin:kotlin-util-io:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-util-io-2.1.10.jar (org.jetbrains.kotlin:kotlin-util-io:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-util-klib-2.1.10.jar (org.jetbrains.kotlin:kotlin-util-klib:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-util-io-2.1.10.jar (org.jetbrains.kotlin:kotlin-util-io:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-daemon-client-2.1.10.jar (org.jetbrains.kotlin:kotlin-daemon-client:2.1.10) with InstrumentationAnalysisTransform
+Transforming kotlin-daemon-client-2.1.10.jar (org.jetbrains.kotlin:kotlin-daemon-client:2.1.10) with MergeInstrumentationAnalysisTransform
+Transforming kotlinx-coroutines-core-jvm-1.6.4.jar (org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.4) with InstrumentationAnalysisTransform
+Transforming kotlinx-coroutines-core-jvm-1.6.4.jar (org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.4) with MergeInstrumentationAnalysisTransform
+Transforming kotlin-daemon-client-2.1.10.jar (org.jetbrains.kotlin:kotlin-daemon-client:2.1.10) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlinx-coroutines-core-jvm-1.6.4.jar (org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.4) with ExternalDependencyInstrumentingArtifactTransform
+Using Kotlin Gradle Plugin gradle85 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+All projects evaluated.
+Task name matched 'test'
+Selected primary task 'test' from project :
+Starting process 'command '/usr/libexec/java_home''. Working directory: /Users/xiaoguang/.gradle/daemon/8.10 Command: /usr/libexec/java_home -V
+Successfully started process 'command '/usr/libexec/java_home''
+Tasks to be executed: [task ':checkKotlinGradlePluginConfigurationErrors', task ':generateGrammarSource', task ':compileKotlin', task ':compileJava', task ':processResources', task ':classes', task ':jar', task ':generateTestGrammarSource', task ':compileTestKotlin', task ':compileTestJava', task ':processTestResources', task ':testClasses', task ':test']
+Tasks that were excluded: []
+Resolve mutations for :checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker,5,main]) started.
+:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker,5,main]) started.
+
+> Task :checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :generateGrammarSource (Thread[Execution worker,5,main]) started.
+:generateGrammarSource (Thread[Execution worker,5,main]) started.
+
+> Task :generateGrammarSource UP-TO-DATE
+Caching disabled for task ':generateGrammarSource' because:
+  Build cache is disabled
+Skipping task ':generateGrammarSource' as it is up-to-date.
+Resolve mutations for :compileKotlin (Thread[Execution worker,5,main]) started.
+:compileKotlin (Thread[Execution worker,5,main]) started.
+
+> Task :compileKotlin UP-TO-DATE
+Transforming antlr4-4.13.1.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotlinx-collections-immutable-jvm-0.3.6.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotlin-stdlib-jdk8-1.9.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotlin-stdlib-jdk7-1.9.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotlin-stdlib-2.1.10.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming antlr4-runtime-4.13.1.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming asm-tree-9.6.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming asm-9.6.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming ST4-4.3.4.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming antlr-runtime-3.5.3.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming org.abego.treelayout.core-1.0.3.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming icu4j-72.1.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming annotations-13.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Caching disabled for task ':compileKotlin' because:
+  Build cache is disabled
+Skipping task ':compileKotlin' as it is up-to-date.
+Resolve mutations for :compileJava (Thread[Execution worker,5,main]) started.
+:compileJava (Thread[Execution worker,5,main]) started.
+
+> Task :compileJava UP-TO-DATE
+Caching disabled for task ':compileJava' because:
+  Build cache is disabled
+Skipping task ':compileJava' as it is up-to-date.
+No compile result for :compileJava
+Resolve mutations for :processResources (Thread[Execution worker,5,main]) started.
+:processResources (Thread[Execution worker,5,main]) started.
+
+> Task :processResources NO-SOURCE
+Skipping task ':processResources' as it has no source files and no previous output files.
+Resolve mutations for :classes (Thread[Execution worker,5,main]) started.
+:classes (Thread[Execution worker Thread 6,5,main]) started.
+
+> Task :classes UP-TO-DATE
+Skipping task ':classes' as it has no actions.
+Resolve mutations for :jar (Thread[Execution worker Thread 6,5,main]) started.
+:jar (Thread[Execution worker Thread 6,5,main]) started.
+
+> Task :jar UP-TO-DATE
+Caching disabled for task ':jar' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':jar' as it is up-to-date.
+Resolve mutations for :generateTestGrammarSource (Thread[Execution worker Thread 6,5,main]) started.
+:generateTestGrammarSource (Thread[Execution worker Thread 6,5,main]) started.
+
+> Task :generateTestGrammarSource NO-SOURCE
+Skipping task ':generateTestGrammarSource' as it has no source files and no previous output files.
+Resolve mutations for :compileTestKotlin (Thread[Execution worker Thread 6,5,main]) started.
+:compileTestKotlin (Thread[Execution worker Thread 4,5,main]) started.
+
+> Task :compileTestKotlin UP-TO-DATE
+Transforming main with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming main with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming antlr4-4.13.1.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotlinx-collections-immutable-jvm-0.3.6.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotest-runner-junit5-jvm-5.8.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotest-assertions-core-jvm-5.8.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotest-property-jvm-5.8.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming mockk-jvm-1.13.8.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotest-framework-engine-jvm-5.8.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotest-framework-api-jvm-5.8.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotest-framework-discovery-jvm-5.8.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotest-common-jvm-5.8.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotest-extensions-jvm-5.8.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotest-framework-concurrency-jvm-5.8.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotlinx-coroutines-test-jvm-1.7.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotlinx-coroutines-core-jvm-1.7.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotest-assertions-shared-jvm-5.8.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming mockk-dsl-jvm-1.13.8.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming mockk-agent-jvm-1.13.8.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming mockk-agent-api-jvm-1.13.8.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming mockk-core-jvm-1.13.8.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotest-assertions-api-jvm-5.8.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotlin-stdlib-jdk8-1.9.10.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotlin-stdlib-jdk7-1.9.10.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming mordant-1.2.1.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming colormath-1.2.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming kotlin-stdlib-2.1.10.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming antlr4-runtime-4.13.1.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming asm-tree-9.6.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming asm-9.6.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming ST4-4.3.4.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming antlr-runtime-3.5.3.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming org.abego.treelayout.core-1.0.3.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming icu4j-72.1.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming annotations-23.0.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming junit-platform-suite-api-1.8.2.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming junit-jupiter-api-5.8.2.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming junit-platform-commons-1.8.2.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming junit-platform-launcher-1.8.2.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming junit-platform-engine-1.8.2.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming rgxgen-1.4.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming opentest4j-1.2.0.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming apiguardian-api-1.1.2.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming classgraph-4.8.162.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming objenesis-3.3.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming byte-buddy-1.14.6.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Transforming byte-buddy-agent-1.14.6.jar with BuildToolsApiClasspathEntrySnapshotTransform
+Caching disabled for task ':compileTestKotlin' because:
+  Build cache is disabled
+Skipping task ':compileTestKotlin' as it is up-to-date.
+Resolve mutations for :compileTestJava (Thread[Execution worker Thread 4,5,main]) started.
+:compileTestJava (Thread[Execution worker Thread 4,5,main]) started.
+
+> Task :compileTestJava NO-SOURCE
+Skipping task ':compileTestJava' as it has no source files and no previous output files.
+Resolve mutations for :processTestResources (Thread[Execution worker Thread 4,5,main]) started.
+:processTestResources (Thread[Execution worker Thread 4,5,main]) started.
+
+> Task :processTestResources UP-TO-DATE
+Caching disabled for task ':processTestResources' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':processTestResources' as it is up-to-date.
+Resolve mutations for :testClasses (Thread[Execution worker Thread 4,5,main]) started.
+:testClasses (Thread[Execution worker,5,main]) started.
+
+> Task :testClasses UP-TO-DATE
+Skipping task ':testClasses' as it has no actions.
+Resolve mutations for :test (Thread[Execution worker,5,main]) started.
+:test (Thread[Execution worker,5,main]) started.
+Gradle Test Executor 218 started executing tests.
+Gradle Test Executor 218 finished executing tests.
+
+> Task :test FAILED
+Caching disabled for task ':test' because:
+  Build cache is disabled
+Task ':test' is not up-to-date because:
+  Task has failed previously.
+file or directory '/Users/xiaoguang/work/repos/bloomstack/taylor/TaylorLang/build/classes/java/test', not found
+Starting process 'Gradle Test Executor 218'. Working directory: /Users/xiaoguang/work/repos/bloomstack/taylor/TaylorLang Command: /Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home/bin/java -Dorg.gradle.internal.worker.tmpdir=/Users/xiaoguang/work/repos/bloomstack/taylor/TaylorLang/build/tmp/test/work @/Users/xiaoguang/.gradle/.tmp/gradle-worker-classpath2341949523952101269txt -Xmx512m -Dfile.encoding=UTF-8 -Duser.country=CA -Duser.language=en -Duser.variant -ea worker.org.gradle.process.internal.worker.GradleWorkerMain 'Gradle Test Executor 218'
+Successfully started process 'Gradle Test Executor 218'
+
+TryExpressionBytecodeTest > test try expression execution with Ok result() FAILED
+    java.lang.VerifyError: (class: OkExecutionTest, method: main signature: ([Ljava/lang/String;)V) Mismatched stack types
+        at java.base/java.lang.Class.getDeclaredMethods0(Native Method)
+        at java.base/java.lang.Class.privateGetDeclaredMethods(Class.java:3402)
+        at java.base/java.lang.Class.getDeclaredMethod(Class.java:2673)
+        at org.taylorlang.codegen.TryExpressionBytecodeTest.compileAndExecute-gIAlu-s(TryExpressionBytecodeTest.kt:383)
+        at org.taylorlang.codegen.TryExpressionBytecodeTest.test try expression execution with Ok result(TryExpressionBytecodeTest.kt:210)
+
+1 test completed, 1 failed
+Finished generating test XML results (0.0 secs) into: /Users/xiaoguang/work/repos/bloomstack/taylor/TaylorLang/build/test-results/test
+Generating HTML test report...
+Finished generating test html results (0.001 secs) into: /Users/xiaoguang/work/repos/bloomstack/taylor/TaylorLang/build/reports/tests/test
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///Users/xiaoguang/work/repos/bloomstack/taylor/TaylorLang/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 2s
+7 actionable tasks: 1 executed, 6 up-to-date
+Watched directory hierarchies: [/Users/xiaoguang/work/repos/bloomstack/taylor/TaylorLang]

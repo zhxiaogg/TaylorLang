@@ -509,7 +509,15 @@ class BytecodeGenerator {
                         generateFunctionExpression(body.expression, functionExprGen, functionControlFlowGen, methodVisitor)
                         
                         if (isMainFunction) {
-                            // Main function should return void
+                            // Main function should return void, but may have generated a value on stack
+                            // CRITICAL FIX: Pop the generated value before returning from main
+                            if (getJvmType(body.expression.type) != "V") {
+                                if (getJvmType(body.expression.type) == "D") {
+                                    methodVisitor.visitInsn(POP2) // Pop double value (2 slots)
+                                } else {
+                                    methodVisitor.visitInsn(POP) // Pop single value
+                                }
+                            }
                             methodVisitor.visitInsn(RETURN)
                         } else {
                             // Regular function returns the expression value
