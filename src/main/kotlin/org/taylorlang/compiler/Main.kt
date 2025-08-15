@@ -1,7 +1,7 @@
 package org.taylorlang.compiler
 
 import org.taylorlang.parser.TaylorLangParser
-import org.taylorlang.typechecker.TypeChecker
+import org.taylorlang.typechecker.RefactoredTypeChecker
 import org.taylorlang.codegen.BytecodeGenerator
 import java.io.File
 import kotlin.system.exitProcess
@@ -35,7 +35,7 @@ fun main(args: Array<String>) {
  */
 fun compile(source: String, fileName: String) {
     val parser = TaylorLangParser()
-    val typeChecker = TypeChecker()
+    val typeChecker = RefactoredTypeChecker()
     val codeGenerator = BytecodeGenerator()
     
     // Phase 1: Parsing

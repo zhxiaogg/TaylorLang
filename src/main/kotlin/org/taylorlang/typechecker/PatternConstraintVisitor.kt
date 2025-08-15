@@ -1,6 +1,7 @@
 package org.taylorlang.typechecker
 
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toPersistentList
 import org.taylorlang.ast.*
 
 /**
@@ -112,7 +113,18 @@ class PatternConstraintVisitor(
         }
         
         // Add constraint that target type matches constructor type
-        val constructorType = Type.UnionType(unionTypeName, persistentListOf())
+        // Generate type arguments if the union type is generic
+        val typeArguments = if (typeDef.typeParameters.isNotEmpty()) {
+            // Create fresh type variables for each type parameter
+            typeDef.typeParameters.map {
+                val freshVar = TypeVar.fresh()
+                Type.NamedType(freshVar.id)
+            }.toPersistentList()
+        } else {
+            persistentListOf<Type>()
+        }
+        
+        val constructorType = Type.UnionType(unionTypeName, typeArguments)
         val typeConstraint = Constraint.Equality(targetType, constructorType, pattern.sourceLocation)
         
         return Pair(allConstraints.add(typeConstraint), allBindings)
