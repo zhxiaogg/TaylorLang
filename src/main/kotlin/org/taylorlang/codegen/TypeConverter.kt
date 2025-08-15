@@ -67,6 +67,30 @@ class TypeConverter(private val methodVisitor: MethodVisitor) {
                 methodVisitor.visitInsn(D2I)
             }
             
+            // String to numeric conversions (for pattern matching compatibility)
+            fromJvmType == "Ljava/lang/String;" && toJvmType == "I" -> {
+                convertStringToInt()
+            }
+            fromJvmType == "Ljava/lang/String;" && toJvmType == "D" -> {
+                convertStringToDouble()
+            }
+            
+            // Numeric to String conversions (for pattern matching compatibility)
+            fromJvmType == "I" && toJvmType == "Ljava/lang/String;" -> {
+                convertIntToString()
+            }
+            fromJvmType == "D" && toJvmType == "Ljava/lang/String;" -> {
+                convertDoubleToString()
+            }
+            fromJvmType == "Z" && toJvmType == "Ljava/lang/String;" -> {
+                convertBooleanToString()
+            }
+            
+            // String to Object conversions
+            fromJvmType == "Ljava/lang/String;" && toJvmType == "Ljava/lang/Object;" -> {
+                // String is already an Object, no conversion needed
+            }
+            
             else -> {
                 throw IllegalArgumentException("Unsupported type conversion from $fromType to $toType")
             }
@@ -160,6 +184,71 @@ class TypeConverter(private val methodVisitor: MethodVisitor) {
     private fun castToClass(targetJvmType: String) {
         val className = targetJvmType.substring(1, targetJvmType.length - 1) // Remove L and ;
         methodVisitor.visitTypeInsn(CHECKCAST, className)
+    }
+    
+    /**
+     * Convert String to int using Integer.parseInt().
+     */
+    private fun convertStringToInt() {
+        methodVisitor.visitMethodInsn(
+            INVOKESTATIC,
+            "java/lang/Integer",
+            "parseInt",
+            "(Ljava/lang/String;)I",
+            false
+        )
+    }
+    
+    /**
+     * Convert String to double using Double.parseDouble().
+     */
+    private fun convertStringToDouble() {
+        methodVisitor.visitMethodInsn(
+            INVOKESTATIC,
+            "java/lang/Double",
+            "parseDouble",
+            "(Ljava/lang/String;)D",
+            false
+        )
+    }
+    
+    /**
+     * Convert int to String using Integer.toString().
+     */
+    private fun convertIntToString() {
+        methodVisitor.visitMethodInsn(
+            INVOKESTATIC,
+            "java/lang/Integer",
+            "toString",
+            "(I)Ljava/lang/String;",
+            false
+        )
+    }
+    
+    /**
+     * Convert double to String using Double.toString().
+     */
+    private fun convertDoubleToString() {
+        methodVisitor.visitMethodInsn(
+            INVOKESTATIC,
+            "java/lang/Double",
+            "toString",
+            "(D)Ljava/lang/String;",
+            false
+        )
+    }
+    
+    /**
+     * Convert boolean to String using Boolean.toString().
+     */
+    private fun convertBooleanToString() {
+        methodVisitor.visitMethodInsn(
+            INVOKESTATIC,
+            "java/lang/Boolean",
+            "toString",
+            "(Z)Ljava/lang/String;",
+            false
+        )
     }
     
     /**
