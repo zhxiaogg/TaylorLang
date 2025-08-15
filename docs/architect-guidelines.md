@@ -1,0 +1,104 @@
+# Architecture Guidelines
+
+## Core Principles
+
+### System Boundaries
+- **Module Isolation**: Each module must have clear, well-defined responsibilities
+- **Interface Design**: Define explicit contracts between modules through interfaces
+- **Dependency Direction**: Dependencies flow inward toward core business logic
+- **Boundary Violations**: Flag any cross-boundary coupling or circular dependencies
+
+### Design Patterns
+- **Strategy Pattern**: Use for algorithm variations and behavioral switching
+- **Factory Pattern**: Use for object creation with complex initialization
+- **Observer Pattern**: Use for event-driven communication between modules
+- **Command Pattern**: Use for encapsulating operations and supporting undo/redo
+- **Adapter Pattern**: Use for integrating external systems without coupling
+
+### Complexity Management
+- **Single Responsibility**: Each class/module serves one clear purpose
+- **Open/Closed Principle**: Extend behavior through composition, not modification
+- **Dependency Inversion**: Depend on abstractions, not concrete implementations
+- **Interface Segregation**: Create focused, cohesive interfaces
+- **DRY Principle**: Eliminate duplication through proper abstraction
+
+## Architecture Standards
+
+### File Organization
+- Maximum 500 lines per file
+- Group related functionality in focused modules
+- Separate concerns: data, logic, presentation, infrastructure
+
+### Module Structure
+```
+src/
+├── core/           # Business logic and domain models
+├── adapters/       # External system interfaces
+├── services/       # Application services
+├── utils/          # Shared utilities
+└── types/          # Type definitions
+```
+
+### Dependency Rules
+1. Core modules depend on no external modules
+2. Service modules depend only on core and other services
+3. Adapter modules depend on services and core
+4. Utilities are dependency-free and stateless
+
+### Error Handling Architecture
+- Use Result/Either types for recoverable errors
+- Throw exceptions only for programming errors
+- Centralize error logging and monitoring
+- Define error boundaries at module interfaces
+
+## Design Decision Framework
+
+### Trade-off Analysis
+When making architectural decisions, evaluate:
+- **Performance vs Maintainability**: Favor maintainability unless performance is critical
+- **Flexibility vs Simplicity**: Choose simplicity unless flexibility is required
+- **Abstraction vs Concreteness**: Abstract only when patterns emerge
+
+### Refactoring Guidelines
+1. **Identify Smells**: God objects, feature envy, shotgun surgery
+2. **Extract Methods**: Break large functions into focused operations
+3. **Extract Classes**: Separate concerns into cohesive units
+4. **Introduce Interfaces**: Define contracts for external dependencies
+5. **Eliminate Duplication**: Create shared abstractions for common patterns
+
+## Code Quality Metrics
+
+### Complexity Indicators
+- Cyclomatic complexity: Maximum 10 per method
+- Class coupling: Maximum 7 dependencies per class
+- Inheritance depth: Maximum 4 levels
+- Method parameters: Maximum 5 parameters
+
+### Architecture Validation
+- No circular dependencies between modules
+- Clear separation between layers
+- Consistent naming conventions across modules
+- Proper error handling at all boundaries
+
+## Review Checklist
+
+### High-Level Assessment
+- [ ] Clear module boundaries and responsibilities
+- [ ] Appropriate use of design patterns
+- [ ] Proper dependency direction
+- [ ] Separation of concerns maintained
+
+### Detailed Review
+- [ ] No god objects or large classes
+- [ ] Interfaces define clear contracts
+- [ ] Error handling is consistent and appropriate
+- [ ] Code is organized logically within modules
+- [ ] Abstractions are justified and useful
+
+## Escalation Criteria
+
+Escalate architectural decisions when:
+- Cross-cutting concerns affect multiple modules
+- Performance requirements conflict with maintainability
+- New patterns emerge that could benefit the entire codebase
+- External system integration requires new architectural approaches
