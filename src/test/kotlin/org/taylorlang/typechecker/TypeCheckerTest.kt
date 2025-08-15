@@ -138,7 +138,7 @@ class TypeCheckerTest : StringSpec({
         result.exceptionOrNull() should beInstanceOf<TypeError.UnresolvedSymbol>()
     }
 
-    "should fail for type mismatches in binary operations" {
+    "should allow string concatenation with numbers" {
         val expression = BinaryOp(
             left = Literal.StringLiteral("hello"),
             operator = BinaryOperator.PLUS,
@@ -147,9 +147,9 @@ class TypeCheckerTest : StringSpec({
         val context = TypeContext()
         
         val result = typeChecker.typeCheckExpression(expression, context)
+            .getOrThrow()
         
-        result.isFailure shouldBe true
-        result.exceptionOrNull() should beInstanceOf<TypeError.InvalidOperation>()
+        result.type shouldBe BuiltinTypes.STRING
     }
 
     "should type check tuple literals" {
@@ -645,11 +645,11 @@ class TypeCheckerTest : StringSpec({
         val result = typeChecker.typeCheck(program)
         
         result.isFailure shouldBe true
-        // Should collect multiple errors
+        // Should collect multiple errors (string concatenation is valid, so only 2 errors expected)
         val errors = result.exceptionOrNull()
         errors should beInstanceOf<TypeError.MultipleErrors>()
         val multipleErrors = errors as TypeError.MultipleErrors
-        multipleErrors.errors.size shouldBe 3
+        multipleErrors.errors.size shouldBe 2
     }
 
     // =============================================================================
@@ -974,6 +974,7 @@ class TypeCheckerTest : StringSpec({
         
         result.statements.size shouldBe 4
         val matchResult = result.statements.last() as TypedStatement.VariableDeclaration
-        matchResult.inferredType shouldBe BuiltinTypes.INT
+        // Compare types using structural equality (ignoring source locations)
+        TypeOperations.areEqual(matchResult.inferredType, BuiltinTypes.INT) shouldBe true
     }
 })
