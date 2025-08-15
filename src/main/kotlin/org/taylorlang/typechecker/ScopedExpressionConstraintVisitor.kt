@@ -204,17 +204,12 @@ class ScopedExpressionConstraintVisitor(
         // The try expression should evaluate to the value type (unwrapped from Result)
         val tryValueType = if (BuiltinTypes.isResultType(tryResult.type)) {
             val extractedValueType = BuiltinTypes.getResultValueType(tryResult.type)
-            println("DEBUG: tryResult.type = ${tryResult.type}")
-            println("DEBUG: isResultType = true")
-            println("DEBUG: extractedValueType = $extractedValueType")
             extractedValueType ?: run {
                 // Create fresh type variable if we can't extract the value type
                 val freshVar = TypeVar.fresh()
                 Type.NamedType(freshVar.id)
             }
         } else {
-            println("DEBUG: tryResult.type = ${tryResult.type}")
-            println("DEBUG: isResultType = false")
             tryResult.type
         }
         
@@ -245,8 +240,8 @@ class ScopedExpressionConstraintVisitor(
             allConstraints = allConstraints.merge(unificationConstraints)
         }
         
-        println("DEBUG: Final tryValueType being returned = $tryValueType")
-        return ConstraintResult(tryValueType, allConstraints) // Return the unwrapped value type from the try expression
+        // Try expressions should always return Result types for type checking
+        return ConstraintResult(resultType, allConstraints)
     }
     
     // =============================================================================
