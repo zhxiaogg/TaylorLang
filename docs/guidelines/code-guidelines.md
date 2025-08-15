@@ -157,6 +157,10 @@ Rationale: Why this change matters
 - **Refactoring regression risks**: Large architectural changes must preserve exact functional behavior - type inference logic extraction particularly prone to behavioral changes
 - **Pattern matching coordinator violations**: When extracting specialized generators, ensure all Literal subtypes are handled exhaustively (TupleLiteral, NullLiteral often missed)
 - **Component integration failures**: Refactored coordinator patterns must maintain all original integration points (TryExpression pattern compiler dependencies)
+- **Incomplete Result type infrastructure**: TryExpression integration failures often caused by missing BuiltinTypes.createResultType() or TaylorResult runtime classes
+- **Type checking coordinator gaps**: ScopedExpressionConstraintVisitor TryExpression logic must properly validate Result-returning function contexts
+- **Bytecode generation runtime dependencies**: TryExpressionBytecodeGenerator requires complete TaylorResult runtime integration and proper PatternBytecodeCompiler initialization
+- **Test failure masking integration defects**: 37% pass rate in TryExpressionBytecodeTest and 17% in TryExpressionTypeCheckingTest indicates systematic integration failure requiring complete rework
 
 ### Code Smells
 - **Feature envy**: Classes accessing other classes' data excessively
