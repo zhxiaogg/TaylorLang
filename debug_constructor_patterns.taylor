@@ -1,0 +1,26 @@
+// Debug version to see which assertion fails
+
+// Union type definition
+type Result<T, E> = Ok(T) | Error(E)
+
+// Pattern 1: Result type with constructor patterns  
+val result = Ok(42)
+val processedResult = match result {
+    case Ok(value) => "Success: " + value
+    case Error(err) => "Error: " + err
+}
+println("Pattern 1 result: " + processedResult)
+assert(processedResult == "Success: 42")
+println("Pattern 1 passed")
+
+// Pattern 4: Error case that was working in the test  
+val simpleResult = Error("not found")
+val errorMessage = match simpleResult {
+    case Ok(data) => "Got: " + data
+    case Error(msg) => "Error: " + msg
+}
+println("Pattern 4 result: " + errorMessage)
+assert(errorMessage == "Error: not found")
+println("Pattern 4 passed")
+
+println("Debug test completed!")

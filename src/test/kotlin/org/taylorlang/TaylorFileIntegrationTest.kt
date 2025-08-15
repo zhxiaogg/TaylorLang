@@ -110,7 +110,18 @@ class TaylorFileIntegrationTest : DescribeSpec({
             className: String,
             args: List<String> = emptyList()
         ): ExecutionResult {
-            val command = listOf("java", "-cp", classDir.absolutePath, className) + args
+            // CRITICAL FIX: Include both the generated class directory AND the runtime classes
+            // The generated Taylor classes reference TaylorResult runtime classes, so we need
+            // both directories in the classpath for execution to work
+            val runtimeClassesDir = File("build/classes/kotlin/main").absolutePath
+            
+            // CRITICAL FIX: Also include Kotlin standard library to handle Kotlin-specific classes
+            // like kotlin.NoWhenBranchMatchedException used in pattern matching bytecode
+            // Use the entire current classpath which includes all Kotlin libraries
+            val currentClasspath = System.getProperty("java.class.path")
+            
+            val classpath = "${classDir.absolutePath}${File.pathSeparator}${runtimeClassesDir}${File.pathSeparator}${currentClasspath}"
+            val command = listOf("java", "-cp", classpath, className) + args
             
             val processBuilder = ProcessBuilder(command)
             processBuilder.directory(classDir)

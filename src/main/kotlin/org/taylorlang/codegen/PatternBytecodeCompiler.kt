@@ -688,6 +688,7 @@ class PatternBytecodeCompiler(
                     "string" -> "Ljava/lang/String;"
                     "unit", "void" -> "V"
                     "object" -> "Ljava/lang/Object;"
+                    "throwable" -> "Ljava/lang/Throwable;"
                     else -> "L${type.name};"
                 }
             }
@@ -779,8 +780,9 @@ class PatternBytecodeCompiler(
                     Type.NamedType("Object")
                 }
                 "Error" -> {
-                    // For TaylorResult.Error, use Object for better JVM compatibility
-                    Type.NamedType("Object")
+                    // CRITICAL FIX: For TaylorResult.Error, the getError() method returns Throwable, not Object
+                    // This must match the actual method signature to avoid NoSuchMethodError
+                    Type.NamedType("Throwable")
                 }
                 else -> Type.NamedType("Object")
             }
