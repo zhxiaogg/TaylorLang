@@ -142,6 +142,64 @@ class PatternBytecodeCompiler(
                         "Ljava/lang/String;" -> methodVisitor.visitLdcInsn("")
                         else -> methodVisitor.visitInsn(ACONST_NULL)
                     }
+                } else {
+                    // CRITICAL FIX FOR VERIFYERROR: Ensure stack value type matches expected result type
+                    // This handles the case where Ok(value) returns Object but we need int for arithmetic
+                    val caseExprJvmType = getJvmType(caseExprType)
+                    val resultJvmType = getJvmType(resultType)
+                    
+                    // If case expression type doesn't match result type, perform conversion
+                    if (caseExprJvmType != resultJvmType) {
+                        when {
+                            // Object -> int conversion (pattern-bound variables from Ok.getValue())
+                            caseExprJvmType == "Ljava/lang/Object;" && resultJvmType == "I" -> {
+                                methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Integer")
+                                methodVisitor.visitMethodInsn(
+                                    INVOKEVIRTUAL,
+                                    "java/lang/Integer",
+                                    "intValue",
+                                    "()I",
+                                    false
+                                )
+                            }
+                            // Object -> double conversion
+                            caseExprJvmType == "Ljava/lang/Object;" && resultJvmType == "D" -> {
+                                methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Double")
+                                methodVisitor.visitMethodInsn(
+                                    INVOKEVIRTUAL,
+                                    "java/lang/Double",
+                                    "doubleValue",
+                                    "()D",
+                                    false
+                                )
+                            }
+                            // Object -> String conversion
+                            caseExprJvmType == "Ljava/lang/Object;" && resultJvmType == "Ljava/lang/String;" -> {
+                                methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/String")
+                            }
+                            // int -> Object conversion (boxing)
+                            caseExprJvmType == "I" && resultJvmType == "Ljava/lang/Object;" -> {
+                                methodVisitor.visitMethodInsn(
+                                    INVOKESTATIC,
+                                    "java/lang/Integer",
+                                    "valueOf",
+                                    "(I)Ljava/lang/Integer;",
+                                    false
+                                )
+                            }
+                            // double -> Object conversion (boxing)
+                            caseExprJvmType == "D" && resultJvmType == "Ljava/lang/Object;" -> {
+                                methodVisitor.visitMethodInsn(
+                                    INVOKESTATIC,
+                                    "java/lang/Double",
+                                    "valueOf",
+                                    "(D)Ljava/lang/Double;",
+                                    false
+                                )
+                            }
+                            // Add more conversions as needed
+                        }
+                    }
                 }
                 // Stack now has exactly one value of the expected type for all branches - consistent!
             }
