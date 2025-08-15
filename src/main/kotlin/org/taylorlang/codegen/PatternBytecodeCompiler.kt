@@ -87,14 +87,9 @@ class PatternBytecodeCompiler(
             val nextCaseLabel = if (i < cases.size - 1) {
                 Label() // Label for next case test
             } else {
-                // For the last case, jump to end with default value if no match
-                val failureLabel = Label()
-                methodVisitor.visitLabel(failureLabel)
-                // CRITICAL FIX: Use resultType, not targetType for match expression default value
-                // This ensures consistent stack types at merge points and prevents VerifyError
-                typeConverter.generateDefaultValue(resultType)
-                methodVisitor.visitJumpInsn(GOTO, endLabel)
-                failureLabel
+                // For the last case, create a failure label but don't visit it yet
+                // It will be visited after all pattern tests are generated
+                Label()
             }
             
             // Load target value for comparison
@@ -107,6 +102,13 @@ class PatternBytecodeCompiler(
             // Handle the next case label
             if (i < cases.size - 1) {
                 methodVisitor.visitLabel(nextCaseLabel)
+            } else {
+                // This is the last case - visit the failure label after the pattern test
+                methodVisitor.visitLabel(nextCaseLabel)
+                // CRITICAL FIX: Use resultType, not targetType for match expression default value
+                // This ensures consistent stack types at merge points and prevents VerifyError
+                typeConverter.generateDefaultValue(resultType)
+                methodVisitor.visitJumpInsn(GOTO, endLabel)
             }
         }
     }
