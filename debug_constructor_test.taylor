@@ -1,0 +1,9 @@
+// Minimal constructor pattern test to debug stackmap frame issue
+type Result<T, E> = Ok(T) | Error(E)
+
+val result = Ok(42)
+val processed = match result {
+    case Ok(value) => "Success: " + value
+    case Error(err) => "Error: " + err
+}
+assert(processed == "Success: 42")

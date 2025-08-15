@@ -1,0 +1,17 @@
+// Constructor patterns test without assert
+type Result = Ok(String) | Error(String)
+
+val result = Ok("test")
+val message = match result {
+    case Ok(value) => "Success: " + value
+    case Error(msg) => "Error: " + msg
+}
+println(message)
+
+val result2 = Error("failed")
+val message2 = match result2 {
+    case Ok(value) => "Success: " + value
+    case Error(msg) => "Error: " + msg
+}
+println(message2)
+println("Constructor pattern tests completed!")

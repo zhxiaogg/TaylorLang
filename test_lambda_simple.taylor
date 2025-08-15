@@ -1,0 +1,20 @@
+// Simple lambda test - only numeric operations
+println("Testing simple lambda expressions...")
+
+// Single parameter lambda: x => x * 2
+val doubleFunction = x => x * 2
+println("Created doubling lambda")
+
+// Single parameter lambda: x => x * x
+val squareFunction = x => x * x
+println("Created squaring lambda")
+
+// Two parameter lambda: (x, y) => x + y
+val addFunction = (x, y) => x + y
+println("Created addition lambda")
+
+// Identity lambda
+val identity = x => x
+println("Created identity lambda")
+
+println("All numeric lambdas created successfully!")

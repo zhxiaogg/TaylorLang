@@ -1,0 +1,23 @@
+// More complex constructor pattern test
+type Result = Ok(Int) | Error(String)
+type Option = Some(Result) | None
+
+val result1 = Ok(42)
+val result2 = Error("failed")
+val option1 = Some(result1)
+val option2 = Some(result2)
+val option3 = None()
+
+val message1 = match result1 {
+    case Ok(value) => "Success: " + value
+    case Error(msg) => "Error: " + msg
+}
+
+val message2 = match option1 {
+    case Some(Ok(value)) => "Nested success: " + value
+    case Some(Error(msg)) => "Nested error: " + msg
+    case None() => "No value"
+}
+
+println(message1)
+println(message2)

@@ -1,0 +1,8 @@
+// String lambda test
+println("Testing string lambda expressions...")
+
+// String manipulation lambda: s => s + "!"
+val exclamationFunction = s => s + "!"
+println("Created string lambda")
+
+println("String lambda created successfully!")

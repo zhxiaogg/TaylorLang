@@ -1,0 +1,8 @@
+
+val x = 42
+val result = match x {
+    case 42 => "found"
+    case _ => "not found"
+}
+println(result)
+

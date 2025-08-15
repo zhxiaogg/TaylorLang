@@ -58,7 +58,9 @@ class PatternBytecodeCompiler(
             val nextCaseLabel = if (i < matchExpr.cases.size - 1) {
                 org.objectweb.asm.Label() // Label for next case test
             } else {
-                endLabel // Last case, jump to end if no match
+                // For the last case, we need a separate label to handle match failure
+                // This ensures we can properly set up the stack before jumping to endLabel
+                org.objectweb.asm.Label()
             }
             
             // Load target value for comparison
@@ -68,9 +70,22 @@ class PatternBytecodeCompiler(
             // Generate pattern test
             generatePatternTest(case.pattern, targetType, caseBodyLabel, nextCaseLabel)
             
-            // If this isn't the last case, add the next case label
+            // Handle the next case label
             if (i < matchExpr.cases.size - 1) {
                 methodVisitor.visitLabel(nextCaseLabel)
+            } else {
+                // Last case failure - ensure consistent stack state before jumping to endLabel
+                methodVisitor.visitLabel(nextCaseLabel)
+                // The stack should be empty here from the failed pattern test
+                // Push a default value to match the expected result type
+                when (getJvmType(resultType)) {
+                    "V" -> { /* No value needed for void */ }
+                    "I", "Z" -> methodVisitor.visitLdcInsn(0)
+                    "D" -> methodVisitor.visitLdcInsn(0.0)
+                    "Ljava/lang/String;" -> methodVisitor.visitLdcInsn("")
+                    else -> methodVisitor.visitInsn(ACONST_NULL)
+                }
+                methodVisitor.visitJumpInsn(GOTO, endLabel)
             }
         }
         
@@ -330,7 +345,15 @@ class PatternBytecodeCompiler(
             val fieldType = getFieldType(pattern.constructor, index, targetType)
             val fieldDescriptor = getJvmTypeDescriptor(fieldType)
             
-            methodVisitor.visitFieldInsn(GETFIELD, constructorClassName, fieldName, fieldDescriptor)
+            // Use getter method instead of direct field access for Kotlin data classes
+            val getterMethodName = "get" + fieldName.replaceFirstChar { it.uppercaseChar() }
+            methodVisitor.visitMethodInsn(
+                INVOKEVIRTUAL,
+                constructorClassName,
+                getterMethodName,
+                "()" + fieldDescriptor,
+                false
+            )
             
             // Stack: [field_value]
             
@@ -506,10 +529,17 @@ class PatternBytecodeCompiler(
                         // Load constructor object
                         methodVisitor.visitVarInsn(ALOAD, constructorSlot)
                         
-                        // Get field
+                        // Get field using getter method
                         val fieldName = getFieldName(pattern.constructor, index, targetType)
                         val fieldDescriptor = getJvmTypeDescriptor(fieldType)
-                        methodVisitor.visitFieldInsn(GETFIELD, constructorClassName, fieldName, fieldDescriptor)
+                        val getterMethodName = "get" + fieldName.replaceFirstChar { it.uppercaseChar() }
+                        methodVisitor.visitMethodInsn(
+                            INVOKEVIRTUAL,
+                            constructorClassName,
+                            getterMethodName,
+                            "()" + fieldDescriptor,
+                            false
+                        )
                         
                         // Store in variable slot
                         val storeInstruction = variableSlotManager.getStoreInstruction(fieldType)
@@ -522,11 +552,18 @@ class PatternBytecodeCompiler(
                     val fieldType = getFieldType(pattern.constructor, index, targetType)
                     val fieldSlot = variableSlotManager.allocateTemporarySlot(fieldType)
                     
-                    // Load constructor and get field
+                    // Load constructor and get field using getter method
                     methodVisitor.visitVarInsn(ALOAD, constructorSlot)
                     val fieldName = getFieldName(pattern.constructor, index, targetType)
                     val fieldDescriptor = getJvmTypeDescriptor(fieldType)
-                    methodVisitor.visitFieldInsn(GETFIELD, constructorClassName, fieldName, fieldDescriptor)
+                    val getterMethodName = "get" + fieldName.replaceFirstChar { it.uppercaseChar() }
+                    methodVisitor.visitMethodInsn(
+                        INVOKEVIRTUAL,
+                        constructorClassName,
+                        getterMethodName,
+                        "()" + fieldDescriptor,
+                        false
+                    )
                     
                     // Store field value
                     val storeInstruction = variableSlotManager.getStoreInstruction(fieldType)
@@ -595,6 +632,7 @@ class PatternBytecodeCompiler(
                     "boolean" -> "Z"
                     "string" -> "Ljava/lang/String;"
                     "unit", "void" -> "V"
+                    "object" -> "Ljava/lang/Object;"
                     else -> "Ljava/lang/Object;"
                 }
             }
@@ -623,6 +661,7 @@ class PatternBytecodeCompiler(
                     "boolean" -> "Z"
                     "string" -> "Ljava/lang/String;"
                     "unit", "void" -> "V"
+                    "object" -> "Ljava/lang/Object;"
                     else -> "L${type.name};"
                 }
             }

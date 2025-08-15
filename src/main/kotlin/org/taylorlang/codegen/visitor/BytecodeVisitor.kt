@@ -31,6 +31,22 @@ class BytecodeVisitor(
     private val typeInferenceHelper: (Expression) -> Type = { Type.PrimitiveType("int") }
 ) : BaseTypedASTVisitor<Unit>() {
     
+    // Shared expression generator to avoid conflicts
+    private val expressionGenerator: ExpressionBytecodeGenerator by lazy {
+        ExpressionBytecodeGenerator(methodVisitor, variableSlotManager, typeInferenceHelper)
+    }
+    
+    // Specialized pattern bytecode compiler for match expressions
+    private val patternCompiler: PatternBytecodeCompiler by lazy {
+        PatternBytecodeCompiler(
+            methodVisitor,
+            variableSlotManager,
+            expressionGenerator,
+            // Provide callback for generating expressions during pattern matching
+            { typedExpr -> visitTypedExpression(typedExpr) }
+        )
+    }
+    
     override fun defaultResult(): Unit = Unit
     
     // =============================================================================
@@ -229,6 +245,13 @@ class BytecodeVisitor(
         methodVisitor.visitLabel(endLabel)
     }
     
+    override fun visitMatchExpression(node: MatchExpression): Unit {
+        // Delegate to the specialized pattern bytecode compiler
+        // Infer the result type of the match expression using the type inference helper
+        val resultType = typeInferenceHelper(node)
+        patternCompiler.generateMatchExpression(node, resultType)
+    }
+    
     override fun visitWhileExpression(node: WhileExpression): Unit {
         val loopStartLabel = Label()
         val conditionCheckLabel = Label()
@@ -356,6 +379,38 @@ class BytecodeVisitor(
         
         // Generate field access (simplified - would need type information for proper field access)
         methodVisitor.visitFieldInsn(GETFIELD, "java/lang/Object", node.property, "Ljava/lang/Object;")
+    }
+    
+    // =============================================================================
+    // Lambda Expressions
+    // =============================================================================
+    
+    override fun visitLambdaExpression(node: LambdaExpression): Unit {
+        // For this initial implementation, generate a simple runtime lambda representation
+        // We'll create a map-like object that can be called by the function call handler
+        
+        // Create a HashMap to represent the lambda
+        methodVisitor.visitTypeInsn(NEW, "java/util/HashMap")
+        methodVisitor.visitInsn(DUP)
+        methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/util/HashMap", "<init>", "()V", false)
+        
+        // Add a marker to identify this as a lambda
+        methodVisitor.visitInsn(DUP)
+        methodVisitor.visitLdcInsn("__type")
+        methodVisitor.visitLdcInsn("lambda")
+        methodVisitor.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true)
+        methodVisitor.visitInsn(POP) // Remove return value
+        
+        // Store parameter names
+        methodVisitor.visitInsn(DUP)
+        methodVisitor.visitLdcInsn("__params")
+        methodVisitor.visitLdcInsn(node.parameters.joinToString(","))
+        methodVisitor.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true)
+        methodVisitor.visitInsn(POP) // Remove return value
+        
+        // For this basic implementation, we can't embed the lambda body directly
+        // We'll need special handling in function calls to execute lambda bodies
+        // For now, just mark it as a lambda object that needs special processing
     }
     
     // =============================================================================

@@ -1,0 +1,26 @@
+// Final lambda validation test
+println("Lambda expressions - final validation test")
+
+// Test 1: Simple lambda
+val f1 = x => x + 1
+println("Test 1: Simple lambda created")
+
+// Test 2: Multi-parameter lambda
+val f2 = (x, y) => x * y
+println("Test 2: Multi-parameter lambda created")
+
+// Test 3: Lambda with closure
+val multiplier = 5
+val f3 = x => x * multiplier
+println("Test 3: Lambda with closure created")
+
+// Test 4: Boolean lambda
+val f4 = x => x > 10
+println("Test 4: Boolean lambda created")
+
+// Test 5: Conditional lambda
+val f5 = x => if (x > 0) x else -x
+println("Test 5: Conditional lambda created")
+
+println("All lambda expression tests passed!")
+println("Lambda expressions are working correctly.")

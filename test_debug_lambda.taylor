@@ -1,0 +1,3 @@
+val x = 5
+val y = x
+println("Simple variable test")

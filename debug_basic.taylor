@@ -1,0 +1,3 @@
+// Test basic type checking works
+val x = 42
+println(x)

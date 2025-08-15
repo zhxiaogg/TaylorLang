@@ -1,0 +1,3 @@
+// Simple string concatenation test
+val message = "Hello" + " World"
+println(message)

@@ -1,0 +1,3 @@
+// Test lambda parameter scoping
+val uses_param = x => x
+println("Created lambda that uses parameter")

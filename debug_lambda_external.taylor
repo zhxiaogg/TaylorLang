@@ -1,0 +1,4 @@
+// Test lambda that uses external variable
+val y = 10
+val lambda_external = x => y
+println("Lambda uses external variable")

@@ -1,0 +1,4 @@
+// Simple string concatenation test
+val x = 42
+val message = "Value: " + x
+println(message)

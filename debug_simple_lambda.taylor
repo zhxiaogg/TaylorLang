@@ -1,0 +1,3 @@
+// Even simpler lambda test
+val simple = x => 5
+println("Created lambda")

@@ -1,0 +1,4 @@
+// Test variable scope
+val x = 5
+val y = x + 1
+println("Variable used in expression")

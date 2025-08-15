@@ -1,0 +1,3 @@
+// Test closure capture
+val multiplier = 3
+val multiplyByThree = x => x * multiplier

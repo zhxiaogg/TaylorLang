@@ -1,0 +1,9 @@
+// Even simpler test
+type Result = Ok(String) | Error(String)
+
+val result = Ok("test")
+val message = match result {
+    case Ok(value) => value
+    case Error(msg) => msg
+}
+println("Done")

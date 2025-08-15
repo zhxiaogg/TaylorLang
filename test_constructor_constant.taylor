@@ -1,0 +1,10 @@
+
+type Result<T> = Ok(T) | Error(T)
+
+val result = Ok(42)
+val value = match result {
+    case Ok(x) => 100  // Use constant instead of x
+    case Error(e) => 200
+}
+println(value)
+

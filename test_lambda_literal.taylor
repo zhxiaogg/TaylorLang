@@ -1,0 +1,3 @@
+// Test lambda with literal body (no parameter usage)
+val constFunc = x => 42
+println("Lambda with literal body created")

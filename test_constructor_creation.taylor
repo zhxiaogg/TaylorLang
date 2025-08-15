@@ -1,0 +1,6 @@
+
+type Result<T> = Ok(T) | Error(T)
+
+val result = Ok(42)
+println("Created result")
+
