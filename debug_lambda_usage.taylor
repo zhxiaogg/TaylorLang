@@ -1,2 +1,0 @@
-// Debug: Lambda parameter usage test
-val f = x => x * 2

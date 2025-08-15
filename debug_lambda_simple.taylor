@@ -1,2 +1,0 @@
-// Debug: Simple lambda parameter test
-val f = x => x

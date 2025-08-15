@@ -1,3 +1,0 @@
-// Simple lambda test
-val simpleFunc = x => x + 1
-println("Lambda created")

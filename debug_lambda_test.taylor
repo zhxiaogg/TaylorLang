@@ -1,5 +1,0 @@
-// Simple lambda test
-val double = x => x * 2
-val result = double(5)
-println(result)
-assert(result == 10)

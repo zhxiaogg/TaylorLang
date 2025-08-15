@@ -1,4 +1,0 @@
-// Test lambda with arithmetic operation
-val input = 5
-val addFunc = x => input + 1  
-println("Lambda with outside variable works")

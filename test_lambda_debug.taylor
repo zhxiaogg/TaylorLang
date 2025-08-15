@@ -1,3 +1,0 @@
-// Debug lambda - just return the parameter directly
-val identity = x => x
-println("Identity lambda created")

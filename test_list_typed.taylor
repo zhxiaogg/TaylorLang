@@ -1,4 +1,0 @@
-type MyList<T> = Cons(T, MyList<T>) | Nil
-
-val list: MyList<Int> = Cons(1, Nil())
-println(list)

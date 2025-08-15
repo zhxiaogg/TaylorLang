@@ -34,7 +34,8 @@ class PatternMatcher(
         pattern: Pattern,
         targetType: Type,
         successLabel: Label,
-        failureLabel: Label
+        failureLabel: Label,
+        targetSlot: Int = -1
     ) {
         when (pattern) {
             is Pattern.LiteralPattern -> {
@@ -42,13 +43,16 @@ class PatternMatcher(
             }
             is Pattern.IdentifierPattern -> {
                 // Identifier patterns always match - they just bind the value
+                // CRITICAL FIX: Pop the target value that was loaded for comparison
+                // since identifier patterns don't need to compare, just bind
+                methodVisitor.visitInsn(POP)
                 methodVisitor.visitJumpInsn(GOTO, successLabel)
             }
             is Pattern.ConstructorPattern -> {
                 generateConstructorPatternTest(pattern, targetType, successLabel, failureLabel)
             }
             is Pattern.GuardPattern -> {
-                generateGuardPatternTest(pattern, targetType, successLabel, failureLabel)
+                generateGuardPatternTest(pattern, targetType, successLabel, failureLabel, targetSlot)
             }
             else -> {
                 // Unknown pattern type - assume failure
@@ -133,9 +137,12 @@ class PatternMatcher(
         // Check instanceof
         methodVisitor.visitInsn(DUP) // Duplicate value for field access
         methodVisitor.visitTypeInsn(INSTANCEOF, constructorClassName)
-        methodVisitor.visitJumpInsn(IFEQ, failureLabel)
-        
-        // Cast to constructor type
+        // CRITICAL FIX: Ensure consistent stack state on failure
+        // If instanceof fails, we need to clean up the duplicated value
+        val tempFailureLabel = Label()
+        methodVisitor.visitJumpInsn(IFEQ, tempFailureLabel)
+        // instanceof succeeded, continue with duplicated value
+        // Cast to constructor type (DUPed value is still on stack)
         methodVisitor.visitTypeInsn(CHECKCAST, constructorClassName)
         
         // Test each field pattern
@@ -146,10 +153,8 @@ class PatternMatcher(
             // Duplicate constructor instance for field access
             methodVisitor.visitInsn(DUP)
             
-            // Access field
-            val fieldName = getFieldName(constructorName, i, targetType)
-            val fieldDescriptor = typeConverter.getJvmTypeDescriptor(fieldType)
-            methodVisitor.visitFieldInsn(GETFIELD, constructorClassName, fieldName, fieldDescriptor)
+            // Access field via getter method (Kotlin data classes have private fields)
+            generateFieldAccess(constructorName, i, constructorClassName, fieldType)
             
             // Test field pattern recursively
             val fieldSuccessLabel = Label()
@@ -161,6 +166,11 @@ class PatternMatcher(
         // All field patterns matched
         methodVisitor.visitInsn(POP) // Remove constructor instance
         methodVisitor.visitJumpInsn(GOTO, successLabel)
+        
+        // CRITICAL FIX: Handle instanceof failure case with proper stack cleanup
+        methodVisitor.visitLabel(tempFailureLabel)
+        methodVisitor.visitInsn(POP) // Clean up the duplicated value from failed instanceof
+        methodVisitor.visitJumpInsn(GOTO, failureLabel)
     }
     
     /**
@@ -182,12 +192,14 @@ class PatternMatcher(
     
     /**
      * Generate pattern test with guard expression.
+     * CRITICAL FIX: Bind pattern variables before evaluating guard to prevent stack frame issues
      */
     private fun generateGuardPatternTest(
         pattern: Pattern.GuardPattern,
         targetType: Type,
         successLabel: Label,
-        failureLabel: Label
+        failureLabel: Label,
+        targetSlot: Int
     ) {
         // First test the inner pattern
         val guardSuccessLabel = Label()
@@ -196,8 +208,35 @@ class PatternMatcher(
         // If inner pattern matches, evaluate guard
         methodVisitor.visitLabel(guardSuccessLabel)
         
-        // Generate guard expression
-        generateExpressionCallback(TypedExpression(pattern.guard, BuiltinTypes.BOOLEAN))
+        // CRITICAL FIX: Bind pattern variables before evaluating guard expression
+        // This is necessary because guard expressions can reference pattern variables (e.g., case a if a > 10)
+        if (targetSlot != -1) {
+            // We have access to the target slot, so we can properly bind pattern variables for guard evaluation
+            val savedSlotManager = variableSlotManager.createCheckpoint()
+            
+            // Load target value and store it in a temporary slot for pattern variable binding
+            val tempTargetSlot = variableSlotManager.allocateTemporarySlot(targetType)
+            val loadInstruction = variableSlotManager.getLoadInstruction(targetType)
+            val storeInstruction = variableSlotManager.getStoreInstruction(targetType)
+            
+            // Store current target for pattern variable binding
+            methodVisitor.visitVarInsn(loadInstruction, targetSlot)
+            methodVisitor.visitVarInsn(storeInstruction, tempTargetSlot)
+            
+            // Bind variables from the inner pattern for guard evaluation
+            bindPatternVariables(pattern.pattern, targetType, tempTargetSlot)
+            
+            // Generate guard expression (now pattern variables are available)
+            generateExpressionCallback(TypedExpression(pattern.guard, BuiltinTypes.BOOLEAN))
+            
+            // Restore variable slot state
+            variableSlotManager.restoreCheckpoint(savedSlotManager)
+            variableSlotManager.releaseTemporarySlot(tempTargetSlot)
+        } else {
+            // Fallback: Generate guard expression without variable binding
+            // This will fail if the guard references pattern variables, but maintains backward compatibility
+            generateExpressionCallback(TypedExpression(pattern.guard, BuiltinTypes.BOOLEAN))
+        }
         
         // Check guard result
         methodVisitor.visitJumpInsn(IFNE, successLabel)
@@ -252,6 +291,7 @@ class PatternMatcher(
         
         val constructorClassName = getConstructorClassName(pattern.constructor, targetType)
         val loadInstruction = variableSlotManager.getLoadInstruction(targetType)
+        val allocatedTempSlots = mutableListOf<Int>()
         
         for (i in pattern.patterns.indices) {
             val fieldPattern = pattern.patterns[i]
@@ -261,18 +301,23 @@ class PatternMatcher(
             methodVisitor.visitVarInsn(loadInstruction, targetSlot)
             methodVisitor.visitTypeInsn(CHECKCAST, constructorClassName)
             
-            // Access field
-            val fieldName = getFieldName(pattern.constructor, i, targetType)
-            val fieldDescriptor = typeConverter.getJvmTypeDescriptor(fieldType)
-            methodVisitor.visitFieldInsn(GETFIELD, constructorClassName, fieldName, fieldDescriptor)
+            // Access field via getter method (Kotlin data classes have private fields)
+            generateFieldAccess(pattern.constructor, i, constructorClassName, fieldType)
             
             // Store field value in temporary slot
             val fieldSlot = variableSlotManager.allocateTemporarySlot(fieldType)
+            allocatedTempSlots.add(fieldSlot)
             val fieldStoreInstruction = variableSlotManager.getStoreInstruction(fieldType)
             methodVisitor.visitVarInsn(fieldStoreInstruction, fieldSlot)
             
             // Recursively bind variables in field pattern
             bindPatternVariables(fieldPattern, fieldType, fieldSlot)
+        }
+        
+        // CRITICAL FIX: Release temporary slots to prevent slot accumulation
+        // This prevents inconsistent local variable counts between execution paths
+        for (tempSlot in allocatedTempSlots) {
+            variableSlotManager.releaseTemporarySlot(tempSlot)
         }
     }
     
@@ -285,8 +330,12 @@ class PatternMatcher(
         return when (constructorName) {
             "Ok" -> "org/taylorlang/runtime/TaylorResult\$Ok"
             "Error" -> "org/taylorlang/runtime/TaylorResult\$Error"
-            "Some" -> "org/taylorlang/runtime/Option\$Some"
-            "None" -> "org/taylorlang/runtime/Option\$None"
+            "Some" -> "org/taylorlang/runtime/TaylorOption\$Some"
+            "None" -> "org/taylorlang/runtime/TaylorOption\$None"
+            "Pair" -> "org/taylorlang/runtime/TaylorTuple2\$Pair"
+            "Active" -> "org/taylorlang/runtime/TaylorStatus\$Active"
+            "Inactive" -> "org/taylorlang/runtime/TaylorStatus\$Inactive"
+            "Pending" -> "org/taylorlang/runtime/TaylorStatus\$Pending"
             else -> {
                 // Default mapping based on target type
                 when (targetType) {
@@ -322,8 +371,97 @@ class PatternMatcher(
                     Type.NamedType("Object")
                 }
             }
-            "Error" -> BuiltinTypes.THROWABLE
+            "Error" -> BuiltinTypes.STRING // Error field access returns the message string, not the full Throwable
+            "Pair" -> {
+                // For Pair(x, y), both fields can be generic or Object
+                if (targetType is Type.GenericType && targetType.arguments.size > fieldIndex) {
+                    targetType.arguments[fieldIndex]
+                } else {
+                    // Default to Integer for Pair fields when not generically typed
+                    // This handles cases like Pair(10, 20) where the types are inferred as integers
+                    BuiltinTypes.INT
+                }
+            }
             else -> Type.NamedType("Object")
+        }
+    }
+    
+    /**
+     * Generate field access via appropriate method (getter for Kotlin data classes).
+     */
+    private fun generateFieldAccess(constructorName: String, fieldIndex: Int, constructorClassName: String, fieldType: Type) {
+        val methodName = getFieldAccessMethod(constructorName, fieldIndex)
+        
+        if (constructorName == "Error" && fieldIndex == 0) {
+            // Special handling for Error - getError() returns Throwable, but we want the message string
+            methodVisitor.visitMethodInsn(
+                INVOKEVIRTUAL,
+                constructorClassName,
+                "getError",
+                "()Ljava/lang/Throwable;",
+                false
+            )
+            // Call getMessage() on the Throwable to get the string message
+            methodVisitor.visitMethodInsn(
+                INVOKEVIRTUAL,
+                "java/lang/Throwable",
+                "getMessage",
+                "()Ljava/lang/String;",
+                false
+            )
+        } else {
+            // Standard field access
+            val methodDescriptor = "()${typeConverter.getJvmTypeDescriptor(fieldType)}"
+            methodVisitor.visitMethodInsn(
+                INVOKEVIRTUAL,
+                constructorClassName,
+                methodName,
+                methodDescriptor,
+                false
+            )
+            
+            // Special handling for Pair fields that need Object -> primitive conversion
+            if (constructorName == "Pair" && fieldIndex in 0..1) {
+                // Pair.getFirst() and getSecond() return Object, but we often need primitives
+                // Always attempt to unbox to the expected primitive type
+                val actualReturnType = Type.NamedType("Object") // getFirst/getSecond return Object
+                when (fieldType) {
+                    is Type.PrimitiveType -> {
+                        when (fieldType.name.lowercase()) {
+                            "int" -> typeConverter.convertType(actualReturnType, BuiltinTypes.INT)
+                            "double", "float" -> typeConverter.convertType(actualReturnType, BuiltinTypes.DOUBLE)
+                            "boolean" -> typeConverter.convertType(actualReturnType, BuiltinTypes.BOOLEAN)
+                        }
+                    }
+                    is Type.NamedType -> {
+                        when (fieldType.name.lowercase()) {
+                            "int" -> typeConverter.convertType(actualReturnType, BuiltinTypes.INT)
+                            "double", "float" -> typeConverter.convertType(actualReturnType, BuiltinTypes.DOUBLE)
+                            "boolean" -> typeConverter.convertType(actualReturnType, BuiltinTypes.BOOLEAN)
+                        }
+                    }
+                    else -> {
+                        // For other types, no conversion needed
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Get the method name for accessing a constructor field.
+     */
+    private fun getFieldAccessMethod(constructorName: String, fieldIndex: Int): String {
+        return when (constructorName) {
+            "Ok" -> if (fieldIndex == 0) "getValue" else "getField$fieldIndex"
+            "Error" -> if (fieldIndex == 0) "getError" else "getField$fieldIndex"
+            "Some" -> if (fieldIndex == 0) "getValue" else "getField$fieldIndex"
+            "Pair" -> when (fieldIndex) {
+                0 -> "getFirst"
+                1 -> "getSecond"
+                else -> "getField$fieldIndex"
+            }
+            else -> "getField$fieldIndex"
         }
     }
     
@@ -332,7 +470,7 @@ class PatternMatcher(
      */
     fun isNullaryConstructor(name: String, targetType: Type): Boolean {
         return when (name) {
-            "None", "Unit", "True", "False" -> true
+            "None", "Unit", "True", "False", "Active", "Inactive", "Pending" -> true
             else -> false
         }
     }

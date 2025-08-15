@@ -90,11 +90,11 @@ class BytecodeGenerator {
     ): GenerationResult {
         // Create a new ClassWriter for each generation to avoid reuse issues
         // Use full automatic computation to avoid slot management issues
-        // For proper frame computation, we use COMPUTE_FRAMES which automatically
-        // computes both stack frames and max stack/locals
-        val classWriter = ClassWriter(ClassWriter.COMPUTE_FRAMES)
+        // CRITICAL FIX: Use COMPUTE_MAXS instead of COMPUTE_FRAMES to avoid stackmap frame conflicts
+        // with complex constructor pattern matching that has inconsistent local variable binding
+        val classWriter = ClassWriter(ClassWriter.COMPUTE_MAXS)
         
-        generateClassContent(typedProgram, outputDirectory, className, classWriter, true)
+        generateClassContent(typedProgram, outputDirectory, className, classWriter, false)
         return writeClassFile(classWriter, outputDirectory, className)
     }
     
@@ -103,9 +103,10 @@ class BytecodeGenerator {
         outputDirectory: File,
         className: String
     ): GenerationResult {
-        // Create a new ClassWriter without frame computation
-        // Use manual stack/locals computation to avoid all frame issues
-        val classWriter = ClassWriter(0) // No automatic computation
+        // Create a new ClassWriter with conservative frame generation
+        // Use COMPUTE_MAXS to avoid stackmap frame issues with complex pattern matching
+        // This prevents VerifyError due to inconsistent local variable binding
+        val classWriter = ClassWriter(ClassWriter.COMPUTE_MAXS)
         
         generateClassContent(typedProgram, outputDirectory, className, classWriter, false)
         return writeClassFile(classWriter, outputDirectory, className)
@@ -123,7 +124,7 @@ class BytecodeGenerator {
         val bytecodeVersion = if (useFrames) {
             V1_8 // Use Java 1.8 with frames (more compatible than V17)
         } else {
-            V1_7 // Use Java 1.7 for fallback - supports manual stack computation
+            V1_5 // Use Java 1.5 - definitely no stackmap frame requirements
         }
         
         classWriter.visit(

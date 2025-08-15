@@ -303,6 +303,7 @@ class TypeConverter(private val methodVisitor: MethodVisitor) {
                     "Double" -> "Ljava/lang/Double;"
                     "Boolean" -> "Ljava/lang/Boolean;"
                     "Unit" -> "V"
+                    "Object" -> "Ljava/lang/Object;"
                     else -> "L${type.name.replace('.', '/')};"
                 }
             }

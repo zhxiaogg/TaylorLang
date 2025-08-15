@@ -1,9 +1,0 @@
-// Minimal constructor pattern test to reproduce VerifyError
-type Result = Ok(Int) | Error(String)
-
-val result = Ok(42)
-val message = match result {
-    case Ok(value) => "Success"
-    case Error(msg) => "Failed"
-}
-println(message)

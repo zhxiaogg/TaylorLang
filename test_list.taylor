@@ -1,4 +1,0 @@
-type TaylorList<T> = Cons(T, TaylorList<T>) | Nil
-
-val list = Cons(1, Nil())
-println(list)

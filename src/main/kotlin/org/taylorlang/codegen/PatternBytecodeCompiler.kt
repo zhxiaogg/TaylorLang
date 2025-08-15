@@ -58,7 +58,7 @@ class PatternBytecodeCompiler(
         val (caseBodyLabels, endLabel) = bytecodeUtils.generateCaseLabels(matchExpr.cases.size)
         
         // Generate pattern tests and jumps
-        generatePatternTests(matchExpr.cases, targetType, targetSlot, caseBodyLabels, endLabel)
+        generatePatternTests(matchExpr.cases, targetType, targetSlot, caseBodyLabels, endLabel, resultType)
         
         // Generate case bodies
         generateCaseBodies(matchExpr.cases, targetType, targetSlot, caseBodyLabels, endLabel, resultType)
@@ -78,7 +78,8 @@ class PatternBytecodeCompiler(
         targetType: Type,
         targetSlot: Int,
         caseBodyLabels: List<Label>,
-        endLabel: Label
+        endLabel: Label,
+        resultType: Type
     ) {
         for (i in cases.indices) {
             val case = cases[i]
@@ -89,7 +90,9 @@ class PatternBytecodeCompiler(
                 // For the last case, jump to end with default value if no match
                 val failureLabel = Label()
                 methodVisitor.visitLabel(failureLabel)
-                typeConverter.generateDefaultValue(targetType)
+                // CRITICAL FIX: Use resultType, not targetType for match expression default value
+                // This ensures consistent stack types at merge points and prevents VerifyError
+                typeConverter.generateDefaultValue(resultType)
                 methodVisitor.visitJumpInsn(GOTO, endLabel)
                 failureLabel
             }
@@ -99,7 +102,7 @@ class PatternBytecodeCompiler(
             methodVisitor.visitVarInsn(loadInstruction, targetSlot)
             
             // Generate pattern test using the pattern matcher
-            patternMatcher.generatePatternTest(case.pattern, targetType, caseBodyLabel, nextCaseLabel)
+            patternMatcher.generatePatternTest(case.pattern, targetType, caseBodyLabel, nextCaseLabel, targetSlot)
             
             // Handle the next case label
             if (i < cases.size - 1) {
@@ -157,8 +160,8 @@ class PatternBytecodeCompiler(
         caseLabel: Label, 
         nextLabel: Label
     ) {
-        // Delegate to the pattern matcher
-        patternMatcher.generatePatternTest(pattern, targetType, caseLabel, nextLabel)
+        // Delegate to the pattern matcher - note: targetSlot is -1 for backward compatibility
+        patternMatcher.generatePatternTest(pattern, targetType, caseLabel, nextLabel, -1)
     }
     
     /**

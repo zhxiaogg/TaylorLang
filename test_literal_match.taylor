@@ -1,8 +1,0 @@
-
-val x = 42
-val result = match x {
-    case 42 => 100
-    case _ => 200
-}
-println(result)
-

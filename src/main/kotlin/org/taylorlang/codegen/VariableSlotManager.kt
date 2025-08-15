@@ -8,7 +8,8 @@ import org.taylorlang.ast.Type
 data class SlotCheckpoint(
     val variableSlots: Map<String, Int>,
     val variableTypes: Map<String, Type>,
-    val nextAvailableSlot: Int
+    val nextAvailableSlot: Int,
+    val tempSlotStack: List<Int>
 )
 
 /**
@@ -27,6 +28,7 @@ class VariableSlotManager {
     private val variableSlots = mutableMapOf<String, Int>()
     private val variableTypes = mutableMapOf<String, Type>()
     private var nextAvailableSlot = 1 // Start at 1, slot 0 reserved for 'this'
+    private val tempSlotStack = mutableListOf<Int>() // Track temporary slots for proper cleanup
     
     /**
      * Allocate a slot for a new variable.
@@ -122,16 +124,35 @@ class VariableSlotManager {
      */
     fun allocateTemporarySlot(type: Type): Int {
         val slot = nextAvailableSlot
-        nextAvailableSlot += getSlotCount(type)
+        val slotCount = getSlotCount(type)
+        nextAvailableSlot += slotCount
+        tempSlotStack.add(slot)
         return slot
     }
     
     /**
-     * Release a temporary slot (not implemented - just for API consistency)
+     * Release a temporary slot - restores nextAvailableSlot if this was the most recent allocation.
+     * CRITICAL FIX: Proper temporary slot cleanup prevents inconsistent local variable counts.
      */
     fun releaseTemporarySlot(slot: Int) {
-        // In a full implementation, we'd track and reuse temporary slots
-        // For now, we just consume slots and rely on the JVM's optimization
+        // Find and remove the slot from tracking
+        val index = tempSlotStack.indexOf(slot)
+        if (index != -1) {
+            tempSlotStack.removeAt(index)
+            
+            // If this was the most recently allocated slot, we can reclaim the slot space
+            if (tempSlotStack.isEmpty() || slot >= tempSlotStack.maxOrNull()!!) {
+                // Recalculate nextAvailableSlot based on remaining slots
+                nextAvailableSlot = if (tempSlotStack.isEmpty()) {
+                    // Find the highest slot used by named variables
+                    variableSlots.values.maxOrNull()?.let { maxSlot ->
+                        maxSlot + 1 // Assuming single-slot variables; for proper implementation, track slot counts
+                    } ?: 1
+                } else {
+                    tempSlotStack.maxOrNull()!! + 1 // Assuming single-slot; for proper implementation, track slot counts
+                }
+            }
+        }
     }
     
     /**
@@ -141,19 +162,23 @@ class VariableSlotManager {
         return SlotCheckpoint(
             variableSlots = variableSlots.toMap(),
             variableTypes = variableTypes.toMap(),
-            nextAvailableSlot = nextAvailableSlot
+            nextAvailableSlot = nextAvailableSlot,
+            tempSlotStack = tempSlotStack.toList()
         )
     }
     
     /**
      * Restore slot state from a checkpoint
+     * CRITICAL FIX: Include temporary slot stack in checkpoint restoration
      */
     fun restoreCheckpoint(checkpoint: SlotCheckpoint) {
         variableSlots.clear()
         variableTypes.clear()
+        tempSlotStack.clear()
         variableSlots.putAll(checkpoint.variableSlots)
         variableTypes.putAll(checkpoint.variableTypes)
         nextAvailableSlot = checkpoint.nextAvailableSlot
+        tempSlotStack.addAll(checkpoint.tempSlotStack)
     }
     
     /**

@@ -1,3 +1,0 @@
-type Option<T> = Some(T) | None()
-
-val option = Some("Hello")

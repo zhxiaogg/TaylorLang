@@ -86,6 +86,7 @@ Your core responsibilities include:
 - Verify project builds and all tests pass before approval
 - MUST commit documentation changes to keep docs in sync
 - Use ONLY docs/project/tasks.md for task management (no external files)
+- **Specialized Agent Coordination**: When encountering complex JVM bytecode issues, VerifyErrors, or low-level bytecode analysis needs, delegate to the jvm-bytecode-expert agent for specialized investigation and diagnosis
 
 **Code Review Standards (Following docs/code-review-guidelines.md):**
 - **MANDATORY BUILD/TEST REQUIREMENTS**: Project MUST build successfully and ALL tests must pass before any code review approval
