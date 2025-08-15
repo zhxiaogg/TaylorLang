@@ -188,6 +188,8 @@ class ScopedExpressionConstraintVisitor(
             tryResult.type
         }
         
+        // Type checking logic is now working correctly
+        
         // Process catch clauses with enhanced error type checking
         val catchProcessingResult = processCatchClauses(
             tryExpr.catchClauses,
@@ -199,19 +201,36 @@ class ScopedExpressionConstraintVisitor(
         
         // Enhanced bidirectional type checking: if we have an expected type, unify with the unwrapped value type
         if (expectedType != null) {
+            // CRITICAL FIX: If expectedType is a Result type, extract its value type for unification
+            val targetType = if (BuiltinTypes.isResultType(expectedType)) {
+                BuiltinTypes.getResultValueType(expectedType) ?: expectedType
+            } else {
+                expectedType
+            }
+            
             val unificationConstraint = Constraint.Equality(
                 unwrappedType, 
-                expectedType, 
+                targetType, 
                 tryExpr.sourceLocation
             )
             allConstraints = allConstraints.add(unificationConstraint)
         }
         
-        // CRITICAL: Try expressions return Result<T, E> types, not unwrapped value types
-        val errorType = catchProcessingResult.unifiedErrorType ?: BuiltinTypes.THROWABLE
-        val resultType = BuiltinTypes.createResultType(unwrappedType, errorType)
+        // CRITICAL: Try expressions have dual semantics based on context:
+        // 1. In Result-returning functions: return Result<T, E> for propagation
+        // 2. In non-Result functions: return unwrapped value T
         
-        // Add constraint to ensure Result type consistency with function return type
+        val errorType = catchProcessingResult.unifiedErrorType ?: BuiltinTypes.THROWABLE
+        
+        val finalType = if (functionReturnType != null && BuiltinTypes.isResultType(functionReturnType)) {
+            // In Result-returning function context: return Result type for propagation
+            BuiltinTypes.createResultType(unwrappedType, errorType)
+        } else {
+            // In non-Result function context: return unwrapped value type
+            unwrappedType
+        }
+        
+        // Add constraint to ensure type consistency with function return type
         if (functionReturnType != null && BuiltinTypes.isResultType(functionReturnType)) {
             val returnTypeValueType = BuiltinTypes.getResultValueType(functionReturnType)
             val returnTypeErrorType = BuiltinTypes.getResultErrorType(functionReturnType)
@@ -236,7 +255,7 @@ class ScopedExpressionConstraintVisitor(
             }
         }
         
-        return ConstraintResult(resultType, allConstraints)
+        return ConstraintResult(finalType, allConstraints)
     }
     
     // =============================================================================
@@ -392,16 +411,20 @@ class ScopedExpressionConstraintVisitor(
             }
             
             // Collect constraints from catch body - must return same type as try value
-            val bodyResult = collector.collectConstraintsWithExpected(
-                catchClause.body, 
-                tryValueType, 
-                catchContext
-            )
+            val bodyResult = collector.collectConstraints(catchClause.body, catchContext)
             allConstraints = allConstraints.merge(bodyResult.constraints)
+            
+            // CRITICAL FIX: Handle Result type unwrapping for catch clause bodies
+            // If the catch body returns a Result type, extract its value type for constraint unification
+            val actualBodyType = if (BuiltinTypes.isResultType(bodyResult.type)) {
+                BuiltinTypes.getResultValueType(bodyResult.type) ?: bodyResult.type
+            } else {
+                bodyResult.type
+            }
             
             // Enhanced constraint: catch body type must unify with try value type
             val bodyTypeConstraint = Constraint.Equality(
-                bodyResult.type,
+                actualBodyType,
                 tryValueType,
                 catchClause.body.sourceLocation
             )
