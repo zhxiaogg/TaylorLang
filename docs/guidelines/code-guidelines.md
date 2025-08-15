@@ -161,6 +161,8 @@ Rationale: Why this change matters
 - **Type checking coordinator gaps**: ScopedExpressionConstraintVisitor TryExpression logic must properly validate Result-returning function contexts
 - **Bytecode generation runtime dependencies**: TryExpressionBytecodeGenerator requires complete TaylorResult runtime integration and proper PatternBytecodeCompiler initialization
 - **Test failure masking integration defects**: 37% pass rate in TryExpressionBytecodeTest and 17% in TryExpressionTypeCheckingTest indicates systematic integration failure requiring complete rework
+- **Partial test success tolerance**: 87% test success rate (7/8 passing) is unacceptable - 100% pass rate is mandatory for all implementations
+- **Integration test failures blocking**: TryExpression integration tests failing indicate incomplete type system coordination between expression unwrapping and arithmetic operations
 - **TryExpression type constraint logic errors**: ScopedExpressionConstraintVisitor.handleTryExpression() must return unwrapped type T when no catch clauses present, not Result<T,E>
 - **Integration gap analysis violations**: Working catch clause tests (3/8 pass) masking fundamental no-catch-clause type inference defects
 - **Incomplete semantic implementation**: TryExpression without catch clauses should unwrap Result types, not propagate them
@@ -213,6 +215,8 @@ Rationale: Why this change matters
 - **Mega file violations**: Files > 1000 lines require immediate breaking into modules
 - **Type system regressions**: Arithmetic operations returning incorrect types (Int+Int≠Double)
 - **Test suite degradation**: Any reduction from 100% pass rate is blocking
+- **Primitive boxing VerifyError patterns**: Function calls requiring Object parameters must use typeHelper.boxPrimitiveToObject() to prevent JVM verification failures
+- **TryExpression Result unwrapping defects**: Integration tests failing on arithmetic operations with try expressions indicate type system coordination gaps
 - **Refactoring functional regression**: Type inference behavior changes during architectural extraction
 - **Incomplete pattern matching extraction**: Missing cases in refactored generators (TupleLiteral, NullLiteral)
 - **Integration dependency breaks**: Coordinator patterns losing original component connections
