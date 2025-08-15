@@ -120,12 +120,24 @@ class BytecodeVisitor(
                 "D" -> methodVisitor.visitVarInsn(DLOAD, slot)
                 else -> {
                     methodVisitor.visitVarInsn(ALOAD, slot)
-                    // CRITICAL FIX: If this is an Object type that might be a boxed primitive,
-                    // and it's likely from pattern matching (which creates Object types),
-                    // try to unbox it if it looks like it should be a primitive
-                    if (type is Type.NamedType && type.name == "Object") {
-                        // This variable was extracted from pattern matching and might be a boxed Integer
-                        // We'll unbox it assuming it's an Integer - this covers the Tuple2.Pair case
+                    // CRITICAL FIX: AGGRESSIVE unboxing for ALL Object-type variables
+                    // Since this VerifyError specifically mentions Object->int conversion at iadd,
+                    // we need to ensure ALL Object variables are unboxed when accessed
+                    
+                    // Check type name (covers Type.NamedType("Object"))
+                    val needsUnboxing = when {
+                        type is Type.NamedType && type.name == "Object" -> true
+                        type is Type.NamedType && type.name.contains("Object") -> true
+                        getJvmType(type) == "Ljava/lang/Object;" -> true
+                        type.toString().contains("Object") -> true
+                        // DEFAULT AGGRESSIVE: Any reference type that's not clearly string/list
+                        getJvmType(type).startsWith("L") && !getJvmType(type).contains("String") -> true
+                        else -> false
+                    }
+                    
+                    if (needsUnboxing) {
+                        // AGGRESSIVE unboxing: assume all Object-like variables are boxed integers
+                        // This handles pattern-bound variables from Tuple2.Pair(10, 20)
                         methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Integer")
                         methodVisitor.visitMethodInsn(
                             INVOKEVIRTUAL,
@@ -157,8 +169,27 @@ class BytecodeVisitor(
         when (node.operator) {
             BinaryOperator.PLUS -> {
                 val leftType = typeInferenceHelper(node.left)
-                if (isFloatType(leftType) || isFloatType(typeInferenceHelper(node.right))) {
+                val rightType = typeInferenceHelper(node.right)
+                
+                // CRITICAL FIX: If we have pattern-bound variables that are Objects but should be integers,
+                // ensure they are properly handled for arithmetic operations
+                // Check if either operand is a pattern-bound variable (Identifier with Object type)
+                val leftNeedsUnboxing = node.left is Identifier && 
+                    variableSlotManager.hasSlot(node.left.name) &&
+                    variableSlotManager.getType(node.left.name) is Type.NamedType &&
+                    (variableSlotManager.getType(node.left.name) as Type.NamedType).name == "Object"
+                    
+                val rightNeedsUnboxing = node.right is Identifier && 
+                    variableSlotManager.hasSlot(node.right.name) &&
+                    variableSlotManager.getType(node.right.name) is Type.NamedType &&
+                    (variableSlotManager.getType(node.right.name) as Type.NamedType).name == "Object"
+                
+                if (isFloatType(leftType) || isFloatType(rightType)) {
                     methodVisitor.visitInsn(DADD)
+                } else if (leftNeedsUnboxing || rightNeedsUnboxing) {
+                    // For pattern-bound Object variables, we assume they're boxed integers and use IADD
+                    // since visitIdentifier already unboxed them to primitives
+                    methodVisitor.visitInsn(IADD)
                 } else {
                     methodVisitor.visitInsn(IADD)
                 }

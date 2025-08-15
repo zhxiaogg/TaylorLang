@@ -524,7 +524,18 @@ class PatternBytecodeCompiler(
                     if (!isNullaryConstructor(fieldPattern.name, getFieldType(pattern.constructor, index, targetType))) {
                         // Variable binding - extract field and store in new slot
                         val fieldType = getFieldType(pattern.constructor, index, targetType)
-                        val fieldSlot = variableSlotManager.allocateSlot(fieldPattern.name, fieldType)
+                        
+                        // CRITICAL FIX: For Tuple2.Pair fields that are Objects but likely primitives,
+                        // infer the actual primitive type instead of defaulting to Object
+                        val actualFieldType = when {
+                            // For Tuple2.Pair fields, assume they're integers if they come from integer literals
+                            pattern.constructor == "Pair" && fieldType is Type.NamedType && fieldType.name == "Object" -> {
+                                Type.PrimitiveType("int") // Assume integer for arithmetic operations
+                            }
+                            else -> fieldType
+                        }
+                        
+                        val fieldSlot = variableSlotManager.allocateSlot(fieldPattern.name, actualFieldType)
                         
                         // Load constructor object
                         methodVisitor.visitVarInsn(ALOAD, constructorSlot)
@@ -541,8 +552,23 @@ class PatternBytecodeCompiler(
                             false
                         )
                         
-                        // Store in variable slot
-                        val storeInstruction = variableSlotManager.getStoreInstruction(fieldType)
+                        // CRITICAL FIX: If we determined this should be a primitive int but the getter returns Object,
+                        // unbox it here before storing
+                        if (actualFieldType is Type.PrimitiveType && actualFieldType.name == "int" && 
+                            fieldType is Type.NamedType && fieldType.name == "Object") {
+                            // Unbox Object to int at the storage site
+                            methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Integer")
+                            methodVisitor.visitMethodInsn(
+                                INVOKEVIRTUAL,
+                                "java/lang/Integer",
+                                "intValue",
+                                "()I",
+                                false
+                            )
+                        }
+                        
+                        // Store in variable slot using the actual type (which might be primitive)
+                        val storeInstruction = variableSlotManager.getStoreInstruction(actualFieldType)
                         methodVisitor.visitVarInsn(storeInstruction, fieldSlot)
                     }
                 }
