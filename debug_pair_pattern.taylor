@@ -1,6 +1,0 @@
-// Debug pair pattern matching - simplest case
-val tuple = Pair(10, 20)  
-val result = match tuple {
-    case Pair(x, y) => "found pair"
-}
-println(result)
