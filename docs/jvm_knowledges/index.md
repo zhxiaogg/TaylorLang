@@ -50,6 +50,7 @@ This repository contains curated knowledge, best practices, and insights related
 - **NEW**: Type inference integration patterns
 - **LATEST**: VerifyError root cause analysis - Type inference consistency critical for bytecode verification
 - **CRITICAL**: TryExpression stack verification resolution - Stack type consistency at control flow merge points
+- **BREAKTHROUGH**: TryExpression type constraint resolution - Monadic type unwrapping in constraint systems
 
 ## Knowledge Articles
 
@@ -59,8 +60,9 @@ This repository contains curated knowledge, best practices, and insights related
 - [Pattern Matching Control Flow](./pattern-matching-control-flow.md) - Label placement and execution order
 - [Wildcard Pattern Implementation](./wildcard-pattern-implementation.md) - Always-match pattern bytecode generation
 
-### Compiler Integration
+### Compiler Integration  
 - [Type Inference Integration](./compiler-type-inference-integration.md) - Complete expression coverage across compiler phases
+- [TryExpression Type Constraint Resolution](./tryexpression-type-constraint-resolution.md) - Monadic type unwrapping in constraint-based type systems
 
 ### Error Resolution
 - [VerifyError Debugging Strategies](./verifyerror-debugging.md) - Systematic approach to verification errors
@@ -72,18 +74,18 @@ This repository contains curated knowledge, best practices, and insights related
 
 ### By Language Feature
 - **Pattern Matching**: [Stack Management](./pattern-matching-stack-management.md), [Control Flow](./pattern-matching-control-flow.md), [Wildcard Patterns](./wildcard-pattern-implementation.md), [Constructor Patterns](./constructor-pattern-verifyerror-analysis.md)
-- **Type Systems**: [Type Inference Integration](./compiler-type-inference-integration.md), [Object-to-Primitive Conversion](./constructor-pattern-verifyerror-analysis.md)
-- **Error Handling**: [VerifyError Debugging](./verifyerror-debugging.md), [Constructor Pattern Errors](./constructor-pattern-verifyerror-analysis.md), [Type Inference Issues](./verifyerror-root-cause-analysis.md), [TryExpression Control Flow](./tryexpression-stack-verification-fix.md)
+- **Type Systems**: [Type Inference Integration](./compiler-type-inference-integration.md), [Object-to-Primitive Conversion](./constructor-pattern-verifyerror-analysis.md), [Monadic Type Constraints](./tryexpression-type-constraint-resolution.md)
+- **Error Handling**: [VerifyError Debugging](./verifyerror-debugging.md), [Constructor Pattern Errors](./constructor-pattern-verifyerror-analysis.md), [Type Inference Issues](./verifyerror-root-cause-analysis.md), [TryExpression Control Flow](./tryexpression-stack-verification-fix.md), [TryExpression Type Checking](./tryexpression-type-constraint-resolution.md)
 
 ### By JVM Concept
 - **Stack Management**: [Double Value Handling](./pattern-matching-stack-management.md), [Wildcard Patterns](./wildcard-pattern-implementation.md), [Object-to-Primitive Conversion](./constructor-pattern-verifyerror-analysis.md), [TryExpression Stack States](./tryexpression-stack-verification-fix.md)
 - **Control Flow**: [Label Management](./pattern-matching-control-flow.md), [Pattern Matching](./pattern-matching-bytecode.md), [TryExpression Merge Points](./tryexpression-stack-verification-fix.md)
-- **Type Safety**: [Type Inference Integration](./compiler-type-inference-integration.md), [VerifyError Prevention](./verifyerror-debugging.md), [Generic Type Handling](./constructor-pattern-verifyerror-analysis.md), [Method Signature Compliance](./tryexpression-stack-verification-fix.md)
+- **Type Safety**: [Type Inference Integration](./compiler-type-inference-integration.md), [VerifyError Prevention](./verifyerror-debugging.md), [Generic Type Handling](./constructor-pattern-verifyerror-analysis.md), [Method Signature Compliance](./tryexpression-stack-verification-fix.md), [Constraint Unification](./tryexpression-type-constraint-resolution.md)
 - **Verification Process**: [VerifyError Debugging](./verifyerror-debugging.md), [Stack State Verification](./constructor-pattern-verifyerror-analysis.md), [Multi-Path Consistency](./tryexpression-stack-verification-fix.md)
 
 ### By Problem Domain
-- **Functional Languages**: All pattern matching articles, [Generic Type Patterns](./constructor-pattern-verifyerror-analysis.md), [TryExpression Functional Control Flow](./tryexpression-stack-verification-fix.md)
-- **Compiler Design**: [Type Inference Integration](./compiler-type-inference-integration.md), [Constructor Pattern Analysis](./constructor-pattern-verifyerror-analysis.md), [TryExpression Compilation](./tryexpression-stack-verification-fix.md)
+- **Functional Languages**: All pattern matching articles, [Generic Type Patterns](./constructor-pattern-verifyerror-analysis.md), [TryExpression Functional Control Flow](./tryexpression-stack-verification-fix.md), [Monadic Type Systems](./tryexpression-type-constraint-resolution.md)
+- **Compiler Design**: [Type Inference Integration](./compiler-type-inference-integration.md), [Constructor Pattern Analysis](./constructor-pattern-verifyerror-analysis.md), [TryExpression Compilation](./tryexpression-stack-verification-fix.md), [Constraint-Based Type Checking](./tryexpression-type-constraint-resolution.md)
 - **Debugging**: [VerifyError Strategies](./verifyerror-debugging.md), [Constructor Pattern Issues](./constructor-pattern-verifyerror-analysis.md), [TryExpression Stack Issues](./tryexpression-stack-verification-fix.md)
 - **Generic Type Systems**: [Object-to-Primitive Conversion](./constructor-pattern-verifyerror-analysis.md)
 - **Control Flow**: [TryExpression Multi-Path Verification](./tryexpression-stack-verification-fix.md)
@@ -91,10 +93,10 @@ This repository contains curated knowledge, best practices, and insights related
 ### By Technical Complexity
 - **Beginner**: [Wildcard Patterns](./wildcard-pattern-implementation.md), [Basic VerifyError Debugging](./verifyerror-debugging.md)
 - **Intermediate**: [Pattern Matching Stack Management](./pattern-matching-stack-management.md), [Control Flow](./pattern-matching-control-flow.md)
-- **Advanced**: [Type Inference Integration](./compiler-type-inference-integration.md), [Constructor Pattern VerifyError](./constructor-pattern-verifyerror-analysis.md), [TryExpression Stack Verification](./tryexpression-stack-verification-fix.md)
+- **Advanced**: [Type Inference Integration](./compiler-type-inference-integration.md), [Constructor Pattern VerifyError](./constructor-pattern-verifyerror-analysis.md), [TryExpression Stack Verification](./tryexpression-stack-verification-fix.md), [Monadic Constraint Systems](./tryexpression-type-constraint-resolution.md)
 
 ---
 
 **Maintained by**: JVM Bytecode Expert Agent & Knowledge Curator Agent  
 **Last Updated**: 2025-08-15  
-**Knowledge Articles**: 9
+**Knowledge Articles**: 10
