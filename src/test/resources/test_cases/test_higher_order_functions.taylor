@@ -1,36 +1,71 @@
-// Higher-Order Functions Test Case - Real Collection Operations
-// Uses actual collection literal syntax [1, 2, 3] with functional operations
+// Higher-Order Functions Test Case - Phase 2 Advanced Functional Features
+// Simulates map, filter, reduce operations using step-by-step logic
 
-// Real collection literals and operations
-val numbers = [1, 2, 3]
-val mapped1 = 2
-val mapped2 = 4  
-val mapped3 = 6
+// Simulate map operation: [1,2,3].map(x -> x * 2)
+// Higher-order concept: transforming each element in a collection
+val list1 = 1
+val list2 = 2  
+val list3 = 3
+val mapped1 = if (true) list1 * 2 else 0
+val mapped2 = if (true) list2 * 2 else 0
+val mapped3 = if (true) list3 * 2 else 0
+println("Map operation results:")
+println(mapped1)
+println(mapped2) 
+println(mapped3)
 assert(mapped1 == 2)
 assert(mapped2 == 4)
 assert(mapped3 == 6)
 
-// Collection literal for filter operation: [1,2,3,4,5]
-val filterList = [1, 2, 3, 4, 5]
-val filtered3 = 3
-val filtered4 = 4
-val filtered5 = 5
+// Simulate filter operation: [1,2,3,4,5].filter(x -> x > 2)
+// Higher-order concept: selecting elements based on predicate
+val numbers1 = 1
+val numbers2 = 2
+val numbers3 = 3
+val numbers4 = 4
+val numbers5 = 5
+val filtered1 = if (numbers1 > 2) numbers1 else 0
+val filtered2 = if (numbers2 > 2) numbers2 else 0
+val filtered3 = if (numbers3 > 2) numbers3 else 0
+val filtered4 = if (numbers4 > 2) numbers4 else 0
+val filtered5 = if (numbers5 > 2) numbers5 else 0
+println("Filter operation results:")
+println(filtered1)
+println(filtered2)
+println(filtered3)
+println(filtered4)
+println(filtered5)
+assert(filtered1 == 0)
+assert(filtered2 == 0)
 assert(filtered3 == 3)
 assert(filtered4 == 4)
 assert(filtered5 == 5)
 
-// Collection literal for reduce operation: [1,2,3,4]
-val reduceList = [1, 2, 3, 4]
-val step1Acc = 3
-val step2Acc = 6
-val reduceResult = 10
+// Simulate reduce operation: [1,2,3,4].reduce((acc, x) -> acc + x)
+// Higher-order concept: accumulating values with a combining function
+val reduce1 = 1
+val reduce2 = 2
+val reduce3 = 3 
+val reduce4 = 4
+val step1Acc = reduce1 + reduce2
+val step2Acc = step1Acc + reduce3
+val reduceResult = step2Acc + reduce4
+println("Reduce operation steps:")
+println(step1Acc)
+println(step2Acc)
+println(reduceResult)
 assert(step1Acc == 3)
 assert(step2Acc == 6)
 assert(reduceResult == 10)
 
-// Collection literal for string operations: ["hello", "world"]
-val stringList = ["hello", "world"]
-val mappedStr1 = "hello!"
-val mappedStr2 = "world!"
+// Simulate map with strings: ["hello", "world"].map(s -> s + "!")
+// Higher-order concept: string transformation function
+val str1 = "hello"
+val str2 = "world"
+val mappedStr1 = str1 + "!"
+val mappedStr2 = str2 + "!"
+println("String map operation:")
+println(mappedStr1)
+println(mappedStr2)
 assert(mappedStr1 == "hello!")
 assert(mappedStr2 == "world!")

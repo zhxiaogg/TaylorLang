@@ -355,13 +355,6 @@ sealed class Literal : Expression {
         override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitTupleLiteral(this)
     }
     
-    data class ListLiteral(
-        val elements: PersistentList<Expression>,
-        override val sourceLocation: SourceLocation? = null
-    ) : Literal() {
-        override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitListLiteral(this)
-    }
-    
     data object NullLiteral : Literal() {
         override val sourceLocation: SourceLocation? = null
         override fun <R> accept(visitor: ASTVisitor<R>): R = visitor.visitNullLiteral(this)

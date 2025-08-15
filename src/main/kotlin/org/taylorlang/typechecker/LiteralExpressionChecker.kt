@@ -62,7 +62,6 @@ class LiteralExpressionChecker(
             is Literal.BooleanLiteral -> visitBooleanLiteral(node)
             is Literal.NullLiteral -> visitNullLiteral(node)
             is Literal.TupleLiteral -> visitTupleLiteral(node)
-            is Literal.ListLiteral -> visitListLiteral(node)
         }
     }
     
@@ -142,65 +141,6 @@ class LiteralExpressionChecker(
         }
     }
 
-    /**
-     * Type check a list literal.
-     */
-    fun visitListLiteral(node: Literal.ListLiteral): Result<TypedExpression> {
-        if (node.elements.isEmpty()) {
-            // Empty list: create a List<Unit> as default, can be refined through type inference
-            val listType = Type.GenericType("List", persistentListOf(BuiltinTypes.UNIT))
-            return Result.success(TypedExpression(node, listType))
-        }
-        
-        val elementTypes = mutableListOf<Type>()
-        val errors = mutableListOf<TypeError>()
-        
-        // Type check each element
-        for (element in node.elements) {
-            val elementResult = element.accept(baseChecker)
-            elementResult.fold(
-                onSuccess = { typedExpr ->
-                    elementTypes.add(typedExpr.type)
-                },
-                onFailure = { error ->
-                    errors.add(when (error) {
-                        is TypeError -> error
-                        else -> TypeError.InvalidOperation(
-                            error.message ?: "Unknown error",
-                            emptyList(),
-                            element.sourceLocation
-                        )
-                    })
-                }
-            )
-        }
-        
-        if (errors.isNotEmpty()) {
-            val error = if (errors.size == 1) {
-                errors.first()
-            } else {
-                TypeError.MultipleErrors(errors)
-            }
-            return Result.failure(error)
-        }
-        
-        // For now, we require all elements to have exactly the same type
-        // This is a simple approach - a full implementation would use unification
-        val firstElementType = elementTypes.first()
-        val allSameType = elementTypes.all { it == firstElementType }
-        
-        if (!allSameType) {
-            return Result.failure(TypeError.TypeMismatch(
-                expected = firstElementType,
-                actual = elementTypes.find { it != firstElementType }!!,
-                node.sourceLocation
-            ))
-        }
-        
-        // Create the list type
-        val listType = Type.GenericType("List", persistentListOf(firstElementType))
-        return Result.success(TypedExpression(node, listType))
-    }
     
     // =============================================================================
     // Type Inference and Substitution Utilities

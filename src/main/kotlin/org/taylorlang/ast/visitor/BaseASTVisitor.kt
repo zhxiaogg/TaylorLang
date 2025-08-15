@@ -280,7 +280,6 @@ abstract class BaseASTVisitor<R> : ASTVisitor<R> {
             is Literal.StringLiteral -> visitStringLiteral(node)
             is Literal.BooleanLiteral -> visitBooleanLiteral(node)
             is Literal.TupleLiteral -> visitTupleLiteral(node)
-            is Literal.ListLiteral -> visitListLiteral(node)
             is Literal.NullLiteral -> visitNullLiteral(node)
         }
     }
@@ -306,10 +305,6 @@ abstract class BaseASTVisitor<R> : ASTVisitor<R> {
         return combineResults(results)
     }
     
-    override fun visitListLiteral(node: Literal.ListLiteral): R {
-        val results = node.elements.map { it.accept(this) }
-        return combineResults(results)
-    }
     
     override fun visitNullLiteral(node: Literal.NullLiteral): R {
         return defaultResult()

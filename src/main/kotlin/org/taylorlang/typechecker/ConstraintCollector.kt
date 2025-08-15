@@ -131,7 +131,6 @@ class ConstraintCollector {
             is Literal.BooleanLiteral -> expressionVisitor.handleBooleanLiteral(expression, expectedType, context)
             is Literal.NullLiteral -> expressionVisitor.handleNullLiteral(expression, expectedType, context)
             is Literal.TupleLiteral -> expressionVisitor.handleTupleLiteral(expression, expectedType, context)
-            is Literal.ListLiteral -> expressionVisitor.handleListLiteral(expression, expectedType, context)
             
             // Variables and operations - delegate to expression visitor
             is Identifier -> expressionVisitor.handleIdentifier(expression, expectedType, context)

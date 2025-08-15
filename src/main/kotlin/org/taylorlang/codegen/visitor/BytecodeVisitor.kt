@@ -105,50 +105,6 @@ class BytecodeVisitor(
         }
     }
 
-    override fun visitListLiteral(node: Literal.ListLiteral): Unit {
-        // Create a TaylorList from the elements
-        if (node.elements.isEmpty()) {
-            // Empty list: call TaylorList.empty()
-            methodVisitor.visitMethodInsn(
-                INVOKESTATIC,
-                "org/taylorlang/stdlib/collections/TaylorList",
-                "empty",
-                "()Lorg/taylorlang/stdlib/collections/TaylorList;",
-                false
-            )
-        } else {
-            // Non-empty list: create ArrayList first, then convert to TaylorList
-            // Create new ArrayList
-            methodVisitor.visitTypeInsn(NEW, "java/util/ArrayList")
-            methodVisitor.visitInsn(DUP)
-            methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/util/ArrayList", "<init>", "()V", false)
-            
-            // Add each element to the ArrayList
-            node.elements.forEach { element ->
-                methodVisitor.visitInsn(DUP) // Duplicate the ArrayList reference
-                element.accept(this)
-                // Box primitive types if needed
-                boxPrimitiveIfNeeded(typeInferenceHelper(element))
-                methodVisitor.visitMethodInsn(
-                    INVOKEINTERFACE,
-                    "java/util/List",
-                    "add",
-                    "(Ljava/lang/Object;)Z",
-                    true
-                )
-                methodVisitor.visitInsn(POP) // Remove boolean return value
-            }
-            
-            // Convert ArrayList to TaylorList using from() method
-            methodVisitor.visitMethodInsn(
-                INVOKESTATIC,
-                "org/taylorlang/stdlib/collections/TaylorList",
-                "from",
-                "(Ljava/util/Collection;)Lorg/taylorlang/stdlib/collections/TaylorList;",
-                false
-            )
-        }
-    }
     
     // =============================================================================
     // Identifiers and Variables
