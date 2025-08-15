@@ -436,23 +436,22 @@ class ExpressionConstraintVisitor(
                 
                 // Handle string concatenation for PLUS operator
                 if (operator == BinaryOperator.PLUS) {
-                    // If either operand is String, result is String
-                    if (TypeOperations.areEqual(leftType, BuiltinTypes.STRING) || 
+                    // If both operands are String, result is String
+                    if (TypeOperations.areEqual(leftType, BuiltinTypes.STRING) && 
                         TypeOperations.areEqual(rightType, BuiltinTypes.STRING)) {
                         val resultType = BuiltinTypes.STRING
                         return Pair(resultType, ConstraintSet.empty())
                     }
                 }
                 
-                // For numeric operations, determine the result type based on operands
+                // For numeric operations, always promote to Double for consistent type inference
                 val resultType = when {
-                    // If both types are the same primitive, return that type
-                    TypeOperations.areEqual(leftType, rightType) && 
-                    BuiltinTypes.isNumeric(leftType) -> leftType
-                    
-                    // Use type promotion rules for mixed types
+                    // Use type promotion rules - always promote to Double for arithmetic operations
                     BuiltinTypes.isNumeric(leftType) && BuiltinTypes.isNumeric(rightType) -> {
-                        BuiltinTypes.getWiderNumericType(leftType, rightType) ?: BuiltinTypes.DOUBLE
+                        // Generate subtype constraints to ensure operands are numeric
+                        constraints.add(Constraint.Subtype(leftType, BuiltinTypes.DOUBLE, location))
+                        constraints.add(Constraint.Subtype(rightType, BuiltinTypes.DOUBLE, location))
+                        BuiltinTypes.DOUBLE // Always promote to Double for arithmetic operations
                     }
                     
                     // For type variables or unresolved types, use constraints

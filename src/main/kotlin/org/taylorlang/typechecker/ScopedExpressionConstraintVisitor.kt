@@ -222,26 +222,26 @@ class ScopedExpressionConstraintVisitor(
         )
         allConstraints = allConstraints.merge(catchProcessingResult.constraints)
         
-        // Create the final Result type with proper type inference
+        // Create the final Result type with proper type inference for internal validation
         val finalErrorType = catchProcessingResult.unifiedErrorType ?: expectedErrorType ?: BuiltinTypes.THROWABLE
-        val resultType = BuiltinTypes.createResultType(tryValueType, finalErrorType)
+        val internalResultType = BuiltinTypes.createResultType(tryValueType, finalErrorType)
         
         // Add constraint that the inferred error type is a Throwable subtype
         val throwableConstraints = generateThrowableConstraints(finalErrorType, tryExpr.sourceLocation)
         allConstraints = allConstraints.merge(throwableConstraints)
         
-        // Enhanced bidirectional type checking: if we have an expected type, unify with Result type
+        // Enhanced bidirectional type checking: if we have an expected type, unify with the unwrapped value type
         if (expectedType != null) {
-            val unificationConstraints = generateResultTypeUnificationConstraints(
-                resultType, 
+            val unificationConstraint = Constraint.Equality(
+                tryValueType, 
                 expectedType, 
                 tryExpr.sourceLocation
             )
-            allConstraints = allConstraints.merge(unificationConstraints)
+            allConstraints = allConstraints.add(unificationConstraint)
         }
         
-        // Try expressions should always return Result types for type checking
-        return ConstraintResult(resultType, allConstraints)
+        // Try expressions return the unwrapped value type, not the Result type
+        return ConstraintResult(tryValueType, allConstraints)
     }
     
     // =============================================================================

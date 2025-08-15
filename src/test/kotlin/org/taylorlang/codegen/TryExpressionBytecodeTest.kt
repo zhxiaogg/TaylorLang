@@ -35,7 +35,7 @@ class TryExpressionBytecodeTest {
     @BeforeEach
     fun setUp() {
         bytecodeGenerator = BytecodeGenerator()
-        typeChecker = RefactoredTypeChecker()
+        typeChecker = RefactoredTypeChecker(TypeCheckingMode.CONSTRAINT_BASED)
     }
 
     // =============================================================================
