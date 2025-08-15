@@ -435,6 +435,12 @@ class ExpressionBytecodeGenerator(
         return when (expr) {
             is Literal.IntLiteral -> true
             is BinaryOp -> isIntegerExpression(expr.left) && isIntegerExpression(expr.right)
+            is Identifier -> {
+                // CRITICAL FIX: Check if the identifier is bound to an integer type
+                // This prevents arithmetic expressions with integer variables from defaulting to double
+                val identifierType = variableSlotManager.getType(expr.name)
+                identifierType == BuiltinTypes.INT
+            }
             else -> false
         }
     }
