@@ -166,6 +166,9 @@ Rationale: Why this change matters
 - **TryExpression type constraint logic errors**: ScopedExpressionConstraintVisitor.handleTryExpression() must return unwrapped type T when no catch clauses present, not Result<T,E>
 - **Integration gap analysis violations**: Working catch clause tests (3/8 pass) masking fundamental no-catch-clause type inference defects
 - **Incomplete semantic implementation**: TryExpression without catch clauses should unwrap Result types, not propagate them
+- **False success rate claims**: Implementation status claims (e.g., "100% test success rate") must be verified against actual test execution results before code review acceptance
+- **Test execution validation failure**: Claims of complete test success must be validated by running full test suite, not just isolated subset tests
+- **Status misrepresentation anti-pattern**: Reporting success statistics from narrow test subsets while ignoring broader test suite failures undermines review integrity
 
 ### Code Smells
 - **Feature envy**: Classes accessing other classes' data excessively
@@ -220,5 +223,7 @@ Rationale: Why this change matters
 - **Refactoring functional regression**: Type inference behavior changes during architectural extraction
 - **Incomplete pattern matching extraction**: Missing cases in refactored generators (TupleLiteral, NullLiteral)
 - **Integration dependency breaks**: Coordinator patterns losing original component connections
+- **Implementation status validation failure**: Code submissions claiming test success must include verified test execution evidence
+- **Repository state inconsistency**: Working directory must be clean and test suite passing before any code review acceptance
 
 **NO EXCEPTIONS POLICY**: Previous issues do not excuse new violations. All code must meet standards regardless of existing codebase state.
