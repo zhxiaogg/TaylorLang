@@ -1,0 +1,6 @@
+// Simple match test without constructors
+val x = 42
+val result = match x {
+    case _ => "anything"
+}
+println(result)

@@ -44,15 +44,44 @@ This repository contains curated knowledge, best practices, and insights related
 - Knowledge categorization framework established  
 - Added pattern matching bytecode generation guide
 - Added VerifyError debugging strategies
+- **NEW**: Comprehensive pattern matching implementation patterns
+- **NEW**: Stack management for complex data types
+- **NEW**: Control flow generation best practices
+- **NEW**: Type inference integration patterns
 
 ## Knowledge Articles
 
 ### Bytecode Generation Patterns
 - [Pattern Matching Bytecode Generation](./pattern-matching-bytecode.md) - Stack management for pattern matching
+- [Pattern Matching Stack Management](./pattern-matching-stack-management.md) - Double value handling and stack consistency
+- [Pattern Matching Control Flow](./pattern-matching-control-flow.md) - Label placement and execution order
+- [Wildcard Pattern Implementation](./wildcard-pattern-implementation.md) - Always-match pattern bytecode generation
+
+### Compiler Integration
+- [Type Inference Integration](./compiler-type-inference-integration.md) - Complete expression coverage across compiler phases
+
+### Error Resolution
 - [VerifyError Debugging Strategies](./verifyerror-debugging.md) - Systematic approach to verification errors
+
+## Cross-References
+
+### By Language Feature
+- **Pattern Matching**: [Stack Management](./pattern-matching-stack-management.md), [Control Flow](./pattern-matching-control-flow.md), [Wildcard Patterns](./wildcard-pattern-implementation.md)
+- **Type Systems**: [Type Inference Integration](./compiler-type-inference-integration.md)
+- **Error Handling**: [VerifyError Debugging](./verifyerror-debugging.md)
+
+### By JVM Concept
+- **Stack Management**: [Double Value Handling](./pattern-matching-stack-management.md), [Wildcard Patterns](./wildcard-pattern-implementation.md)
+- **Control Flow**: [Label Management](./pattern-matching-control-flow.md), [Pattern Matching](./pattern-matching-bytecode.md)
+- **Type Safety**: [Type Inference Integration](./compiler-type-inference-integration.md), [VerifyError Prevention](./verifyerror-debugging.md)
+
+### By Problem Domain
+- **Functional Languages**: All pattern matching articles
+- **Compiler Design**: [Type Inference Integration](./compiler-type-inference-integration.md)
+- **Debugging**: [VerifyError Strategies](./verifyerror-debugging.md)
 
 ---
 
 **Maintained by**: JVM Bytecode Expert Agent & Knowledge Curator Agent
-**Last Updated**: 2024
-**Knowledge Articles**: 2
+**Last Updated**: 2025-08-15
+**Knowledge Articles**: 6

@@ -1,0 +1,9 @@
+// Option patterns test
+type Option<T> = Some(T) | None
+
+val option = Some("Hello")
+val message = match option {
+    case Some(value) => "Value: " + value
+    case None() => "No value"
+}
+println(message)

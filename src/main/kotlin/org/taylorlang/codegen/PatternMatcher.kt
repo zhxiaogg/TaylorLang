@@ -161,7 +161,7 @@ class PatternMatcher(
         // Cast to constructor type (DUPed value is still on stack)
         methodVisitor.visitTypeInsn(CHECKCAST, constructorClassName)
         
-        // Test each field pattern
+        // Test each field pattern with proper stack management
         for (i in pattern.patterns.indices) {
             val fieldPattern = pattern.patterns[i]
             val fieldType = getFieldType(constructorName, i, targetType)
@@ -174,9 +174,20 @@ class PatternMatcher(
             
             // Test field pattern recursively
             val fieldSuccessLabel = Label()
-            generatePatternTest(fieldPattern, fieldType, fieldSuccessLabel, failureLabel)
+            val fieldFailureLabel = Label()
             
+            // CRITICAL FIX: Generate custom field pattern test to handle stack cleanup
+            generateFieldPatternTest(fieldPattern, fieldType, fieldSuccessLabel, fieldFailureLabel)
+            
+            // Field pattern failed - clean up stack and fail constructor pattern
+            methodVisitor.visitLabel(fieldFailureLabel)
+            methodVisitor.visitInsn(POP) // Remove constructor instance
+            methodVisitor.visitJumpInsn(GOTO, failureLabel)
+            
+            // Field pattern succeeded - continue to next field
             methodVisitor.visitLabel(fieldSuccessLabel)
+            // CRITICAL FIX: After each field test, the constructor instance is still on the stack
+            // No additional cleanup needed here as the constructor instance is properly maintained
         }
         
         // All field patterns matched
@@ -481,6 +492,57 @@ class PatternMatcher(
                 else -> "getField$fieldIndex"
             }
             else -> "getField$fieldIndex"
+        }
+    }
+    
+    /**
+     * Generate field pattern test with proper stack management for constructor patterns.
+     * This method is specifically designed to handle the case where a constructor instance
+     * is on the stack and needs to be preserved or cleaned up appropriately.
+     */
+    private fun generateFieldPatternTest(
+        pattern: Pattern,
+        fieldType: Type,
+        successLabel: Label,
+        failureLabel: Label
+    ) {
+        when (pattern) {
+            is Pattern.LiteralPattern -> {
+                generateLiteralPatternTest(pattern, fieldType, successLabel, failureLabel)
+            }
+            is Pattern.WildcardPattern -> {
+                // Wildcard patterns always match - just consume the field value
+                // Use POP2 for double values (they occupy 2 stack slots)
+                if (fieldType == BuiltinTypes.DOUBLE || (fieldType is Type.PrimitiveType && fieldType.name.lowercase() in listOf("double", "float"))) {
+                    methodVisitor.visitInsn(POP2)
+                } else {
+                    methodVisitor.visitInsn(POP)
+                }
+                methodVisitor.visitJumpInsn(GOTO, successLabel)
+            }
+            is Pattern.IdentifierPattern -> {
+                // Identifier patterns always match - just consume the field value
+                // Use POP2 for double values (they occupy 2 stack slots)
+                if (fieldType == BuiltinTypes.DOUBLE || (fieldType is Type.PrimitiveType && fieldType.name.lowercase() in listOf("double", "float"))) {
+                    methodVisitor.visitInsn(POP2)
+                } else {
+                    methodVisitor.visitInsn(POP)
+                }
+                methodVisitor.visitJumpInsn(GOTO, successLabel)
+            }
+            is Pattern.ConstructorPattern -> {
+                // Recursive constructor patterns - use the standard pattern test
+                generatePatternTest(pattern, fieldType, successLabel, failureLabel, -1)
+            }
+            is Pattern.GuardPattern -> {
+                // Guard patterns - use the standard pattern test
+                generatePatternTest(pattern, fieldType, successLabel, failureLabel, -1)
+            }
+            else -> {
+                // Unknown pattern type - assume failure and consume field value
+                methodVisitor.visitInsn(POP)
+                methodVisitor.visitJumpInsn(GOTO, failureLabel)
+            }
         }
     }
     

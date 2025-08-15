@@ -1,0 +1,8 @@
+// Minimal constructor pattern test  
+type Result<T, E> = Ok(T) | Error(E)
+val result = Ok(42)
+val message = match result {
+    case Ok(_) => "Success"
+    case _ => "Error"
+}
+println(message)

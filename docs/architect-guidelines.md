@@ -51,6 +51,87 @@ src/
 - Centralize error logging and monitoring
 - Define error boundaries at module interfaces
 
+## Bytecode Generation Architecture
+
+### Component Separation Pattern
+**Principle**: Separate bytecode generation concerns into focused, specialized components to prevent VerifyError and improve maintainability.
+
+```kotlin
+// PREFERRED: Separated concerns architecture
+class PatternBytecodeCompiler(
+    private val methodVisitor: MethodVisitor,
+    private val variableSlotManager: VariableSlotManager,
+    private val expressionGenerator: ExpressionBytecodeGenerator
+) {
+    // Delegate components for separated concerns
+    private val typeConverter = TypeConverter(methodVisitor)
+    private val bytecodeUtils = BytecodeGeneratorUtils(methodVisitor, typeConverter)
+    private val patternMatcher = PatternMatcher(
+        methodVisitor, 
+        variableSlotManager, 
+        typeConverter, 
+        this::generateExpression
+    )
+}
+
+// AVOID: Monolithic bytecode generator
+class MonolithicBytecodeGenerator {
+    // Everything mixed together - hard to maintain and debug
+}
+```
+
+**Benefits**:
+- Isolated testing of individual components
+- Clear responsibility boundaries
+- Easier debugging of bytecode issues
+- Reduced complexity per component
+
+### Control Flow Generation Pattern
+**Principle**: Generate all conditional tests before visiting failure labels to ensure correct execution order.
+
+```kotlin
+// PREFERRED: Delayed failure label placement
+fun generatePatternTests(cases: List<MatchCase>) {
+    // Phase 1: Generate all pattern tests with forward jumps
+    val caseLabels = cases.map { Label() }
+    
+    for (i in cases.indices) {
+        val nextLabel = if (i < cases.size - 1) Label() else Label()
+        generatePatternTest(cases[i].pattern, caseLabels[i], nextLabel)
+        
+        if (i < cases.size - 1) {
+            methodVisitor.visitLabel(nextLabel)
+        } else {
+            // Visit final failure label after ALL tests
+            methodVisitor.visitLabel(nextLabel)
+            generateDefaultValue()
+        }
+    }
+}
+```
+
+**Anti-Pattern**: Premature failure label generation that causes control flow corruption.
+
+### Type System Integration Pattern
+**Principle**: Maintain parallel coverage between type inference and code generation phases.
+
+```kotlin
+// REQUIRED: Complete expression coverage in both phases
+class CompilerPhaseValidator {
+    fun validateCoverage() {
+        val expressionTypes = getAllExpressionTypes()
+        val inferenceHandlers = getTypeInferenceHandlers()
+        val codegenHandlers = getCodegenHandlers()
+        
+        val missingInference = expressionTypes - inferenceHandlers.keys
+        val missingCodegen = expressionTypes - codegenHandlers.keys
+        
+        require(missingInference.isEmpty()) { "Missing type inference for: $missingInference" }
+        require(missingCodegen.isEmpty()) { "Missing code generation for: $missingCodegen" }
+    }
+}
+```
+
 ## Design Decision Framework
 
 ### Trade-off Analysis
@@ -80,6 +161,12 @@ When making architectural decisions, evaluate:
 - Consistent naming conventions across modules
 - Proper error handling at all boundaries
 
+### Bytecode Generation Quality
+- Stack frame consistency at all merge points
+- Proper handling of JVM double/long slot requirements
+- Complete expression type coverage in all compiler phases
+- Clear separation between pattern matching, type conversion, and control flow
+
 ## Review Checklist
 
 ### High-Level Assessment
@@ -87,6 +174,13 @@ When making architectural decisions, evaluate:
 - [ ] Appropriate use of design patterns
 - [ ] Proper dependency direction
 - [ ] Separation of concerns maintained
+
+### Bytecode Generation Review
+- [ ] Component responsibilities clearly separated
+- [ ] Stack management handles double/long values correctly
+- [ ] Control flow labels placed after pattern tests complete
+- [ ] Type inference and code generation have parallel coverage
+- [ ] Pattern matching handles all pattern types (including wildcards)
 
 ### Detailed Review
 - [ ] No god objects or large classes
@@ -102,3 +196,4 @@ Escalate architectural decisions when:
 - Performance requirements conflict with maintainability
 - New patterns emerge that could benefit the entire codebase
 - External system integration requires new architectural approaches
+- Bytecode generation patterns could benefit other language features

@@ -1,0 +1,6 @@
+// Simplest possible match test
+val x = 42
+val result = match x {
+    case _ => "anything"
+}
+println(result)

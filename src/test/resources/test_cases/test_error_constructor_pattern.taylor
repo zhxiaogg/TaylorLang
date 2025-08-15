@@ -1,0 +1,8 @@
+// Error constructor pattern test
+type Result<T, E> = Ok(T) | Error(E)
+val result = Error("test error")
+val message = match result {
+    case Error(err) => "Error: " + err
+    case _ => "OK"
+}
+println(message)

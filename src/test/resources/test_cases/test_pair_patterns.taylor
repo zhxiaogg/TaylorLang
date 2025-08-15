@@ -1,0 +1,8 @@
+// Pair constructor pattern test - two fields
+type Tuple2<A, B> = Pair(A, B)
+
+val tuple = Pair(10, 20)  
+val result = match tuple {
+    case Pair(x, y) => x + y
+}
+println(result)

@@ -1,0 +1,16 @@
+// Combined Ok and Error patterns
+type Result<T, E> = Ok(T) | Error(E)
+
+val result1 = Ok(42)
+val message1 = match result1 {
+    case Ok(value) => "Success: " + value
+    case Error(err) => "Error: " + err
+}
+println(message1)
+
+val result2 = Error("not found")
+val message2 = match result2 {
+    case Ok(value) => "Success: " + value  
+    case Error(err) => "Error: " + err
+}
+println(message2)
