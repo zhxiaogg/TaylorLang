@@ -154,6 +154,9 @@ Rationale: Why this change matters
 - **Mega files**: Files exceeding 500 lines - ExpressionBytecodeGenerator (1106 lines), BytecodeGenerator (851 lines) require immediate refactoring
 - **Test failure tolerance**: Accepting partial test success rates - zero tolerance policy means 100% pass rate required
 - **Arithmetic type inference defects**: Int+Int operations returning Double instead of Int indicates type promotion bugs
+- **Refactoring regression risks**: Large architectural changes must preserve exact functional behavior - type inference logic extraction particularly prone to behavioral changes
+- **Pattern matching coordinator violations**: When extracting specialized generators, ensure all Literal subtypes are handled exhaustively (TupleLiteral, NullLiteral often missed)
+- **Component integration failures**: Refactored coordinator patterns must maintain all original integration points (TryExpression pattern compiler dependencies)
 
 ### Code Smells
 - **Feature envy**: Classes accessing other classes' data excessively
@@ -203,5 +206,8 @@ Rationale: Why this change matters
 - **Mega file violations**: Files > 1000 lines require immediate breaking into modules
 - **Type system regressions**: Arithmetic operations returning incorrect types (Int+Int≠Double)
 - **Test suite degradation**: Any reduction from 100% pass rate is blocking
+- **Refactoring functional regression**: Type inference behavior changes during architectural extraction
+- **Incomplete pattern matching extraction**: Missing cases in refactored generators (TupleLiteral, NullLiteral)
+- **Integration dependency breaks**: Coordinator patterns losing original component connections
 
 **NO EXCEPTIONS POLICY**: Previous issues do not excuse new violations. All code must meet standards regardless of existing codebase state.
