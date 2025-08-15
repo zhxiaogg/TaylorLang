@@ -48,7 +48,7 @@ This repository contains curated knowledge, best practices, and insights related
 - **NEW**: Stack management for complex data types
 - **NEW**: Control flow generation best practices
 - **NEW**: Type inference integration patterns
-- **LATEST**: Constructor pattern VerifyError analysis - Object-to-primitive unboxing insights
+- **LATEST**: VerifyError root cause analysis - Type inference consistency critical for bytecode verification
 
 ## Knowledge Articles
 
@@ -64,13 +64,14 @@ This repository contains curated knowledge, best practices, and insights related
 ### Error Resolution
 - [VerifyError Debugging Strategies](./verifyerror-debugging.md) - Systematic approach to verification errors
 - [Constructor Pattern VerifyError Analysis](./constructor-pattern-verifyerror-analysis.md) - Object-to-primitive unboxing stack management
+- [VerifyError Root Cause Analysis](./verifyerror-root-cause-analysis.md) - Critical case study: Type inference vs bytecode generation mismatches
 
 ## Cross-References
 
 ### By Language Feature
 - **Pattern Matching**: [Stack Management](./pattern-matching-stack-management.md), [Control Flow](./pattern-matching-control-flow.md), [Wildcard Patterns](./wildcard-pattern-implementation.md), [Constructor Patterns](./constructor-pattern-verifyerror-analysis.md)
 - **Type Systems**: [Type Inference Integration](./compiler-type-inference-integration.md), [Object-to-Primitive Conversion](./constructor-pattern-verifyerror-analysis.md)
-- **Error Handling**: [VerifyError Debugging](./verifyerror-debugging.md), [Constructor Pattern Errors](./constructor-pattern-verifyerror-analysis.md)
+- **Error Handling**: [VerifyError Debugging](./verifyerror-debugging.md), [Constructor Pattern Errors](./constructor-pattern-verifyerror-analysis.md), [Type Inference Issues](./verifyerror-root-cause-analysis.md)
 
 ### By JVM Concept
 - **Stack Management**: [Double Value Handling](./pattern-matching-stack-management.md), [Wildcard Patterns](./wildcard-pattern-implementation.md), [Object-to-Primitive Conversion](./constructor-pattern-verifyerror-analysis.md)
@@ -93,4 +94,4 @@ This repository contains curated knowledge, best practices, and insights related
 
 **Maintained by**: JVM Bytecode Expert Agent & Knowledge Curator Agent  
 **Last Updated**: 2025-08-15  
-**Knowledge Articles**: 7
+**Knowledge Articles**: 8
