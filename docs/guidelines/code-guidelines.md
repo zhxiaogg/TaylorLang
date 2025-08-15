@@ -161,6 +161,9 @@ Rationale: Why this change matters
 - **Type checking coordinator gaps**: ScopedExpressionConstraintVisitor TryExpression logic must properly validate Result-returning function contexts
 - **Bytecode generation runtime dependencies**: TryExpressionBytecodeGenerator requires complete TaylorResult runtime integration and proper PatternBytecodeCompiler initialization
 - **Test failure masking integration defects**: 37% pass rate in TryExpressionBytecodeTest and 17% in TryExpressionTypeCheckingTest indicates systematic integration failure requiring complete rework
+- **TryExpression type constraint logic errors**: ScopedExpressionConstraintVisitor.handleTryExpression() must return unwrapped type T when no catch clauses present, not Result<T,E>
+- **Integration gap analysis violations**: Working catch clause tests (3/8 pass) masking fundamental no-catch-clause type inference defects
+- **Incomplete semantic implementation**: TryExpression without catch clauses should unwrap Result types, not propagate them
 
 ### Code Smells
 - **Feature envy**: Classes accessing other classes' data excessively
