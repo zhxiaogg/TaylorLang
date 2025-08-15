@@ -41,9 +41,15 @@ class PatternMatcher(
             is Pattern.LiteralPattern -> {
                 generateLiteralPatternTest(pattern, targetType, successLabel, failureLabel)
             }
+            is Pattern.WildcardPattern -> {
+                // Wildcard patterns always match - they match any value
+                // Pop the target value that was loaded for comparison since wildcards don't need to compare
+                methodVisitor.visitInsn(POP)
+                methodVisitor.visitJumpInsn(GOTO, successLabel)
+            }
             is Pattern.IdentifierPattern -> {
                 // Identifier patterns always match - they just bind the value
-                // CRITICAL FIX: Pop the target value that was loaded for comparison
+                // Pop the target value that was loaded for comparison
                 // since identifier patterns don't need to compare, just bind
                 methodVisitor.visitInsn(POP)
                 methodVisitor.visitJumpInsn(GOTO, successLabel)
@@ -270,6 +276,9 @@ class PatternMatcher(
             }
             is Pattern.LiteralPattern -> {
                 // Literal patterns don't bind variables
+            }
+            is Pattern.WildcardPattern -> {
+                // Wildcard patterns don't bind variables
             }
             else -> {
                 // Unknown pattern type - no variables to bind

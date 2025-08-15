@@ -354,6 +354,18 @@ class ExpressionBytecodeGenerator(
                 // While loops return Unit
                 BuiltinTypes.UNIT
             }
+            is MatchExpression -> {
+                // Match expressions return the common type of all case expressions
+                if (expr.cases.isEmpty()) {
+                    BuiltinTypes.UNIT
+                } else {
+                    // Find the common type of all case expressions
+                    val caseTypes = expr.cases.map { inferExpressionType(it.expression) }
+                    // For now, return the type of the first case
+                    // In a full implementation, this would find the least upper bound
+                    caseTypes.firstOrNull() ?: BuiltinTypes.UNIT
+                }
+            }
             is FunctionCall -> {
                 // Infer function call return type
                 when ((expr.target as? Identifier)?.name) {
