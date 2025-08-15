@@ -40,26 +40,49 @@ Pass complete task specification to selected agent:
 - Agent returns completion status and outcome details
 ```
 
-### 4. Document Knowledge (MANDATORY)
+### 4. Code Review (MANDATORY)
 ```
-Claude → Launch @agent-knowledge-curator:
-- Extract insights from completed task
-- Document patterns, solutions, and learnings
-- Update appropriate knowledge repositories
-- Ensure knowledge is properly indexed
+Claude → Launch @agent-code-reviewer:
+- Review all code changes for quality, maintainability, and standards
+- Assess adherence to project coding guidelines
+- Verify implementation correctness and best practices
+- Return APPROVE/REJECT with detailed feedback
+- If REJECT: provide specific improvement requirements
 ```
 
-### 5. Report Back to Tech Lead
+### 5. Architecture Review (CONDITIONAL)
 ```
-Claude → Launch @agent-tech-lead with task outcome:
+IF task involves system design, architecture, or significant structural changes:
+  Claude → Launch @agent-system-design-architect:
+  - Review architectural decisions and design patterns
+  - Assess system boundaries and component interactions
+  - Verify scalability and maintainability considerations
+  - Return APPROVE/REJECT with architectural feedback
+```
+
+### 6. Document Knowledge (MANDATORY)
+```
+Each agent maintains their own documentation:
+- Implementation agents update relevant docs with patterns discovered
+- Code reviewer updates code guidelines with new rules
+- System architect updates architecture guidelines with new patterns
+- JVM expert updates JVM knowledge base with insights
+- All documentation must be concise and crisp, focused on intention over verbose details
+```
+
+### 7. Tech Lead Final Approval
+```
+Claude → Launch @agent-tech-lead with comprehensive outcome:
 - Pass completed work details and status
-- Include knowledge documentation status
-- Allow tech lead to assess completion quality
-- Tech lead determines if additional work needed on this task
+- Include code review results (APPROVE/REJECT + feedback)
+- Include architecture review results (if applicable)
+- Include agent self-documentation status
+- Tech lead makes final approval decision based on all reviews
+- Tech lead determines if additional work needed or if task is complete
 - Tech lead prepares for next iteration of workflow loop
 ```
 
-### 6. Loop Continuation
+### 8. Loop Continuation
 ```
 REPEAT from step 1:
 Continue until @agent-tech-lead indicates no further tasks available
@@ -73,8 +96,13 @@ WHILE (project not complete):
        BREAK  // Project fully implemented
   3. agent = determine_appropriate_agent(task)
   4. outcome = execute_task_with_agent(agent, task)
-  5. knowledge = document_learnings_with_knowledge_curator(outcome)
-  6. report_outcome_to_tech_lead(outcome, knowledge)
+  5. code_review = review_code_with_code_reviewer(outcome)
+  6. IF task_requires_architecture_review(task):
+       architecture_review = review_architecture_with_architect(outcome)
+  7. self_documentation = agents_maintain_own_docs(outcome, reviews)
+  8. final_approval = get_tech_lead_approval(outcome, code_review, architecture_review, self_documentation)
+  9. IF final_approval == REJECT:
+       CONTINUE  // Return to step 3 with feedback for rework
 END WHILE
 
 Project delivery complete - no remaining tasks
@@ -85,6 +113,8 @@ Project delivery complete - no remaining tasks
 ### @agent-tech-lead
 - **Task Planning**: Analyze project state and identify next priority work
 - **Agent Selection**: Recommend which agent should handle each task type
+- **Final Approval**: Review all work including code review and architecture review results
+- **Quality Gate**: Make final approval/rejection decisions based on comprehensive reviews
 - **Progress Tracking**: Monitor completion and decide on next steps
 - **Project Oversight**: Determine when project is fully implemented
 - **Termination Decision**: Signal when no further tasks remain
@@ -119,11 +149,18 @@ Project delivery complete - no remaining tasks
 3. Agent receives full context and requirements
 4. Agent executes task independently
 5. Agent reports completion with detailed outcome
-6. Tech lead assesses results and plans next task
+6. **MANDATORY**: Code reviewer reviews all code changes
+7. **CONDITIONAL**: Architecture reviewer reviews structural changes (if applicable)
+8. Each agent maintains their own documentation concisely
+9. Tech lead makes final approval based on all review results
+10. If approved: proceed to next task; if rejected: rework with feedback
 
 ### Quality Assurance
 - Each agent maintains responsibility for quality within their domain
-- Tech lead coordinates overall project quality and completeness
+- **MANDATORY code review** ensures all changes meet quality standards
+- **CONDITIONAL architecture review** ensures structural integrity for significant changes
+- **Tech lead final approval** acts as quality gate combining all review inputs
+- **Rejection and rework process** ensures no substandard work proceeds
 - Workflow continues until all project requirements satisfied
 
 ### Communication Standards

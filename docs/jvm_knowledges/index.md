@@ -48,6 +48,7 @@ This repository contains curated knowledge, best practices, and insights related
 - **NEW**: Stack management for complex data types
 - **NEW**: Control flow generation best practices
 - **NEW**: Type inference integration patterns
+- **LATEST**: Constructor pattern VerifyError analysis - Object-to-primitive unboxing insights
 
 ## Knowledge Articles
 
@@ -62,26 +63,34 @@ This repository contains curated knowledge, best practices, and insights related
 
 ### Error Resolution
 - [VerifyError Debugging Strategies](./verifyerror-debugging.md) - Systematic approach to verification errors
+- [Constructor Pattern VerifyError Analysis](./constructor-pattern-verifyerror-analysis.md) - Object-to-primitive unboxing stack management
 
 ## Cross-References
 
 ### By Language Feature
-- **Pattern Matching**: [Stack Management](./pattern-matching-stack-management.md), [Control Flow](./pattern-matching-control-flow.md), [Wildcard Patterns](./wildcard-pattern-implementation.md)
-- **Type Systems**: [Type Inference Integration](./compiler-type-inference-integration.md)
-- **Error Handling**: [VerifyError Debugging](./verifyerror-debugging.md)
+- **Pattern Matching**: [Stack Management](./pattern-matching-stack-management.md), [Control Flow](./pattern-matching-control-flow.md), [Wildcard Patterns](./wildcard-pattern-implementation.md), [Constructor Patterns](./constructor-pattern-verifyerror-analysis.md)
+- **Type Systems**: [Type Inference Integration](./compiler-type-inference-integration.md), [Object-to-Primitive Conversion](./constructor-pattern-verifyerror-analysis.md)
+- **Error Handling**: [VerifyError Debugging](./verifyerror-debugging.md), [Constructor Pattern Errors](./constructor-pattern-verifyerror-analysis.md)
 
 ### By JVM Concept
-- **Stack Management**: [Double Value Handling](./pattern-matching-stack-management.md), [Wildcard Patterns](./wildcard-pattern-implementation.md)
+- **Stack Management**: [Double Value Handling](./pattern-matching-stack-management.md), [Wildcard Patterns](./wildcard-pattern-implementation.md), [Object-to-Primitive Conversion](./constructor-pattern-verifyerror-analysis.md)
 - **Control Flow**: [Label Management](./pattern-matching-control-flow.md), [Pattern Matching](./pattern-matching-bytecode.md)
-- **Type Safety**: [Type Inference Integration](./compiler-type-inference-integration.md), [VerifyError Prevention](./verifyerror-debugging.md)
+- **Type Safety**: [Type Inference Integration](./compiler-type-inference-integration.md), [VerifyError Prevention](./verifyerror-debugging.md), [Generic Type Handling](./constructor-pattern-verifyerror-analysis.md)
+- **Verification Process**: [VerifyError Debugging](./verifyerror-debugging.md), [Stack State Verification](./constructor-pattern-verifyerror-analysis.md)
 
 ### By Problem Domain
-- **Functional Languages**: All pattern matching articles
-- **Compiler Design**: [Type Inference Integration](./compiler-type-inference-integration.md)
-- **Debugging**: [VerifyError Strategies](./verifyerror-debugging.md)
+- **Functional Languages**: All pattern matching articles, [Generic Type Patterns](./constructor-pattern-verifyerror-analysis.md)
+- **Compiler Design**: [Type Inference Integration](./compiler-type-inference-integration.md), [Constructor Pattern Analysis](./constructor-pattern-verifyerror-analysis.md)
+- **Debugging**: [VerifyError Strategies](./verifyerror-debugging.md), [Constructor Pattern Issues](./constructor-pattern-verifyerror-analysis.md)
+- **Generic Type Systems**: [Object-to-Primitive Conversion](./constructor-pattern-verifyerror-analysis.md)
+
+### By Technical Complexity
+- **Beginner**: [Wildcard Patterns](./wildcard-pattern-implementation.md), [Basic VerifyError Debugging](./verifyerror-debugging.md)
+- **Intermediate**: [Pattern Matching Stack Management](./pattern-matching-stack-management.md), [Control Flow](./pattern-matching-control-flow.md)
+- **Advanced**: [Type Inference Integration](./compiler-type-inference-integration.md), [Constructor Pattern VerifyError](./constructor-pattern-verifyerror-analysis.md)
 
 ---
 
-**Maintained by**: JVM Bytecode Expert Agent & Knowledge Curator Agent
-**Last Updated**: 2025-08-15
-**Knowledge Articles**: 6
+**Maintained by**: JVM Bytecode Expert Agent & Knowledge Curator Agent  
+**Last Updated**: 2025-08-15  
+**Knowledge Articles**: 7

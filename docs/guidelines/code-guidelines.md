@@ -55,10 +55,11 @@
 ## Review Process
 
 ### Initial Assessment
-1. **File size check**: Verify 500-line limit compliance
-2. **Structure overview**: Assess organization and modularity
-3. **Dependency analysis**: Check import statements and coupling
-4. **Naming scan**: Verify self-documenting code principles
+1. **Repository cleanliness**: Verify no temporary files, debug code, or IDE artifacts
+2. **File size check**: Verify 500-line limit compliance
+3. **Structure overview**: Assess organization and modularity
+4. **Dependency analysis**: Check import statements and coupling
+5. **Naming scan**: Verify self-documenting code principles
 
 ### Detailed Analysis
 1. **Function complexity**: Evaluate each function's cognitive load
@@ -113,11 +114,20 @@ Rationale: Why this change matters
 - [ ] Minimal code duplication
 - [ ] Clear separation of concerns
 
+### Repository Cleanliness (MANDATORY)
+- [ ] **No temporary files**: .tmp, .temp, .bak, .swp, .DS_Store files excluded
+- [ ] **No IDE files**: .idea/, .vscode/, *.iml files excluded  
+- [ ] **No build artifacts**: target/, build/, dist/, out/ directories excluded
+- [ ] **No debug code**: console.log, print statements, debug imports removed
+- [ ] **No commented code**: Dead code completely removed, not commented out
+- [ ] **Clean git status**: Working directory clean before commits
+- [ ] **Proper .gitignore**: All temporary and generated files properly ignored
+
 ### Commit Standards
 - [ ] Commit messages use single quotes: `git commit -m 'commit message'`
 - [ ] Messages explain 'why' not just 'what'
 - [ ] Atomic commits with focused changes
-- [ ] No commented-out code or debug statements
+- [ ] Repository clean before every commit
 - [ ] All temporary files excluded from commits
 
 ## Common Patterns to Flag
@@ -169,5 +179,8 @@ Rationale: Why this change matters
 - Missing error handling for edge cases
 - Violations of established coding conventions
 - Code that introduces technical debt
+- **Repository contamination**: Temporary files, debug code, commented code, IDE files
+- **Dirty working directory**: Uncommitted changes, untracked temporary files
+- **Missing .gitignore entries**: Generated files not properly excluded
 
 **NO EXCEPTIONS POLICY**: Previous issues do not excuse new violations. All code must meet standards regardless of existing codebase state.

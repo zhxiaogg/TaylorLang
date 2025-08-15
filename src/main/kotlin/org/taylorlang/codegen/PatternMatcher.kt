@@ -441,7 +441,12 @@ class PatternMatcher(
             )
         } else {
             // Standard field access
-            val methodDescriptor = "()${typeConverter.getJvmTypeDescriptor(fieldType)}"
+            // CRITICAL FIX: For Pair methods, use Object return type since they return generic types
+            val methodDescriptor = if (constructorName == "Pair" && fieldIndex in 0..1) {
+                "()Ljava/lang/Object;" // getFirst() and getSecond() return Object due to type erasure
+            } else {
+                "()${typeConverter.getJvmTypeDescriptor(fieldType)}"
+            }
             methodVisitor.visitMethodInsn(
                 INVOKEVIRTUAL,
                 constructorClassName,
@@ -450,30 +455,41 @@ class PatternMatcher(
                 false
             )
             
-            // Special handling for Pair fields that need Object -> primitive conversion
+            // CRITICAL FIX: Special handling for Pair fields that need Object -> primitive conversion
             if (constructorName == "Pair" && fieldIndex in 0..1) {
                 // Pair.getFirst() and getSecond() return Object, but we often need primitives
-                // Always attempt to unbox to the expected primitive type
+                // The Object is now on the stack from the method call above
                 val actualReturnType = Type.NamedType("Object") // getFirst/getSecond return Object
-                when (fieldType) {
-                    is Type.PrimitiveType -> {
-                        when (fieldType.name.lowercase()) {
-                            "int" -> typeConverter.convertType(actualReturnType, BuiltinTypes.INT)
-                            "double", "float" -> typeConverter.convertType(actualReturnType, BuiltinTypes.DOUBLE)
-                            "boolean" -> typeConverter.convertType(actualReturnType, BuiltinTypes.BOOLEAN)
+                
+                // Only perform conversion if we need primitive types
+                val needsConversion = when (fieldType) {
+                    is Type.PrimitiveType -> fieldType.name.lowercase() in setOf("int", "double", "float", "boolean")
+                    is Type.NamedType -> fieldType.name.lowercase() in setOf("int", "double", "float", "boolean")
+                    else -> false
+                }
+                
+                if (needsConversion) {
+                    when (fieldType) {
+                        is Type.PrimitiveType -> {
+                            when (fieldType.name.lowercase()) {
+                                "int" -> typeConverter.convertType(actualReturnType, BuiltinTypes.INT)
+                                "double", "float" -> typeConverter.convertType(actualReturnType, BuiltinTypes.DOUBLE)
+                                "boolean" -> typeConverter.convertType(actualReturnType, BuiltinTypes.BOOLEAN)
+                            }
                         }
-                    }
-                    is Type.NamedType -> {
-                        when (fieldType.name.lowercase()) {
-                            "int" -> typeConverter.convertType(actualReturnType, BuiltinTypes.INT)
-                            "double", "float" -> typeConverter.convertType(actualReturnType, BuiltinTypes.DOUBLE)
-                            "boolean" -> typeConverter.convertType(actualReturnType, BuiltinTypes.BOOLEAN)
+                        is Type.NamedType -> {
+                            when (fieldType.name.lowercase()) {
+                                "int" -> typeConverter.convertType(actualReturnType, BuiltinTypes.INT)
+                                "double", "float" -> typeConverter.convertType(actualReturnType, BuiltinTypes.DOUBLE)
+                                "boolean" -> typeConverter.convertType(actualReturnType, BuiltinTypes.BOOLEAN)
+                            }
                         }
-                    }
-                    else -> {
-                        // For other types, no conversion needed
+                        else -> {
+                            // Other types don't need conversion
+                        }
                     }
                 }
+                // If no conversion needed, the Object remains on the stack as-is
             }
         }
     }

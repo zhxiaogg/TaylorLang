@@ -112,6 +112,49 @@ fun generatePatternTests(cases: List<MatchCase>) {
 
 **Anti-Pattern**: Premature failure label generation that causes control flow corruption.
 
+### Generic Type Handling Pattern
+**Principle**: Treat Object-returning generic methods as boundary operations requiring explicit stack state management.
+
+```kotlin
+// PREFERRED: Generic type boundary handling
+class ConstructorPatternGenerator {
+    fun generateFieldAccess(constructor: Constructor, fieldIndex: Int) {
+        val returnType = constructor.getFieldReturnType(fieldIndex)
+        
+        // Generate method call
+        generateMethodCall(constructor.getFieldMethod(fieldIndex))
+        
+        // Handle generic boundary conversion
+        if (returnType.isGenericObjectReturn()) {
+            handleGenericBoundaryConversion(returnType, expectedType)
+        } else {
+            // Direct type-safe conversion
+            typeConverter.convertType(returnType, expectedType)
+        }
+    }
+    
+    private fun handleGenericBoundaryConversion(sourceType: Type, targetType: Type) {
+        // Verify stack state before conversion
+        stackStateValidator.verifyExpectedState(sourceType)
+        
+        // Perform conversion with proper stack management
+        typeConverter.convertWithStackVerification(sourceType, targetType)
+    }
+}
+
+// AVOID: Direct generic conversion without boundary handling
+fun generateFieldAccessBadPattern(constructor: Constructor, fieldIndex: Int) {
+    generateMethodCall(constructor.getFieldMethod(fieldIndex))
+    typeConverter.convertType() // May fail on Object->primitive with VerifyError
+}
+```
+
+**Key Insights**:
+- Generic methods returning `Object` create type boundaries requiring special handling
+- Stack state verification must occur before Object-to-primitive conversions
+- Constructor patterns with generics need explicit boundary management
+- Type-safe methods (returning `T` or concrete types) can use direct conversion
+
 ### Type System Integration Pattern
 **Principle**: Maintain parallel coverage between type inference and code generation phases.
 
@@ -166,6 +209,7 @@ When making architectural decisions, evaluate:
 - Proper handling of JVM double/long slot requirements
 - Complete expression type coverage in all compiler phases
 - Clear separation between pattern matching, type conversion, and control flow
+- Generic type boundary handling with explicit stack state verification
 
 ## Review Checklist
 
@@ -181,6 +225,8 @@ When making architectural decisions, evaluate:
 - [ ] Control flow labels placed after pattern tests complete
 - [ ] Type inference and code generation have parallel coverage
 - [ ] Pattern matching handles all pattern types (including wildcards)
+- [ ] Generic type boundaries handled with proper stack state verification
+- [ ] Object-to-primitive conversions include stack state validation
 
 ### Detailed Review
 - [ ] No god objects or large classes
