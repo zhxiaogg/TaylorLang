@@ -92,8 +92,8 @@ class PatternBytecodeCompiler(
             val caseExprType = expressionGenerator.inferExpressionType(case.expression)
             generateExpression(TypedExpression(case.expression, caseExprType))
             
-            // For statements, check if the expression result needs to be popped or left on stack
-            // If the case expression is a void-returning function call, no value is left on stack
+            // CRITICAL FIX: Ensure ALL case branches leave the SAME stack state
+            // The match expression expects consistent results from all branches
             val leavesValueOnStack = when (case.expression) {
                 is FunctionCall -> {
                     if ((case.expression.target as? Identifier)?.name == "println") {
@@ -105,30 +105,37 @@ class PatternBytecodeCompiler(
                 else -> getJvmType(caseExprType) != "V"
             }
             
-            // If this case expression left a value on the stack but we need to match the result type
-            // of the overall match expression, we may need to convert or leave it
-            if (leavesValueOnStack && getJvmType(resultType) == "V") {
-                // Case expression returned a value but match expression should return void - pop it
-                // CRITICAL FIX: Handle double-width values properly when popping
-                if (getJvmType(caseExprType) == "D") {
-                    methodVisitor.visitInsn(POP2) // Pop double value (2 slots)
-                } else {
-                    methodVisitor.visitInsn(POP) // Pop single value
+            // CRITICAL FIX: Always ensure we leave exactly what the match expression expects
+            // This prevents stackmap frame inconsistencies at the merge point (endLabel)
+            if (getJvmType(resultType) == "V") {
+                // Match expression expects void - pop any values left on stack
+                if (leavesValueOnStack) {
+                    if (getJvmType(caseExprType) == "D") {
+                        methodVisitor.visitInsn(POP2) // Pop double value (2 slots)
+                    } else {
+                        methodVisitor.visitInsn(POP) // Pop single value
+                    }
                 }
-            } else if (!leavesValueOnStack && getJvmType(resultType) != "V") {
-                // Case expression was void but match expression should return a value - push default
-                when (getJvmType(resultType)) {
-                    "I", "Z" -> methodVisitor.visitLdcInsn(0)
-                    "D" -> methodVisitor.visitLdcInsn(0.0)
-                    "Ljava/lang/String;" -> methodVisitor.visitLdcInsn("")
-                    else -> methodVisitor.visitInsn(ACONST_NULL)
+                // Stack is now empty for all branches - consistent!
+            } else {
+                // Match expression expects a value - ensure we have one
+                if (!leavesValueOnStack) {
+                    // Push default value to match expected result type
+                    when (getJvmType(resultType)) {
+                        "I", "Z" -> methodVisitor.visitLdcInsn(0)
+                        "D" -> methodVisitor.visitLdcInsn(0.0)
+                        "Ljava/lang/String;" -> methodVisitor.visitLdcInsn("")
+                        else -> methodVisitor.visitInsn(ACONST_NULL)
+                    }
                 }
+                // Stack now has exactly one value of the expected type for all branches - consistent!
             }
             
             // Restore variable slot state
             variableSlotManager.restoreCheckpoint(savedSlotManager)
             
             // Jump to end (don't fall through to next case)
+            // All branches now have identical stack states when reaching endLabel
             methodVisitor.visitJumpInsn(GOTO, endLabel)
         }
         
@@ -158,6 +165,7 @@ class PatternBytecodeCompiler(
                 } else {
                     methodVisitor.visitInsn(POP) // Remove single value
                 }
+                // Stack is now empty - consistent with other pattern success paths
                 methodVisitor.visitJumpInsn(GOTO, caseLabel)
             }
             is Pattern.LiteralPattern -> {
@@ -178,6 +186,7 @@ class PatternBytecodeCompiler(
                     } else {
                         methodVisitor.visitInsn(POP) // Remove single value
                     }
+                    // Stack is now empty - consistent with other pattern success paths
                     methodVisitor.visitJumpInsn(GOTO, caseLabel)
                 }
             }
@@ -308,6 +317,10 @@ class PatternBytecodeCompiler(
         // Stack: []
         
         // 5. Check each nested pattern against corresponding field
+        // CRITICAL FIX: Use a single failure label for all field pattern failures
+        // to ensure consistent stack states at merge points
+        val allFieldsFailLabel = org.objectweb.asm.Label()
+        
         for ((index, fieldPattern) in pattern.patterns.withIndex()) {
             // Load constructor object and access field
             methodVisitor.visitVarInsn(ALOAD, constructorSlot)
@@ -323,16 +336,9 @@ class PatternBytecodeCompiler(
             
             // Create labels for nested pattern matching
             val fieldMatchLabel = org.objectweb.asm.Label()
-            val fieldFailLabel = org.objectweb.asm.Label()
             
-            // Generate pattern test for this field
-            generatePatternTest(fieldPattern, fieldType, fieldMatchLabel, fieldFailLabel)
-            
-            // If field pattern failed, clean up and jump to next case with empty stack
-            methodVisitor.visitLabel(fieldFailLabel)
-            variableSlotManager.releaseTemporarySlot(constructorSlot)
-            // Stack should be empty here from pattern test failure
-            methodVisitor.visitJumpInsn(GOTO, nextLabel)
+            // Generate pattern test for this field - use common failure label
+            generatePatternTest(fieldPattern, fieldType, fieldMatchLabel, allFieldsFailLabel)
             
             // Field pattern succeeded, continue to next field
             methodVisitor.visitLabel(fieldMatchLabel)
@@ -342,6 +348,12 @@ class PatternBytecodeCompiler(
         // 6. All nested patterns matched - clean up and jump to case with empty stack
         variableSlotManager.releaseTemporarySlot(constructorSlot)
         methodVisitor.visitJumpInsn(GOTO, caseLabel)
+        
+        // 7. Handle field pattern failure - ensure consistent stack state
+        methodVisitor.visitLabel(allFieldsFailLabel)
+        // Stack should be empty here from pattern test failure
+        variableSlotManager.releaseTemporarySlot(constructorSlot)
+        methodVisitor.visitJumpInsn(GOTO, nextLabel)
     }
     
     /**

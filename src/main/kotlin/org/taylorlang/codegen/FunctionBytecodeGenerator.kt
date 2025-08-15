@@ -138,6 +138,27 @@ class FunctionBytecodeGenerator(
         when (functionName) {
             "println" -> generatePrintlnCall(call)
             "assert" -> generateAssertCall(call)
+            // CRITICAL FIX: Handle constructor calls that are parsed as function calls
+            "Ok", "Error" -> {
+                // Convert function call to constructor call for union type constructors
+                val constructorCall = ConstructorCall(functionName, call.arguments, call.sourceLocation)
+                expressionGenerator.generateExpression(TypedExpression(constructorCall, resultType))
+            }
+            "Some", "None" -> {
+                // Option type constructors
+                val constructorCall = ConstructorCall(functionName, call.arguments, call.sourceLocation)
+                expressionGenerator.generateExpression(TypedExpression(constructorCall, resultType))
+            }
+            "Active", "Inactive", "Pending" -> {
+                // Status type constructors
+                val constructorCall = ConstructorCall(functionName, call.arguments, call.sourceLocation)
+                expressionGenerator.generateExpression(TypedExpression(constructorCall, resultType))
+            }
+            "Pair" -> {
+                // Tuple2 constructor
+                val constructorCall = ConstructorCall(functionName, call.arguments, call.sourceLocation)
+                expressionGenerator.generateExpression(TypedExpression(constructorCall, resultType))
+            }
             else -> {
                 // User-defined function call
                 generateUserFunctionCall(call, functionName, resultType)

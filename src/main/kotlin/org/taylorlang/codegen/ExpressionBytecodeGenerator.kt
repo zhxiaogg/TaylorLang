@@ -879,6 +879,8 @@ class ExpressionBytecodeGenerator(
                         if (arg != null) {
                             val argType = typeInferenceHelper(arg)
                             generateExpression(TypedExpression(arg, argType))
+                            // CRITICAL FIX: Box primitive types to Object for constructor
+                            boxPrimitiveToObject(argType)
                         } else {
                             methodVisitor.visitInsn(ACONST_NULL)
                         }
