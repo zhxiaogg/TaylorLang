@@ -10,7 +10,7 @@ import org.taylorlang.ast.*
  * for actual implementation.
  */
 class TypeChecker(
-    private val mode: TypeCheckingMode = TypeCheckingMode.CONSTRAINT_BASED
+    private val mode: TypeCheckingMode = TypeCheckingMode.ALGORITHMIC
 ) {
     
     // Delegate to the refactored implementation

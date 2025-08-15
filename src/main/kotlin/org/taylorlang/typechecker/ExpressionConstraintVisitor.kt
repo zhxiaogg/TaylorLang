@@ -448,17 +448,14 @@ class ExpressionConstraintVisitor(
                     }
                 }
                 
-                // For numeric operations, use proper type promotion rules
+                // For numeric operations, use constraint-based arithmetic promotion
                 val resultType = when {
-                    // Both operands are the same numeric type - preserve type for simple cases like Int + Int = Int
-                    TypeOperations.areEqual(leftUnwrapped, rightUnwrapped) && BuiltinTypes.isNumeric(leftUnwrapped) -> {
-                        leftUnwrapped // Preserve the original type for Int + Int = Int
-                    }
-                    
-                    // Use type promotion rules when types differ
+                    // Constraint-based mode: promote arithmetic to Double for better type inference
                     BuiltinTypes.isNumeric(leftUnwrapped) && BuiltinTypes.isNumeric(rightUnwrapped) -> {
-                        val promotedType = BuiltinTypes.getWiderNumericType(leftUnwrapped, rightUnwrapped)
-                        promotedType ?: BuiltinTypes.DOUBLE // Fallback to Double
+                        // Generate subtype constraints to ensure operands are numeric
+                        constraints.add(Constraint.Subtype(leftUnwrapped, BuiltinTypes.DOUBLE, location))
+                        constraints.add(Constraint.Subtype(rightUnwrapped, BuiltinTypes.DOUBLE, location))
+                        BuiltinTypes.DOUBLE // Constraint-based arithmetic promotion
                     }
                     
                     // For type variables or unresolved types, use constraints
