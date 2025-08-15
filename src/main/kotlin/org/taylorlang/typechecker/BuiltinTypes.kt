@@ -206,6 +206,11 @@ object BuiltinTypes {
      * Get the wider type for numeric type promotion.
      * Used in binary operations to determine the result type.
      * 
+     * Promotion rules:
+     * - If both types are the same, return that type (Int + Int = Int)
+     * - If mixing integral and floating-point, promote to floating-point
+     * - Otherwise, promote to the wider type in the hierarchy
+     * 
      * @param type1 First numeric type
      * @param type2 Second numeric type
      * @return The wider type, or null if types cannot be unified
@@ -233,14 +238,19 @@ object BuiltinTypes {
         val precedence2 = getNumericPrecedence(type2)
         
         return if (precedence1 != null && precedence2 != null) {
-            // Return the canonical builtin type with the higher precedence
-            val widerPrecedence = maxOf(precedence1, precedence2)
-            when (widerPrecedence) {
-                0 -> INT
-                1 -> LONG
-                2 -> FLOAT
-                3 -> DOUBLE
-                else -> null
+            // If both types have the same precedence (e.g., Int + Int), return that type
+            if (precedence1 == precedence2) {
+                type1  // Return the first type, they're equivalent
+            } else {
+                // Return the canonical builtin type with the higher precedence
+                val widerPrecedence = maxOf(precedence1, precedence2)
+                when (widerPrecedence) {
+                    0 -> INT
+                    1 -> LONG
+                    2 -> FLOAT
+                    3 -> DOUBLE
+                    else -> null
+                }
             }
         } else {
             null

@@ -40,7 +40,7 @@ class UserFunctionTest : DescribeSpec({
     describe("Function declaration parsing") {
         
         it("should parse simple function declaration with parameters") {
-            val input = "fun add(x: Int, y: Int): Int => x + y"
+            val input = "fn add(x: Int, y: Int): Int => x + y"
             
             val program = parser.parse(input).getOrThrow()
             
@@ -57,7 +57,7 @@ class UserFunctionTest : DescribeSpec({
         
         it("should parse function declaration with block body") {
             val input = """
-                fun greet(name: String): String {
+                fn greet(name: String): String {
                     val message = "Hello, " + name
                     return message
                 }
@@ -76,7 +76,7 @@ class UserFunctionTest : DescribeSpec({
         }
         
         it("should parse function declaration without parameters") {
-            val input = "fun getAnswer(): Int => 42"
+            val input = "fn getAnswer(): Int => 42"
             
             val program = parser.parse(input).getOrThrow()
             
@@ -88,7 +88,7 @@ class UserFunctionTest : DescribeSpec({
         }
         
         it("should parse function declaration without return type (Unit)") {
-            val input = "fun sayHello() => println(\"Hello!\")"
+            val input = "fn sayHello() => println(\"Hello!\")"
             
             val program = parser.parse(input).getOrThrow()
             
@@ -314,7 +314,7 @@ class UserFunctionTest : DescribeSpec({
     describe("Function bytecode generation") {
         
         it("should generate bytecode for simple function declaration") {
-            val input = "fun add(x: Int, y: Int): Int => x + y"
+            val input = "fn add(x: Int, y: Int): Int => x + y"
             val program = parser.parse(input).getOrThrow()
             
             val typeCheckResult = typeChecker.typeCheck(program)
@@ -331,8 +331,8 @@ class UserFunctionTest : DescribeSpec({
         
         it("should generate bytecode for function with parameters and calls") {
             val input = """
-                fun multiply(a: Int, b: Int): Int => a * b
-                fun main(): Unit => println(multiply(5, 6))
+                fn multiply(a: Int, b: Int): Int => a * b
+                fn main(): Unit => println(multiply(5, 6))
             """.trimIndent()
             val program = parser.parse(input).getOrThrow()
             
@@ -353,8 +353,8 @@ class UserFunctionTest : DescribeSpec({
         
         it("should execute simple function call") {
             val input = """
-                fun double(x: Int): Int => x * 2
-                fun main(): Unit => println(double(21))
+                fn double(x: Int): Int => x * 2
+                fn main(): Unit => println(double(21))
             """.trimIndent()
             val program = parser.parse(input).getOrThrow()
             
@@ -374,8 +374,8 @@ class UserFunctionTest : DescribeSpec({
         
         it("should execute function with multiple parameters") {
             val input = """
-                fun calculate(a: Int, b: Int, c: Int): Int => (a + b) * c
-                fun main(): Unit => println(calculate(2, 3, 4))
+                fn calculate(a: Int, b: Int, c: Int): Int => (a + b) * c
+                fn main(): Unit => println(calculate(2, 3, 4))
             """.trimIndent()
             val program = parser.parse(input).getOrThrow()
             
@@ -393,9 +393,9 @@ class UserFunctionTest : DescribeSpec({
         
         it("should execute nested function calls") {
             val input = """
-                fun add(x: Int, y: Int): Int => x + y  
-                fun multiply(a: Int, b: Int): Int => a * b
-                fun main(): Unit => println(multiply(add(2, 3), 4))
+                fn add(x: Int, y: Int): Int => x + y  
+                fn multiply(a: Int, b: Int): Int => a * b
+                fn main(): Unit => println(multiply(add(2, 3), 4))
             """.trimIndent()
             val program = parser.parse(input).getOrThrow()
             

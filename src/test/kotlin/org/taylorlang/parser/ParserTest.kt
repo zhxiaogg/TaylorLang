@@ -10,7 +10,7 @@ class ParserTest : StringSpec({
     val parser = TaylorLangParser()
 
     "should parse simple function declaration" {
-        val source = "fun add(x: Int, y: Int): Int => x + y"
+        val source = "fn add(x: Int, y: Int): Int => x + y"
         
         val result = parser.parse(source).getOrThrow()
         
@@ -135,7 +135,7 @@ class ParserTest : StringSpec({
 
     "should handle parse errors gracefully" {
         val invalidSources = listOf(
-            "fun (x: Int) => x",  // Missing function name
+            "fn (x: Int) => x",  // Missing function name
             "type = Ok | Error", // Missing type name
             "val = 42",          // Missing variable name
             "1 + + 2",           // Invalid expression
@@ -152,7 +152,7 @@ class ParserTest : StringSpec({
         val source = """
             type Result<T, E> = Ok(T) | Error(E)
             
-            fun divide(x: Int, y: Int): Result<Int, String> => {
+            fn divide(x: Int, y: Int): Result<Int, String> => {
                 if (y == 0) {
                     Error("Division by zero")
                 } else {
@@ -160,7 +160,7 @@ class ParserTest : StringSpec({
                 }
             }
             
-            fun handleResult(result: Result<Int, String>): String => match result {
+            fn handleResult(result: Result<Int, String>): String => match result {
                 case Ok(value) => "Result: " + value
                 case Error(msg) => "Error: " + msg
             }
@@ -486,7 +486,7 @@ class ParserTest : StringSpec({
     // =============================================================================
 
     "should parse function with no parameters" {
-        val source = "fun getAnswer(): Int => 42"
+        val source = "fn getAnswer(): Int => 42"
         val result = parser.parse(source).getOrThrow()
         
         val function = result.statements[0] as FunctionDecl
@@ -496,7 +496,7 @@ class ParserTest : StringSpec({
     }
 
     "should parse function with optional parameter types" {
-        val source = "fun test(x, y: Int) => x + y"
+        val source = "fn test(x, y: Int) => x + y"
         val result = parser.parse(source).getOrThrow()
         
         val function = result.statements[0] as FunctionDecl
@@ -506,7 +506,7 @@ class ParserTest : StringSpec({
     }
 
     "should parse generic function declarations" {
-        val source = "fun identity<T>(x: T): T => x"
+        val source = "fn identity<T>(x: T): T => x"
         val result = parser.parse(source).getOrThrow()
         
         val function = result.statements[0] as FunctionDecl
@@ -517,7 +517,7 @@ class ParserTest : StringSpec({
 
     "should parse function with block body" {
         val source = """
-            fun complexFunction(x: Int, y: Int): Int {
+            fn complexFunction(x: Int, y: Int): Int {
                 val temp = x * 2
                 temp + y
             }
@@ -636,7 +636,7 @@ class ParserTest : StringSpec({
     "should handle comments and whitespace" {
         val source = """
             // This is a line comment
-            fun test() /* block comment */ => {
+            fn test() /* block comment */ => {
                 /* 
                  * Multi-line comment
                  */

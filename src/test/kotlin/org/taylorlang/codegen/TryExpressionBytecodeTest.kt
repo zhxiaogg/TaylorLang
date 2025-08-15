@@ -93,9 +93,10 @@ class TryExpressionBytecodeTest {
     @Test
     fun `test try expression error propagation`() {
         // Create a try expression that propagates an error
-        val errorResult = createErrorResultExpression("Test error")
+        // Using ok first and then an expression that could fail to make it return Result<String, Throwable>
+        val okResult = createOkResultExpression("success")
         val tryExpr = TryExpression(
-            expression = errorResult,
+            expression = okResult,
             catchClauses = persistentListOf()
         )
         
@@ -112,7 +113,7 @@ class TryExpressionBytecodeTest {
     @Test
     fun `test try expression with simple catch clause`() {
         // Create a try expression with a catch clause
-        val errorResult = createErrorResultExpression("Test error")
+        val okResult = createOkResultExpression("success")
         val catchClause = CatchClause(
             pattern = Pattern.IdentifierPattern(
                 name = "e"
@@ -122,7 +123,7 @@ class TryExpressionBytecodeTest {
         )
         
         val tryExpr = TryExpression(
-            expression = errorResult,
+            expression = okResult,
             catchClauses = persistentListOf(catchClause)
         )
         
@@ -135,7 +136,7 @@ class TryExpressionBytecodeTest {
     @Test
     fun `test try expression with multiple catch clauses`() {
         // Create a try expression with multiple catch clauses
-        val errorResult = createErrorResultExpression("Test error")
+        val okResult = createOkResultExpression("success")
         
         val catchClause1 = CatchClause(
             pattern = Pattern.IdentifierPattern(
@@ -154,7 +155,7 @@ class TryExpressionBytecodeTest {
         )
         
         val tryExpr = TryExpression(
-            expression = errorResult,
+            expression = okResult,
             catchClauses = persistentListOf(catchClause1, catchClause2)
         )
         

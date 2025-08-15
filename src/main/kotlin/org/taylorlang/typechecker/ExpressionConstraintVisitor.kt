@@ -431,15 +431,39 @@ class ExpressionConstraintVisitor(
         return when (operator) {
             BinaryOperator.PLUS, BinaryOperator.MINUS, 
             BinaryOperator.MULTIPLY, BinaryOperator.DIVIDE, BinaryOperator.MODULO -> {
-                // Arithmetic operations: require numeric types and return DOUBLE
-                // We generate explicit numeric type constraints for operands
+                // Arithmetic operations: proper numeric type inference
                 val constraints = mutableListOf<Constraint>()
                 
-                // Always generate subtype constraints for consistent behavior
-                constraints.add(Constraint.Subtype(leftType, BuiltinTypes.DOUBLE, location))
-                constraints.add(Constraint.Subtype(rightType, BuiltinTypes.DOUBLE, location))
+                // Handle string concatenation for PLUS operator
+                if (operator == BinaryOperator.PLUS) {
+                    // If either operand is String, result is String
+                    if (TypeOperations.areEqual(leftType, BuiltinTypes.STRING) || 
+                        TypeOperations.areEqual(rightType, BuiltinTypes.STRING)) {
+                        val resultType = BuiltinTypes.STRING
+                        return Pair(resultType, ConstraintSet.empty())
+                    }
+                }
                 
-                val resultType = BuiltinTypes.DOUBLE // All arithmetic results are DOUBLE
+                // For numeric operations, determine the result type based on operands
+                val resultType = when {
+                    // If both types are the same primitive, return that type
+                    TypeOperations.areEqual(leftType, rightType) && 
+                    BuiltinTypes.isNumeric(leftType) -> leftType
+                    
+                    // Use type promotion rules for mixed types
+                    BuiltinTypes.isNumeric(leftType) && BuiltinTypes.isNumeric(rightType) -> {
+                        BuiltinTypes.getWiderNumericType(leftType, rightType) ?: BuiltinTypes.DOUBLE
+                    }
+                    
+                    // For type variables or unresolved types, use constraints
+                    else -> {
+                        // Generate subtype constraints to ensure operands are numeric
+                        constraints.add(Constraint.Subtype(leftType, BuiltinTypes.DOUBLE, location))
+                        constraints.add(Constraint.Subtype(rightType, BuiltinTypes.DOUBLE, location))
+                        BuiltinTypes.DOUBLE // Default fallback
+                    }
+                }
+                
                 Pair(resultType, ConstraintSet.fromCollection(constraints))
             }
             
