@@ -174,6 +174,13 @@ Rationale: Why this change matters
 - **Refused bequest**: Subclasses not using inherited functionality
 - **Comments smell**: Comments explaining what code does instead of why
 
+### Exemplary Patterns
+- **Pure delegation coordinator**: Coordinators that delegate to specialized components without duplicating logic
+- **Focused component responsibility**: Each component handles exactly one specialized concern
+- **Centralized type operations**: Single component handling all type comparison and inference logic
+- **Clean component boundaries**: Components communicate only through coordinator, never directly
+- **Architectural compliance preservation**: Decomposition that maintains exact functional behavior and test coverage
+
 ## Project-Specific Standards
 
 ### Git Workflow
@@ -226,5 +233,9 @@ Rationale: Why this change matters
 - **Implementation status validation failure**: Unverified success claims without test execution evidence
 - **Repository state inconsistency**: Unclean working directory or failing test suite before review
 - **Type checker coordinator anti-pattern**: Monolithic type checker files exceeding architectural limits without delegation patterns
+- **Coordinator pattern misimplementation**: Coordinators that duplicate logic instead of pure delegation
+- **Component coupling violations**: Specialized components directly calling each other instead of through coordinator
+- **Lazy initialization anti-pattern**: Circular dependency resolution using lazy without architectural consideration
+- **Cross-component type inference inconsistency**: Different components using incompatible type comparison methods
 
 **NO EXCEPTIONS POLICY**: Previous issues do not excuse new violations. All code must meet standards regardless of existing codebase state.
