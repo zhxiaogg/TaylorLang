@@ -105,12 +105,15 @@ class ExpressionTypeChecker(
         // Type check each statement in the block and update context
         val sharedScopeManager = ScopeManager()
         
-        // Populate scope manager with variables from the current context
+        // Populate the global scope with variables from the current context
         // Note: This is a simplified approach assuming variables in TypeContext are mutable
         // In a more complete implementation, we'd need to track mutability in TypeContext too
         for ((name, type) in blockContext.variables) {
             sharedScopeManager.declareVariable(name, type, isMutable = true)
         }
+        
+        // Push a new scope for the block to allow variable shadowing
+        sharedScopeManager.pushScope()
         
         for (statement in node.statements) {
             val stmtChecker = StatementTypeChecker(blockContext, sharedScopeManager)
@@ -151,6 +154,8 @@ class ExpressionTypeChecker(
         
         // If there are errors in statements, return them
         if (errors.isNotEmpty()) {
+            // Pop the scope before returning
+            sharedScopeManager.popScope()
             return Result.failure(
                 if (errors.size == 1) errors.first()
                 else TypeError.MultipleErrors(errors)
@@ -160,10 +165,13 @@ class ExpressionTypeChecker(
         // Determine the type of the block based on the final expression
         val blockType = if (node.expression != null) {
             // Block has a final expression - type is the type of that expression
+            // Use a new checker with the updated block context that includes block variables
             val exprChecker = ExpressionTypeChecker(blockContext)
-            node.expression.accept(exprChecker).fold(
+            val result = node.expression.accept(exprChecker).fold(
                 onSuccess = { it.type },
                 onFailure = { error ->
+                    // Pop the scope before returning error
+                    sharedScopeManager.popScope()
                     return Result.failure(when (error) {
                         is TypeError -> error
                         else -> TypeError.InvalidOperation(
@@ -174,10 +182,14 @@ class ExpressionTypeChecker(
                     })
                 }
             )
+            result
         } else {
             // Block has no final expression - type is Unit
             BuiltinTypes.UNIT
         }
+        
+        // Pop the scope when we're done with the block
+        sharedScopeManager.popScope()
         
         return Result.success(TypedExpression(node, blockType))
     }

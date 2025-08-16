@@ -299,8 +299,11 @@ class ControlFlowExpressionChecker(
             // No else branch - result is nullable version of then type
             Type.NullableType(thenType)
         } else {
-            // Both branches present - unify their types
-            arithmeticChecker.unifyTypes(thenType, elseType) ?: run {
+            // Both branches present - require strict type equality for if expressions
+            // This is stricter than arithmetic unification to prevent mixed types like Int/Double
+            if (typesCompatible(thenType, elseType)) {
+                thenType  // Types are the same, return either one
+            } else {
                 return Result.failure(TypeError.TypeMismatch(
                     expected = thenType,
                     actual = elseType,

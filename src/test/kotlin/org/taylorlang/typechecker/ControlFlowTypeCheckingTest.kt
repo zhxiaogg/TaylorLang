@@ -199,10 +199,10 @@ class ControlFlowTypeCheckingTest : TypeCheckingTestBase() {
     "should type check while loop expressions" {
         val source = """
             fn countdown(n: Int): Int => {
-                var i = n
+                var i = n;
                 while (i > 0) {
-                    i = i - 1
-                }
+                    i = i - 1;
+                };
                 i
             }
         """.trimIndent()
@@ -217,8 +217,8 @@ class ControlFlowTypeCheckingTest : TypeCheckingTestBase() {
         val source = """
             fn badLoop(n: Int): Int => {
                 while (n) {  // n is Int, not Boolean
-                    n = n - 1
-                }
+                    n = n - 1;
+                };
                 n
             }
         """.trimIndent()
@@ -272,12 +272,12 @@ class ControlFlowTypeCheckingTest : TypeCheckingTestBase() {
         val source = """
             fn assignInBranches(x: Int): Int => {
                 val result = if (x > 0) {
-                    val temp = x * 2
+                    val temp = x * 2;
                     temp
                 } else {
-                    val temp = x * -1
+                    val temp = x * -1;
                     temp
-                }
+                };
                 result
             }
         """.trimIndent()
