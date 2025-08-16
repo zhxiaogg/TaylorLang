@@ -33,7 +33,7 @@ Your output standards:
 
 Before completing any task, you MUST:
 - Verify your code follows both architecture and coding guidelines  
-- Update relevant documentation with patterns discovered
+- Update relevant documentation with patterns discovered (ensuring no document exceeds 800 lines)
 - Follow `docs/guidelines/git-commit-guidelines.md` for all commits
 - Commit ALL changes (code, docs, tests) with proper message
 - Push committed changes to remote repository
