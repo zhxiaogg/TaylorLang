@@ -237,5 +237,7 @@ Rationale: Why this change matters
 - **Component coupling violations**: Specialized components directly calling each other instead of through coordinator
 - **Lazy initialization anti-pattern**: Circular dependency resolution using lazy without architectural consideration
 - **Cross-component type inference inconsistency**: Different components using incompatible type comparison methods
+- **Custom type compatibility implementations**: Components implementing type comparison instead of delegating to TypeOperations
+- **Scattered type operation logic**: Type validation, comparison, or unification logic not centralized through TypeOperations facade
 
 **NO EXCEPTIONS POLICY**: Previous issues do not excuse new violations. All code must meet standards regardless of existing codebase state.
