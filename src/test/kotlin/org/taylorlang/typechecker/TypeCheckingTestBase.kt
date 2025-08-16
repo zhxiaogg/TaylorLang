@@ -70,4 +70,15 @@ abstract class TypeCheckingTestBase : StringSpec() {
         result.isFailure shouldBe true
         return result.exceptionOrNull() as TypeError
     }
+
+    /**
+     * Parse source code, expecting it to fail.
+     * Returns the parse error for further validation.
+     */
+    protected fun expectParseFailure(source: String): RuntimeException {
+        val result = parser.parse(source)
+        
+        result.isFailure shouldBe true
+        return result.exceptionOrNull() as RuntimeException
+    }
 }

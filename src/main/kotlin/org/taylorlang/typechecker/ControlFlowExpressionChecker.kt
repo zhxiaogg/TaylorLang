@@ -140,7 +140,14 @@ class ControlFlowExpressionChecker(
             val typedCall = node.copy(
                 arguments = typedArguments.map { it.expression }.toPersistentList()
             )
-            Result.success(TypedExpression(typedCall, actualReturnType))
+            // Use canonical builtin type if the return type matches a builtin
+            val canonicalReturnType = when {
+                actualReturnType is Type.PrimitiveType -> {
+                    BuiltinTypes.lookupPrimitive(actualReturnType.name) ?: actualReturnType
+                }
+                else -> actualReturnType
+            }
+            Result.success(TypedExpression(typedCall, canonicalReturnType))
         } else {
             val error = if (errors.size == 1) {
                 errors.first()
