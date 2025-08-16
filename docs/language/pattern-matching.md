@@ -114,6 +114,8 @@ fn processResponse(response: HttpResponse): Unit {
 
 ## Exhaustiveness
 
+**CRITICAL SPECIFICATION**: The Taylor type checker MUST enforce exhaustive pattern matching for all union types.
+
 ```kotlin
 // Compiler ensures all cases are covered
 fn statusMessage(status: Status): String => match status {
@@ -124,4 +126,34 @@ fn statusMessage(status: Status): String => match status {
   // All cases covered - compiles successfully
 }
 ```
+
+### Exhaustiveness Enforcement Requirements
+
+**MANDATORY ERROR DETECTION**: The type checker MUST detect and report non-exhaustive matches:
+
+```kotlin
+type Color = Red | Green | Blue
+
+// MUST FAIL: Missing Blue case
+fn colorName(c: Color): String => match c {
+  case Red => "red"
+  case Green => "green"
+  // ERROR: NonExhaustiveMatch - missing Blue
+}
+
+// MUST PASS: Wildcard covers all cases
+fn colorDescription(c: Color): String => match c {
+  case Red => "red color"
+  case _ => "other color"
+}
+
+// MUST FAIL: Missing None case for Option types
+type Option<T> = Some(T) | None
+fn unwrap<T>(opt: Option<T>): T => match opt {
+  case Some(value) => value
+  // ERROR: NonExhaustiveMatch - missing None
+}
+```
+
+**IMPLEMENTATION REQUIREMENT**: Type checker MUST generate `TypeError.NonExhaustiveMatch` with specific missing pattern names when match expressions are incomplete.
 

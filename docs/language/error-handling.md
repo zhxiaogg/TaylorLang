@@ -20,7 +20,33 @@ TaylorLang's error handling is built on two fundamental principles:
 type Result<T, E extends Throwable> = Ok(T) | Error(E)
 ```
 
-The Result type uses Java's Throwable hierarchy directly, enabling seamless integration with existing JVM libraries and eliminating the need for custom error wrapper types.
+**CRITICAL SPECIFICATION**: The Result type uses Java's Throwable hierarchy directly, enabling seamless integration with existing JVM libraries and eliminating the need for custom error wrapper types.
+
+### Type System Integration Requirements
+
+**MANDATORY IMPLEMENTATION**: The type checker MUST:
+
+1. **Validate Exception Bounds**: All Error type parameters must extend `java.lang.Throwable`
+2. **Support JVM Exception Hierarchy**: Allow specific exception types like `IOException`, `SQLException`, etc.
+3. **Enable Exception Type Compatibility**: Broader exception types must accept more specific subtypes
+4. **Enforce Result Type Inference**: Try expressions MUST automatically infer appropriate Result types
+
+```kotlin
+// MUST PASS: Specific exception types
+fn readFile(path: String): Result<String, IOException> => {
+  try File(path).readText()
+}
+
+// MUST PASS: Exception hierarchy compatibility
+fn fileOperation(): Result<String, Exception> => {
+  try readFile("data.txt")  // IOException -> Exception (valid)
+}
+
+// MUST FAIL: Non-Throwable error types
+fn invalidResult(): Result<String, CustomError> => {  // ERROR if CustomError !extends Throwable
+  // Implementation
+}
+```
 
 ### Basic Result Usage
 

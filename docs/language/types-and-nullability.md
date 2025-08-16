@@ -34,6 +34,28 @@ type BinaryTree<T> =
   | Node(value: T, left: BinaryTree<T>, right: BinaryTree<T>)
 ```
 
+### Generic Type Inference Requirements
+
+**CRITICAL SPECIFICATION**: Constructor calls must automatically infer generic type parameters:
+
+```kotlin
+// Basic inference (MANDATORY)
+type Option<T> = Some(T) | None
+val intOption = Some(42)        // MUST infer Option<Int>
+val stringOption = Some("hello") // MUST infer Option<String>
+val boolOption = Some(true)     // MUST infer Option<Boolean>
+
+// Multi-parameter inference (MANDATORY)
+type Result<T, E> = Ok(T) | Error(E)
+val success = Ok(42)           // MUST infer Result<Int, ?>
+val failure = Error("failed")  // MUST infer Result<?, String>
+
+// Nested constructor inference (MANDATORY)
+val nested = Ok(Some(42))      // MUST infer Result<Option<Int>, ?>
+```
+
+**IMPLEMENTATION REQUIREMENT**: Type checker MUST resolve generic type parameters from constructor arguments without explicit type annotations.
+
 ## Product Types
 
 Product types combine multiple values into a single type:
