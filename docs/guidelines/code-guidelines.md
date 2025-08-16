@@ -225,5 +225,6 @@ Rationale: Why this change matters
 - **Integration dependency breaks**: Lost component connections during refactoring
 - **Implementation status validation failure**: Unverified success claims without test execution evidence
 - **Repository state inconsistency**: Unclean working directory or failing test suite before review
+- **Type checker coordinator anti-pattern**: Monolithic type checker files exceeding architectural limits without delegation patterns
 
 **NO EXCEPTIONS POLICY**: Previous issues do not excuse new violations. All code must meet standards regardless of existing codebase state.
