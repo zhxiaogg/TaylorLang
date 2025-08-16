@@ -183,6 +183,9 @@ Rationale: Why this change matters
 - **Mixed implementation testing**: Combining parsing and type checking validation in decomposed type checking test files violates separation of concerns
 - **SourceLocation comparison brittleness**: Tests comparing exact SourceLocation objects instead of focusing on type inference correctness create fragile assertions
 - **Function signature test coupling**: Type checking tests depending on specific function signature implementations rather than type system behavior
+- **Partial fix approval anti-pattern**: Approving individual test file fixes while ignoring broader system health - UserFunctionTest achieving 100% success cannot justify approval when 26 other tests remain failing
+- **Test isolation fallacy**: Individual test class success rates do not validate overall codebase health when system-wide test failures persist
+- **Context-free approval violations**: Code review submissions claiming success while ignoring mandatory 100% test pass rate requirement across entire test suite
 
 ### Code Smells
 - **Feature envy**: Classes accessing other classes' data excessively
