@@ -169,6 +169,9 @@ Rationale: Why this change matters
 - **False success rate claims**: Implementation status claims (e.g., "100% test success rate") must be verified against actual test execution results before code review acceptance
 - **Test execution validation failure**: Claims of complete test success must be validated by running full test suite, not just isolated subset tests
 - **Status misrepresentation anti-pattern**: Reporting success statistics from narrow test subsets while ignoring broader test suite failures undermines review integrity
+- **Near-complete success tolerance**: 99.1% test success rate (911/919 passing) does not meet mandatory 100% requirement - even single-digit failures block approval
+- **Systematic improvement approval fallacy**: Demonstrating progress through sequential test class fixes cannot justify approval when mandatory criteria remain unmet
+- **Mega file proliferation persistence**: 19 files exceeding 500-line limit represents systematic architectural failure requiring complete coordinator pattern implementation
 - **Build failure masking**: Claiming implementation success while project build fails with 17 test failures (97% success vs required 100%)
 - **Test isolation validation error**: TryExpression tests passing in isolation does not validate overall codebase health
 - **Error handling implementation isolation**: Individual function fixes (createMultipleErrorsOrSingle) cannot be approved when overall test suite remains at 96% success rate with 31 failures
