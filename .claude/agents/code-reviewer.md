@@ -1,7 +1,6 @@
 ---
 name: code-reviewer
 description: Use this agent when you need a thorough code review focused on maintainability, readability, and clean code principles. Examples: <example>Context: The user has just implemented a new feature and wants feedback before committing. user: 'I just finished implementing the user authentication module. Can you review it?' assistant: 'I'll use the code-reviewer agent to provide a comprehensive review of your authentication code.' <commentary>Since the user is requesting a code review of recently written code, use the code-reviewer agent to analyze the implementation for maintainability, readability, and adherence to clean code principles.</commentary></example> <example>Context: After refactoring a complex function, the user wants validation. user: 'I refactored the payment processing logic to make it cleaner. What do you think?' assistant: 'Let me use the code-reviewer agent to evaluate your refactored payment processing code.' <commentary>The user has made changes to existing code and wants validation, which is perfect for the code-reviewer agent to assess the improvements.</commentary></example>
-tools: Bash, Glob, Grep, LS, Read, Edit, Write, TodoWrite, WebSearch
 model: sonnet
 ---
 

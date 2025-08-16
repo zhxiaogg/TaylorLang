@@ -1,7 +1,6 @@
 ---
 name: system-design-architect
 description: Use this agent ONLY for architecture decisions, design patterns, and system structure guidance. This agent NEVER writes implementation code. Examples: <example>Context: Need architectural guidance. user: 'How should I structure the pattern matching system?' assistant: 'Let me use the system-design-architect agent to provide architectural recommendations.'</example> <example>Context: Design pattern selection. user: 'What pattern should I use for the visitor implementation?' assistant: 'I'll use the system-design-architect agent to recommend appropriate design patterns.'</example>
-tools: Read, Glob, Grep, LS, Write, TodoWrite
 model: sonnet
 ---
 
