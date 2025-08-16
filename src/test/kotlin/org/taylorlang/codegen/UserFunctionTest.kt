@@ -177,8 +177,9 @@ class UserFunctionTest : DescribeSpec({
             val result = typeChecker.typeCheck(program)
             
             result.shouldBeFailure()
-            val error = result.exceptionOrNull() as TypeError.MultipleErrors
-            error.errors.any { it is TypeError.TypeMismatch } shouldBe true
+            val error = result.exceptionOrNull() as TypeError.TypeMismatch
+            error.expected shouldBe Type.PrimitiveType("String")
+            error.actual shouldBe Type.PrimitiveType("Int")
         }
         
         it("should detect missing parameter types") {
@@ -197,8 +198,8 @@ class UserFunctionTest : DescribeSpec({
             val result = typeChecker.typeCheck(program)
             
             result.shouldBeFailure()
-            val error = result.exceptionOrNull() as TypeError.MultipleErrors
-            error.errors.any { it is TypeError.UndefinedType } shouldBe true
+            val error = result.exceptionOrNull() as TypeError.UndefinedType
+            error.typeName shouldBe "Missing type annotation for parameter 'x'"
         }
     }
     
@@ -263,8 +264,9 @@ class UserFunctionTest : DescribeSpec({
             val result = typeChecker.typeCheck(program)
             
             result.shouldBeFailure()
-            val error = result.exceptionOrNull() as TypeError.MultipleErrors
-            error.errors.any { it is TypeError.ArityMismatch } shouldBe true
+            val error = result.exceptionOrNull() as TypeError.ArityMismatch
+            error.expected shouldBe 2
+            error.actual shouldBe 1
         }
         
         it("should detect argument type mismatch") {
@@ -291,8 +293,9 @@ class UserFunctionTest : DescribeSpec({
             val result = typeChecker.typeCheck(program)
             
             result.shouldBeFailure()
-            val error = result.exceptionOrNull() as TypeError.MultipleErrors
-            error.errors.any { it is TypeError.TypeMismatch } shouldBe true
+            val error = result.exceptionOrNull() as TypeError.TypeMismatch
+            error.expected shouldBe Type.PrimitiveType("Int")
+            error.actual shouldBe Type.PrimitiveType("String")
         }
         
         it("should detect undefined function") {
@@ -306,8 +309,8 @@ class UserFunctionTest : DescribeSpec({
             val result = typeChecker.typeCheck(program)
             
             result.shouldBeFailure()
-            val error = result.exceptionOrNull() as TypeError.MultipleErrors
-            error.errors.any { it is TypeError.UnresolvedSymbol } shouldBe true
+            val error = result.exceptionOrNull() as TypeError.UnresolvedSymbol
+            error.symbol shouldBe "unknownFunction"
         }
     }
     
