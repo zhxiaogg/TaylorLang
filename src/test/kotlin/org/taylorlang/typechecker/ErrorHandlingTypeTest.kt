@@ -147,8 +147,8 @@ class ErrorHandlingTypeTest : TypeCheckingTestBase() {
     "should provide context for nested type errors" {
         val source = """
             fn process(x: Int): String => {
-                val y = x + "hello"
-                val z = y * 2
+                val y = x + "hello";
+                val z = y * 2;
                 z
             }
         """.trimIndent()
@@ -242,7 +242,7 @@ class ErrorHandlingTypeTest : TypeCheckingTestBase() {
     "should detect return type mismatches in complex functions" {
         val source = """
             fn complexFunction(x: Int): Boolean => {
-                val y = x * 2
+                val y = x * 2;
                 if (y > 10) y else 0  // Returns Int instead of Boolean
             }
         """.trimIndent()

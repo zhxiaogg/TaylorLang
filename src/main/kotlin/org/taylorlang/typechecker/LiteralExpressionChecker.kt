@@ -178,7 +178,7 @@ class LiteralExpressionChecker(
         
         // Return inferred types in the order of type parameters
         return typeParameters.map { typeParam ->
-            inferredTypes[typeParam] ?: BuiltinTypes.UNIT // Default if inference failed
+            inferredTypes[typeParam] ?: Type.NamedType(typeParam) // Keep as type variable if inference failed
         }
     }
     
@@ -450,6 +450,12 @@ class LiteralExpressionChecker(
             type1 is Type.UnionType && type2 is Type.UnionType ->
                 type1.name == type2.name && type1.typeArguments.size == type2.typeArguments.size &&
                 type1.typeArguments.zip(type2.typeArguments).all { (a1, a2) -> typesCompatible(a1, a2) }
+            type1 is Type.GenericType && type2 is Type.UnionType ->
+                type1.name == type2.name && type1.arguments.size == type2.typeArguments.size &&
+                type1.arguments.zip(type2.typeArguments).all { (a1, a2) -> typesCompatible(a1, a2) }
+            type1 is Type.UnionType && type2 is Type.GenericType ->
+                type1.name == type2.name && type1.typeArguments.size == type2.arguments.size &&
+                type1.typeArguments.zip(type2.arguments).all { (a1, a2) -> typesCompatible(a1, a2) }
             type1 is Type.FunctionType && type2 is Type.FunctionType ->
                 typesCompatible(type1.returnType, type2.returnType) &&
                 type1.parameterTypes.size == type2.parameterTypes.size &&

@@ -94,6 +94,9 @@ object TypeComparison {
         // First check structural equality
         if (structuralEquals(type1, type2)) return true
         
+        // Handle GenericType vs UnionType compatibility (for recursive union types)
+        if (isGenericUnionCompatible(type1, type2)) return true
+        
         // Handle numeric type promotion compatibility
         if (isNumericPromotion(type1, type2)) return true
         
@@ -212,6 +215,31 @@ object TypeComparison {
             type2 is Type.NullableType -> structuralEquals(type1, type2.baseType)
             // T? is not compatible with T (requires explicit null check)
             type1 is Type.NullableType -> false
+            else -> false
+        }
+    }
+    
+    /**
+     * Check compatibility between GenericType and UnionType with same name.
+     * This handles cases where user-defined union types (like List<T>) should be 
+     * compatible with built-in generic types (like List<Int>) during type checking.
+     */
+    private fun isGenericUnionCompatible(type1: Type, type2: Type): Boolean {
+        return when {
+            // GenericType vs UnionType
+            type1 is Type.GenericType && type2 is Type.UnionType ->
+                type1.name == type2.name && 
+                type1.arguments.size == type2.typeArguments.size &&
+                type1.arguments.zip(type2.typeArguments).all { (arg1, arg2) -> 
+                    areCompatible(arg1, arg2) 
+                }
+            // UnionType vs GenericType  
+            type1 is Type.UnionType && type2 is Type.GenericType ->
+                type1.name == type2.name && 
+                type1.typeArguments.size == type2.arguments.size &&
+                type1.typeArguments.zip(type2.arguments).all { (arg1, arg2) -> 
+                    areCompatible(arg1, arg2) 
+                }
             else -> false
         }
     }

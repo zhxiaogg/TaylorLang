@@ -547,7 +547,7 @@ class ControlFlowExpressionChecker(
      * Migrated to use centralized TypeOperations for consistent type comparison.
      */
     private fun typesCompatible(type1: Type, type2: Type): Boolean {
-        return TypeOperations.areEqual(type1, type2)
+        return TypeOperations.areCompatible(type1, type2)
     }
     
     /**

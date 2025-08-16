@@ -98,8 +98,16 @@ class ArithmeticExpressionChecker(
             }
             
             BinaryOperator.LESS_THAN, BinaryOperator.LESS_EQUAL,
-            BinaryOperator.GREATER_THAN, BinaryOperator.GREATER_EQUAL,
-            BinaryOperator.EQUAL, BinaryOperator.NOT_EQUAL -> BuiltinTypes.BOOLEAN
+            BinaryOperator.GREATER_THAN, BinaryOperator.GREATER_EQUAL -> {
+                // Comparison operators require comparable types (same type or both numeric)
+                if (areComparableTypes(leftType, rightType)) {
+                    BuiltinTypes.BOOLEAN
+                } else null
+            }
+            BinaryOperator.EQUAL, BinaryOperator.NOT_EQUAL -> {
+                // Equality operators are more permissive - any two types can be compared for equality
+                BuiltinTypes.BOOLEAN
+            }
             
             BinaryOperator.AND, BinaryOperator.OR -> {
                 if (typesCompatible(leftType, BuiltinTypes.BOOLEAN) && 
@@ -137,6 +145,21 @@ class ArithmeticExpressionChecker(
                     BuiltinTypes.BOOLEAN
                 } else null
             }
+        }
+    }
+    
+    /**
+     * Check if two types are comparable for ordering operations (< > <= >=).
+     * Types are comparable if they are the same type or both are numeric.
+     */
+    private fun areComparableTypes(type1: Type, type2: Type): Boolean {
+        return when {
+            // Same type
+            typesCompatible(type1, type2) -> true
+            // Both numeric types (allowing cross-numeric comparisons)
+            BuiltinTypes.isNumeric(type1) && BuiltinTypes.isNumeric(type2) -> true
+            // Otherwise not comparable
+            else -> false
         }
     }
     
