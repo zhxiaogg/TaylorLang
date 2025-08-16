@@ -1,0 +1,3 @@
+val test1 = 1 + "hello"
+val test2 = "hello" + 1  
+test1

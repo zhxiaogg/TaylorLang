@@ -140,14 +140,36 @@ class ExpressionTypeChecker(
                     }
                 },
                 onFailure = { error ->
-                    errors.add(when (error) {
+                    // Collect error but continue processing to gather all errors
+                    val typeError = when (error) {
                         is TypeError -> error
                         else -> TypeError.InvalidOperation(
                             error.message ?: "Unknown error", 
                             emptyList(), 
                             statement.sourceLocation
                         )
-                    })
+                    }
+                    errors.add(typeError)
+                    
+                    // Even with errors, attempt to add placeholder context for variables
+                    // This allows subsequent statements to continue type checking
+                    when (statement) {
+                        is ValDecl -> {
+                            // Add variable with error type to allow continued processing
+                            blockContext = blockContext.withVariable(
+                                statement.name,
+                                statement.type ?: BuiltinTypes.UNIT
+                            )
+                        }
+                        is VarDecl -> {
+                            // Add variable with error type to allow continued processing
+                            blockContext = blockContext.withVariable(
+                                statement.name,
+                                statement.type ?: BuiltinTypes.UNIT
+                            )
+                        }
+                        else -> { /* No context update needed for other statement types */ }
+                    }
                 }
             )
         }

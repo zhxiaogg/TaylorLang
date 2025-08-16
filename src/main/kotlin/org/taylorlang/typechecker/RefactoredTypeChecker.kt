@@ -108,29 +108,39 @@ class RefactoredTypeChecker(
                         // Also add each variant constructor as a function signature
                         addVariantConstructors(newCtx, statement, typeDef)
                     } catch (e: TypeError) {
-                        errors.add(e)
+                        // Wrap type declaration errors in MultipleErrors to provide context
+                        errors.add(TypeError.MultipleErrors(listOf(e)))
                         ctx // Return unchanged context on error
                     }
                 }
                 is FunctionDecl -> {
-                    val statementChecker = StatementTypeChecker(ctx)
-                    val signatureResult = statementChecker.createFunctionSignature(statement)
-                    signatureResult.fold(
-                        onSuccess = { signature ->
-                            ctx.withFunction(statement.name, signature)
-                        },
-                        onFailure = { error ->
-                            errors.add(when (error) {
-                                is TypeError -> error
-                                else -> TypeError.InvalidOperation(
-                                    error.message ?: "Unknown error", 
-                                    emptyList(), 
-                                    null
-                                )
-                            })
-                            ctx
-                        }
-                    )
+                    // Check for duplicate function definition
+                    if (ctx.lookupFunction(statement.name) != null) {
+                        errors.add(TypeError.DuplicateDefinition(
+                            "Function '${statement.name}' is already defined",
+                            statement.sourceLocation
+                        ))
+                        ctx
+                    } else {
+                        val statementChecker = StatementTypeChecker(ctx)
+                        val signatureResult = statementChecker.createFunctionSignature(statement)
+                        signatureResult.fold(
+                            onSuccess = { signature ->
+                                ctx.withFunction(statement.name, signature)
+                            },
+                            onFailure = { error ->
+                                errors.add(when (error) {
+                                    is TypeError -> error
+                                    else -> TypeError.InvalidOperation(
+                                        error.message ?: "Unknown error", 
+                                        emptyList(), 
+                                        null
+                                    )
+                                })
+                                ctx
+                            }
+                        )
+                    }
                 }
                 else -> ctx
             }

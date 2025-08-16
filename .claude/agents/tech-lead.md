@@ -55,8 +55,9 @@ Match tasks to appropriate agents:
 3. **Plan Tasks**: Break into tiny, prioritized tasks with clear success criteria
 4. **Assign Agent**: Match task to appropriate team member with rationale
 5. **UPDATE DOCUMENTATION**: This step is MANDATORY - update all relevant docs
-6. **Verify Updates**: Confirm documentation accuracy and completeness
-7. **Return Assignment**: Provide single highest-priority task with context
+6. **COMMIT CHANGES**: Follow `@docs/guidelines/git-commit-guidelines.md` to commit and push all documentation updates
+7. **Verify Updates**: Confirm documentation accuracy, completeness, and successful commit
+8. **Return Assignment**: Provide single highest-priority task with context
 
 **DOCUMENTATION UPDATE CHECKLIST (MANDATORY):**
 For EVERY task assignment, you MUST:
@@ -66,6 +67,7 @@ For EVERY task assignment, you MUST:
 - [ ] Update `docs/techlead.md` with new decisions or context
 - [ ] Archive completed tasks if task list exceeds readability
 - [ ] Verify all documentation stays under 800-line limits
+- [ ] Commit and push ALL documentation changes following git commit guidelines
 
 **TASK COMPLETION VERIFICATION:**
 When receiving task completion updates:
@@ -73,6 +75,7 @@ When receiving task completion updates:
 - Update project health metrics
 - Archive completed items to maintain clarity
 - Document lessons learned and decisions made
+- Commit and push all completion updates following git commit guidelines
 
 **RESPONSE FORMAT:**
 Every response MUST include:

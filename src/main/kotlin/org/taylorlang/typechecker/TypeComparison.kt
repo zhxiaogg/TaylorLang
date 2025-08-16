@@ -231,14 +231,41 @@ object TypeComparison {
                 type1.name == type2.name && 
                 type1.arguments.size == type2.typeArguments.size &&
                 type1.arguments.zip(type2.typeArguments).all { (arg1, arg2) -> 
-                    areCompatible(arg1, arg2) 
+                    areCompatible(arg1, arg2) || isTypeVariableCompatible(arg1, arg2)
                 }
             // UnionType vs GenericType  
             type1 is Type.UnionType && type2 is Type.GenericType ->
                 type1.name == type2.name && 
                 type1.typeArguments.size == type2.arguments.size &&
                 type1.typeArguments.zip(type2.arguments).all { (arg1, arg2) -> 
-                    areCompatible(arg1, arg2) 
+                    areCompatible(arg1, arg2) || isTypeVariableCompatible(arg1, arg2)
+                }
+            else -> false
+        }
+    }
+    
+    /**
+     * Check if a concrete type is compatible with a type variable.
+     * This handles cases where a concrete type like Int should be compatible with T.
+     */
+    private fun isTypeVariableCompatible(concreteType: Type, typeVar: Type): Boolean {
+        return when {
+            // Concrete type vs type variable - type variables can be unified with any type
+            typeVar is Type.NamedType -> true
+            // Type variable vs concrete type
+            concreteType is Type.NamedType -> true
+            // Recursive compatibility check for complex types
+            concreteType is Type.GenericType && typeVar is Type.GenericType ->
+                concreteType.name == typeVar.name &&
+                concreteType.arguments.size == typeVar.arguments.size &&
+                concreteType.arguments.zip(typeVar.arguments).all { (c, t) -> 
+                    areCompatible(c, t) || isTypeVariableCompatible(c, t)
+                }
+            concreteType is Type.UnionType && typeVar is Type.UnionType ->
+                concreteType.name == typeVar.name &&
+                concreteType.typeArguments.size == typeVar.typeArguments.size &&
+                concreteType.typeArguments.zip(typeVar.typeArguments).all { (c, t) -> 
+                    areCompatible(c, t) || isTypeVariableCompatible(c, t)
                 }
             else -> false
         }

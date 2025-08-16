@@ -1,0 +1,4 @@
+val a: Int = 1
+val b: String = "hello"
+val result = a + b
+result
