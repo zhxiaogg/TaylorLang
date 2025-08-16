@@ -86,7 +86,7 @@ val nested = Ok(Some(42))      // MUST infer Result<Option<Int>, ?>
    - MUST suggest explicit type annotations when inference is ambiguous
 
 5. **Implementation Anti-Patterns** (FORBIDDEN):
-   - **Custom Type Comparison Methods**: All type compatibility checking MUST use `TypeOperations.areCompatible()` or `TypeOperations.areEqual()`. Custom `typesCompatible()` methods violate centralized type operations design.
+   - **Direct Type Comparison Bypass**: All type compatibility checking MUST ultimately delegate to `TypeOperations.areCompatible()` or `TypeOperations.areEqual()`. While wrapper methods like `private fun typesCompatible()` are acceptable for brevity, they MUST delegate to centralized type operations.
    - **Inconsistent Error Handling**: Mixed error handling patterns that don't follow Result<T,E> specifications are forbidden.
    - **Missing Cycle Detection**: Recursive type processing without cycle detection can cause infinite loops and is not permitted.
 
@@ -94,6 +94,23 @@ val nested = Ok(Some(42))      // MUST infer Result<Option<Int>, ?>
    - **Centralized Type Operations**: All type checking components MUST delegate to `TypeOperations` facade
    - **Uniform Result<T,E> Patterns**: Error handling MUST follow standardized Result<T,E> propagation as defined in error-handling.md
    - **Recursive Type Safety**: Union type processing MUST include cycle detection for recursive type definitions
+
+7. **Acceptable Implementation Patterns**:
+   ```kotlin
+   // ✅ APPROVED: Wrapper method that delegates to centralized operations
+   private fun typesCompatible(type1: Type, type2: Type): Boolean {
+       return TypeOperations.areCompatible(type1, type2)
+   }
+   
+   // ✅ APPROVED: Direct delegation to centralized operations
+   if (TypeOperations.areCompatible(argType, expectedType)) { ... }
+   
+   // ❌ FORBIDDEN: Custom type comparison logic that bypasses TypeOperations
+   private fun typesCompatible(type1: Type, type2: Type): Boolean {
+       // Custom comparison logic without delegating to TypeOperations
+       return type1.name == type2.name // VIOLATION
+   }
+   ```
 
 ## Product Types
 
