@@ -49,6 +49,66 @@ val add = (x, y) => x + y
 val multiply = (x: Int, y: Int) => x * y
 ```
 
+### Lambda Type Inference
+
+Lambda expressions support sophisticated type inference that integrates with Taylor's constraint-based type system:
+
+```kotlin
+// Parameter type inference from usage context
+val numbers = [1, 2, 3, 4, 5]
+val doubled = numbers.map(x => x * 2)  // x inferred as Int
+val filtered = numbers.filter(x => x > 3)  // x inferred as Int
+
+// Type constraints from operators
+val isPositive = x => x > 0    // Constrains x to numeric type (Int, Long, Float, Double)
+val isAdult = age => age >= 18  // Constrains age to numeric type
+
+// Multiple parameter inference
+val compare = (a, b) => a > b   // Both a and b constrained to same comparable type
+val calculate = (x, y) => x * y + 1  // Both x and y constrained to numeric types
+```
+
+**CRITICAL IMPLEMENTATION REQUIREMENT**: Lambda parameter type inference MUST use Taylor's constraint-based type checking system. Type variables generated during lambda analysis must be properly integrated with the global constraint solver to ensure sound type inference.
+
+#### Type Constraint Propagation
+
+Lambda expressions establish type constraints that propagate through the constraint system:
+
+1. **Operator Constraints**: Usage of operators (`>`, `+`, `*`, etc.) constrains lambda parameters to compatible types
+2. **Context Constraints**: Function calls receiving lambdas establish constraints based on expected parameter types  
+3. **Return Type Constraints**: Lambda body expressions constrain the return type
+4. **Cross-Parameter Constraints**: Operations between parameters establish relationships between their types
+
+```kotlin
+// Example constraint establishment:
+val processor = (input, threshold) => {
+  if (input.length > threshold) {  // input: String, threshold: Int
+    input.toUpperCase()            // return: String
+  } else {
+    "default"
+  }
+}
+// Final inferred type: (String, Int) => String
+```
+
+#### Type System Integration Requirements
+
+**MANDATORY**: Lambda type inference implementations must adhere to these Taylor language design requirements:
+
+1. **Constraint-Based Architecture**: All lambda parameter type inference must flow through the `ConstraintCollector` and `ConstraintSolver` systems. Direct type checking bypasses are forbidden.
+
+2. **Type Variable Management**: Type variables for lambda parameters must be created through `TypeFactory` and managed by the global type context. Ad-hoc type variable naming schemes violate language consistency.
+
+3. **Unification Integration**: Lambda parameter constraints must be resolved through `TypeOperations.unify()` to maintain type system coherence.
+
+4. **Error Propagation**: Type inference failures must generate meaningful error messages through the standard `TypeError` hierarchy.
+
+**IMPLEMENTATION ANTI-PATTERNS** (Must be avoided):
+- Direct arithmetic type checking for lambda parameters
+- Hardcoded type variable recognition patterns  
+- Bypassing the constraint resolution system
+- Assuming type constraints without formal establishment
+
 ### Multi-line Lambdas
 ```kotlin
 val process = data => {
