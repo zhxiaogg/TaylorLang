@@ -216,14 +216,19 @@ class RefactoredTypeChecker(
     }
     
     /**
-     * Create a multiple errors wrapper for program-level type checking.
+     * Create a single TypeError from a list of errors.
      * 
-     * At the program level, we always use MultipleErrors for consistency,
-     * even when there's only one error. This provides a uniform interface
-     * and allows tests and consumers to handle errors consistently.
+     * Returns the single error directly when there's only one error,
+     * or wraps multiple errors in MultipleErrors for consistent handling.
+     * This preserves the specific error type for single errors while
+     * providing composition for multiple errors.
      */
     private fun createMultipleErrorsOrSingle(errors: List<TypeError>): TypeError {
-        return TypeError.MultipleErrors(errors)
+        return when (errors.size) {
+            0 -> throw IllegalArgumentException("Cannot create error from empty list")
+            1 -> errors.first()
+            else -> TypeError.MultipleErrors(errors)
+        }
     }
     
     /**
