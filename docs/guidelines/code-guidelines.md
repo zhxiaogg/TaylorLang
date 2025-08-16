@@ -174,6 +174,12 @@ Rationale: Why this change matters
 - **Mega file proliferation**: Multiple files exceeding 500-line limit - TypeCheckerTest.kt (978 lines), BytecodeGenerator.kt (859 lines), EndToEndExecutionTest.kt (770 lines)
 - **Critical file size violations**: Files between 600-978 lines requiring immediate decomposition into focused modules
 - **Type system integration regressions**: Test failures in core type checking functionality indicating system instability
+- **Test decomposition quality defects**: Decomposed test files containing syntax errors and implementation-dependent tests rather than pure unit tests
+- **Parser syntax dependency violations**: Type checking tests should not depend on parser syntax limitations for functionality testing
+- **Variable shadowing test implementation errors**: Tests attempting to verify scoping behavior without proper scope management implementation
+- **Mixed implementation testing**: Combining parsing and type checking validation in decomposed type checking test files violates separation of concerns
+- **SourceLocation comparison brittleness**: Tests comparing exact SourceLocation objects instead of focusing on type inference correctness create fragile assertions
+- **Function signature test coupling**: Type checking tests depending on specific function signature implementations rather than type system behavior
 
 ### Code Smells
 - **Feature envy**: Classes accessing other classes' data excessively
