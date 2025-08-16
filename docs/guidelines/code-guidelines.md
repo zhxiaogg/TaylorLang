@@ -148,47 +148,24 @@ Rationale: Why this change matters
 - **Shotgun surgery**: Changes requiring edits across many files
 - **Non-exhaustive patterns**: Using `else` branches instead of explicit pattern matching
 - **Silent pattern failures**: Missing cases that cause unexpected behavior during testing
-- **Monolithic bytecode generators**: Single files handling multiple bytecode generation concerns
-- **Debug file contamination**: Temporary .taylor files, debug artifacts committed to repository
-- **Type inference inconsistency**: Identifier expressions not checking variable slot types
-- **Mega files**: Files exceeding 500 lines - ExpressionBytecodeGenerator (1106 lines), BytecodeGenerator (851 lines) require immediate refactoring
-- **Test failure tolerance**: Accepting partial test success rates - zero tolerance policy means 100% pass rate required
-- **Arithmetic type inference defects**: Int+Int operations returning Double instead of Int indicates type promotion bugs
-- **Refactoring regression risks**: Large architectural changes must preserve exact functional behavior - type inference logic extraction particularly prone to behavioral changes
-- **Pattern matching coordinator violations**: When extracting specialized generators, ensure all Literal subtypes are handled exhaustively (TupleLiteral, NullLiteral often missed)
-- **Component integration failures**: Refactored coordinator patterns must maintain all original integration points (TryExpression pattern compiler dependencies)
-- **Incomplete Result type infrastructure**: TryExpression integration failures often caused by missing BuiltinTypes.createResultType() or TaylorResult runtime classes
-- **Type checking coordinator gaps**: ScopedExpressionConstraintVisitor TryExpression logic must properly validate Result-returning function contexts
-- **Bytecode generation runtime dependencies**: TryExpressionBytecodeGenerator requires complete TaylorResult runtime integration and proper PatternBytecodeCompiler initialization
-- **Test failure masking integration defects**: 37% pass rate in TryExpressionBytecodeTest and 17% in TryExpressionTypeCheckingTest indicates systematic integration failure requiring complete rework
-- **Partial test success tolerance**: 87% test success rate (7/8 passing) is unacceptable - 100% pass rate is mandatory for all implementations
-- **Integration test failures blocking**: TryExpression integration tests failing indicate incomplete type system coordination between expression unwrapping and arithmetic operations
-- **TryExpression type constraint logic errors**: ScopedExpressionConstraintVisitor.handleTryExpression() must return unwrapped type T when no catch clauses present, not Result<T,E>
-- **Integration gap analysis violations**: Working catch clause tests (3/8 pass) masking fundamental no-catch-clause type inference defects
-- **Incomplete semantic implementation**: TryExpression without catch clauses should unwrap Result types, not propagate them
-- **False success rate claims**: Implementation status claims (e.g., "100% test success rate") must be verified against actual test execution results before code review acceptance
-- **Test execution validation failure**: Claims of complete test success must be validated by running full test suite, not just isolated subset tests
-- **Status misrepresentation anti-pattern**: Reporting success statistics from narrow test subsets while ignoring broader test suite failures undermines review integrity
-- **Near-complete success tolerance**: 99.1% test success rate (911/919 passing) does not meet mandatory 100% requirement - even single-digit failures block approval
-- **Systematic improvement approval fallacy**: Demonstrating progress through sequential test class fixes cannot justify approval when mandatory criteria remain unmet
-- **Mega file proliferation persistence**: 19 files exceeding 500-line limit represents systematic architectural failure requiring complete coordinator pattern implementation
-- **Build failure masking**: Claiming implementation success while project build fails with 17 test failures (97% success vs required 100%)
-- **Test isolation validation error**: TryExpression tests passing in isolation does not validate overall codebase health
-- **Error handling implementation isolation**: Individual function fixes (createMultipleErrorsOrSingle) cannot be approved when overall test suite remains at 96% success rate with 31 failures
-- **Mega file accumulation pattern**: 16 files exceeding 500-line limit indicates systematic architectural debt requiring coordinator pattern implementation
-- **Code review scope validation**: Function-level improvements must be evaluated within complete system health context - isolated fixes do not justify approval when critical violations exist
-- **Mega file proliferation**: Multiple files exceeding 500-line limit - TypeCheckerTest.kt (978 lines), BytecodeGenerator.kt (859 lines), EndToEndExecutionTest.kt (770 lines)
-- **Critical file size violations**: Files between 600-978 lines requiring immediate decomposition into focused modules
-- **Type system integration regressions**: Test failures in core type checking functionality indicating system instability
-- **Test decomposition quality defects**: Decomposed test files containing syntax errors and implementation-dependent tests rather than pure unit tests
-- **Parser syntax dependency violations**: Type checking tests should not depend on parser syntax limitations for functionality testing
-- **Variable shadowing test implementation errors**: Tests attempting to verify scoping behavior without proper scope management implementation
-- **Mixed implementation testing**: Combining parsing and type checking validation in decomposed type checking test files violates separation of concerns
-- **SourceLocation comparison brittleness**: Tests comparing exact SourceLocation objects instead of focusing on type inference correctness create fragile assertions
-- **Function signature test coupling**: Type checking tests depending on specific function signature implementations rather than type system behavior
-- **Partial fix approval anti-pattern**: Approving individual test file fixes while ignoring broader system health - UserFunctionTest achieving 100% success cannot justify approval when 26 other tests remain failing
-- **Test isolation fallacy**: Individual test class success rates do not validate overall codebase health when system-wide test failures persist
-- **Context-free approval violations**: Code review submissions claiming success while ignoring mandatory 100% test pass rate requirement across entire test suite
+- **Monolithic components**: Single files handling multiple unrelated concerns
+- **Debug file contamination**: Temporary files or debug artifacts committed to repository
+- **Type inference inconsistency**: Components not properly validating type constraints
+- **Mega files**: Files exceeding 500-line limit requiring immediate decomposition
+- **Test failure tolerance**: Accepting partial test success rates - 100% pass rate required
+- **Arithmetic type inference defects**: Operations returning incorrect types due to promotion bugs
+- **Refactoring regression risks**: Architectural changes must preserve exact functional behavior
+- **Component integration failures**: Refactored patterns must maintain all original integration points
+- **Incomplete infrastructure**: Missing required runtime classes or type system components
+- **Test failure masking**: Low pass rates indicating systematic integration failures
+- **Partial test success tolerance**: Any test failure rate below 100% is unacceptable
+- **Integration coordination gaps**: Incomplete coordination between system components
+- **Status misrepresentation**: Reporting success statistics while ignoring broader failures
+- **Systematic improvement approval fallacy**: Progress cannot justify approval when mandatory criteria unmet
+- **Build failure masking**: Claiming success while critical system components fail
+- **Test isolation validation error**: Subset test success does not validate overall system health
+- **Individual fix isolation**: Component-level improvements require complete system health validation
+- **Code review scope validation**: All improvements must be evaluated within complete system context
 
 ### Code Smells
 - **Feature envy**: Classes accessing other classes' data excessively
@@ -235,15 +212,15 @@ Rationale: Why this change matters
 - **Missing .gitignore entries**: Generated files not properly excluded
 - **Non-exhaustive pattern matching**: Using `else` branches when exhaustive patterns are possible
 - **Silent pattern failures**: Missing cases that could cause unexpected test behavior
-- **Mega file violations**: Files > 1000 lines require immediate breaking into modules
-- **Type system regressions**: Arithmetic operations returning incorrect types (Int+Int≠Double)
+- **Mega file violations**: Files exceeding architectural limits require immediate decomposition
+- **Type system regressions**: Operations returning incorrect types due to inference bugs
 - **Test suite degradation**: Any reduction from 100% pass rate is blocking
-- **Primitive boxing VerifyError patterns**: Function calls requiring Object parameters must use typeHelper.boxPrimitiveToObject() to prevent JVM verification failures
-- **TryExpression Result unwrapping defects**: Integration tests failing on arithmetic operations with try expressions indicate type system coordination gaps
-- **Refactoring functional regression**: Type inference behavior changes during architectural extraction
-- **Incomplete pattern matching extraction**: Missing cases in refactored generators (TupleLiteral, NullLiteral)
-- **Integration dependency breaks**: Coordinator patterns losing original component connections
-- **Implementation status validation failure**: Code submissions claiming test success must include verified test execution evidence
-- **Repository state inconsistency**: Working directory must be clean and test suite passing before any code review acceptance
+- **Runtime type conversion errors**: Missing proper type conversion helpers causing JVM failures
+- **Component coordination gaps**: Integration failures between system components
+- **Refactoring functional regression**: Behavioral changes during architectural modifications
+- **Incomplete pattern extraction**: Missing cases in refactored component generators
+- **Integration dependency breaks**: Lost component connections during refactoring
+- **Implementation status validation failure**: Unverified success claims without test execution evidence
+- **Repository state inconsistency**: Unclean working directory or failing test suite before review
 
 **NO EXCEPTIONS POLICY**: Previous issues do not excuse new violations. All code must meet standards regardless of existing codebase state.
