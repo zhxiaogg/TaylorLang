@@ -171,6 +171,9 @@ Rationale: Why this change matters
 - **Status misrepresentation anti-pattern**: Reporting success statistics from narrow test subsets while ignoring broader test suite failures undermines review integrity
 - **Build failure masking**: Claiming implementation success while project build fails with 17 test failures (97% success vs required 100%)
 - **Test isolation validation error**: TryExpression tests passing in isolation does not validate overall codebase health
+- **Error handling implementation isolation**: Individual function fixes (createMultipleErrorsOrSingle) cannot be approved when overall test suite remains at 96% success rate with 31 failures
+- **Mega file accumulation pattern**: 16 files exceeding 500-line limit indicates systematic architectural debt requiring coordinator pattern implementation
+- **Code review scope validation**: Function-level improvements must be evaluated within complete system health context - isolated fixes do not justify approval when critical violations exist
 - **Mega file proliferation**: Multiple files exceeding 500-line limit - TypeCheckerTest.kt (978 lines), BytecodeGenerator.kt (859 lines), EndToEndExecutionTest.kt (770 lines)
 - **Critical file size violations**: Files between 600-978 lines requiring immediate decomposition into focused modules
 - **Type system integration regressions**: Test failures in core type checking functionality indicating system instability
