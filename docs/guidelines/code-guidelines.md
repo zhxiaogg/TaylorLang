@@ -214,6 +214,9 @@ Rationale: Why this change matters
 - **Silent pattern failures**: Missing cases that could cause unexpected test behavior
 - **Mega file violations**: Files exceeding architectural limits require immediate decomposition
 - **Type system regressions**: Operations returning incorrect types due to inference bugs
+- **Hardcoded type pattern recognition**: Using regex or string patterns for type system operations
+- **Constraint system bypass**: Direct type checking instead of using established constraint infrastructure
+- **Ad-hoc type inference**: Component-specific type inference bypassing central type system architecture
 - **Test suite degradation**: Any reduction from 100% pass rate is blocking
 - **Runtime type conversion errors**: Missing proper type conversion helpers causing JVM failures
 - **Component coordination gaps**: Integration failures between system components
