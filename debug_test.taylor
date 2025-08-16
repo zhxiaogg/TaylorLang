@@ -1,5 +1,0 @@
-fn process(x: Int): String => {
-    val y = x + "hello";
-    val z = y * 2;
-    z
-}

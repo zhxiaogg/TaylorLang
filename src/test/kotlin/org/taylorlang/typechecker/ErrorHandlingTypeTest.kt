@@ -154,7 +154,8 @@ class ErrorHandlingTypeTest : TypeCheckingTestBase() {
         """.trimIndent()
         val error = expectTypeCheckFailure(source)
         
-        error should beInstanceOf<TypeError.MultipleErrors>()
+        // String concatenation (Int + String) is valid, so only one error from String * Int
+        error should beInstanceOf<TypeError.InvalidOperation>()
     }
 
     "should detect duplicate function definitions" {
