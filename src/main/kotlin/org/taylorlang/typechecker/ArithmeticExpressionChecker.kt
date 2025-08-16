@@ -135,7 +135,7 @@ class ArithmeticExpressionChecker(
             UnaryOperator.MINUS -> {
                 if (BuiltinTypes.isNumeric(operandType)) {
                     operandType
-                } else if (operandType is Type.NamedType && isTypeVariable(operandType.name)) {
+                } else if (operandType is Type.NamedType && isTypeVariableName(operandType.name)) {
                     // Assume type variable can be numeric
                     operandType
                 } else null
@@ -151,6 +151,7 @@ class ArithmeticExpressionChecker(
     /**
      * Check if two types are comparable for ordering operations (< > <= >=).
      * Types are comparable if they are the same type or both are numeric.
+     * Also handles type variables that can be constrained to numeric types.
      */
     private fun areComparableTypes(type1: Type, type2: Type): Boolean {
         return when {
@@ -158,9 +159,21 @@ class ArithmeticExpressionChecker(
             typesCompatible(type1, type2) -> true
             // Both numeric types (allowing cross-numeric comparisons)
             BuiltinTypes.isNumeric(type1) && BuiltinTypes.isNumeric(type2) -> true
+            // Type variable with numeric type - allow comparison and infer constraint
+            isTypeVariable(type1) && BuiltinTypes.isNumeric(type2) -> true
+            BuiltinTypes.isNumeric(type1) && isTypeVariable(type2) -> true
+            // Both type variables - allow comparison (will be constrained later)
+            isTypeVariable(type1) && isTypeVariable(type2) -> true
             // Otherwise not comparable
             else -> false
         }
+    }
+    
+    /**
+     * Check if a type is a type variable.
+     */
+    private fun isTypeVariable(type: Type): Boolean {
+        return type is Type.NamedType && isTypeVariableName(type.name)
     }
     
     /**
@@ -209,8 +222,8 @@ class ArithmeticExpressionChecker(
         }
         
         // If that fails, check if we have type variables
-        val leftIsTypeVar = leftType is Type.NamedType && isTypeVariable(leftType.name)
-        val rightIsTypeVar = rightType is Type.NamedType && isTypeVariable(rightType.name)
+        val leftIsTypeVar = leftType is Type.NamedType && isTypeVariableName(leftType.name)
+        val rightIsTypeVar = rightType is Type.NamedType && isTypeVariableName(rightType.name)
         
         return when {
             leftIsTypeVar && rightIsTypeVar -> {
@@ -232,7 +245,7 @@ class ArithmeticExpressionChecker(
     /**
      * Check if a name looks like a type variable (starts with T followed by digits).
      */
-    private fun isTypeVariable(name: String): Boolean {
+    private fun isTypeVariableName(name: String): Boolean {
         return name.matches(Regex("T\\d+"))
     }
 }
