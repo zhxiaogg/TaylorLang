@@ -56,6 +56,35 @@ val nested = Ok(Some(42))      // MUST infer Result<Option<Int>, ?>
 
 **IMPLEMENTATION REQUIREMENT**: Type checker MUST resolve generic type parameters from constructor arguments without explicit type annotations.
 
+**TYPE CHECKER IMPLEMENTATION SPECIFICATIONS**:
+
+1. **Constructor Call Analysis** (MANDATORY):
+   ```kotlin
+   // Type checker MUST implement this analysis for ConstructorCall nodes:
+   // 1. Identify union type definition from constructor name
+   // 2. Extract type parameters from union type definition  
+   // 3. Analyze constructor argument types
+   // 4. Unify type parameters with argument types using most general unifier
+   // 5. Substitute inferred types back into union type
+   ```
+
+2. **Type Unification Algorithm** (MANDATORY):
+   - MUST implement Hindley-Milner style unification for type inference
+   - MUST handle nested generic types (e.g., `Option<List<Int>>`)
+   - MUST support partial type inference with unknown type variables
+   - MUST detect and report unification failures with clear error messages
+
+3. **Integration Points** (MANDATORY):
+   - Constructor calls in `LiteralExpressionChecker.visitConstructorCall()`
+   - Variable declarations with inferred types
+   - Function return type inference
+   - Pattern matching type refinement
+
+4. **Error Handling** (MANDATORY):
+   - MUST report "Cannot infer type parameter T for constructor X" when inference fails
+   - MUST provide type mismatch details when unification fails
+   - MUST suggest explicit type annotations when inference is ambiguous
+
 ## Product Types
 
 Product types combine multiple values into a single type:

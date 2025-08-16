@@ -3,13 +3,23 @@
 ## Conditional Expressions
 
 ### If Expressions
+
+**TYPE SYSTEM SPECIFICATION**: If expressions require strict type equality between branches.
+
 ```kotlin
 // If expressions (return values)
 val result = if (score > 90) "A"
             else if (score > 80) "B" 
             else if (score > 70) "C"
             else "F"
+
+// Type checking requirements:
+val valid = if (condition) 42 else 24        // OK: both Int
+val invalid = if (condition) 42 else "text"  // ERROR: Int vs String mismatch
+val nullable = if (condition) 42 else null   // OK: Int? (nullable Int)
 ```
+
+**IMPLEMENTATION REQUIREMENT**: Type checker MUST use strict type equality (`TypeOperations.areEqual()`) for if expression branch compatibility, NOT type compatibility. This prevents implicit conversions that could lead to runtime errors.
 
 ### Match Expressions
 ```kotlin

@@ -119,11 +119,27 @@ object TypeValidation {
 5. Construct TypeOperations facade
 
 #### Phase 2: Migration Strategy
-1. **ArithmeticExpressionChecker**: Replace `typesCompatible()` with `TypeOperations.areEqual()`
-2. **PatternTypeChecker**: Migrate type equality checks
-3. **ControlFlowExpressionChecker**: Replace duplicate logic
-4. **Constraint collectors**: Use centralized operations
-5. **AlgorithmicTypeCheckingStrategy**: Remove duplicate patterns
+
+**CRITICAL SPECIFICATION**: ALL type checking implementations MUST use centralized type operations exclusively. Local type comparison methods are PROHIBITED.
+
+**MANDATORY USAGE PATTERNS**:
+1. **Type Equality**: Use `TypeComparison.structuralEquals()` or `TypeOperations.areEqual()`
+2. **Type Compatibility**: Use `TypeComparison.areCompatible()` for assignment/parameter checking
+3. **Subtype Relationships**: Use `TypeComparison.isSubtype()` for inheritance hierarchies
+4. **Type Unification**: Use `TypeUnification.unify()` for generic type inference
+
+**MIGRATION REQUIREMENTS**:
+1. **ArithmeticExpressionChecker**: Replace `typesCompatible()` with `TypeComparison.areCompatible()`
+2. **PatternTypeChecker**: Replace local equality checks with `TypeComparison.structuralEquals()`
+3. **ControlFlowExpressionChecker**: Use `TypeOperations.areEqual()` for if expressions (strict equality)
+4. **StatementTypeChecker**: Replace `typesCompatible()` with centralized operations
+5. **All type checkers**: Remove duplicate type comparison implementations
+
+**PROHIBITED PATTERNS**:
+- Local `typesCompatible()` methods in any type checker class
+- Direct Type pattern matching for equality comparison
+- Inline type compatibility logic
+- Inconsistent type comparison across different components
 
 #### Phase 3: Performance Integration
 1. Enable type caching in all creation points
