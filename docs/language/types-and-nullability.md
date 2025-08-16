@@ -85,6 +85,16 @@ val nested = Ok(Some(42))      // MUST infer Result<Option<Int>, ?>
    - MUST provide type mismatch details when unification fails
    - MUST suggest explicit type annotations when inference is ambiguous
 
+5. **Implementation Anti-Patterns** (FORBIDDEN):
+   - **Custom Type Comparison Methods**: All type compatibility checking MUST use `TypeOperations.areCompatible()` or `TypeOperations.areEqual()`. Custom `typesCompatible()` methods violate centralized type operations design.
+   - **Inconsistent Error Handling**: Mixed error handling patterns that don't follow Result<T,E> specifications are forbidden.
+   - **Missing Cycle Detection**: Recursive type processing without cycle detection can cause infinite loops and is not permitted.
+
+6. **Architectural Requirements** (MANDATORY):
+   - **Centralized Type Operations**: All type checking components MUST delegate to `TypeOperations` facade
+   - **Uniform Result<T,E> Patterns**: Error handling MUST follow standardized Result<T,E> propagation as defined in error-handling.md
+   - **Recursive Type Safety**: Union type processing MUST include cycle detection for recursive type definitions
+
 ## Product Types
 
 Product types combine multiple values into a single type:
