@@ -432,35 +432,9 @@ class LiteralExpressionChecker(
     
     /**
      * Helper method for type compatibility checking.
+     * Migrated to use centralized TypeOperations for consistent type comparison.
      */
     private fun typesCompatible(type1: Type, type2: Type): Boolean {
-        return when {
-            type1 is Type.PrimitiveType && type2 is Type.PrimitiveType -> 
-                type1.name == type2.name
-            type1 is Type.NamedType && type2 is Type.NamedType -> 
-                type1.name == type2.name
-            type1 is Type.GenericType && type2 is Type.GenericType -> 
-                type1.name == type2.name && type1.arguments.size == type2.arguments.size &&
-                type1.arguments.zip(type2.arguments).all { (a1, a2) -> typesCompatible(a1, a2) }
-            type1 is Type.TupleType && type2 is Type.TupleType -> 
-                type1.elementTypes.size == type2.elementTypes.size &&
-                type1.elementTypes.zip(type2.elementTypes).all { (t1, t2) -> typesCompatible(t1, t2) }
-            type1 is Type.NullableType && type2 is Type.NullableType ->
-                typesCompatible(type1.baseType, type2.baseType)
-            type1 is Type.UnionType && type2 is Type.UnionType ->
-                type1.name == type2.name && type1.typeArguments.size == type2.typeArguments.size &&
-                type1.typeArguments.zip(type2.typeArguments).all { (a1, a2) -> typesCompatible(a1, a2) }
-            type1 is Type.GenericType && type2 is Type.UnionType ->
-                type1.name == type2.name && type1.arguments.size == type2.typeArguments.size &&
-                type1.arguments.zip(type2.typeArguments).all { (a1, a2) -> typesCompatible(a1, a2) }
-            type1 is Type.UnionType && type2 is Type.GenericType ->
-                type1.name == type2.name && type1.typeArguments.size == type2.arguments.size &&
-                type1.typeArguments.zip(type2.arguments).all { (a1, a2) -> typesCompatible(a1, a2) }
-            type1 is Type.FunctionType && type2 is Type.FunctionType ->
-                typesCompatible(type1.returnType, type2.returnType) &&
-                type1.parameterTypes.size == type2.parameterTypes.size &&
-                type1.parameterTypes.zip(type2.parameterTypes).all { (p1, p2) -> typesCompatible(p1, p2) }
-            else -> type1 == type2
-        }
+        return TypeOperations.areCompatible(type1, type2)
     }
 }
