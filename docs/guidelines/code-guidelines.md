@@ -239,5 +239,8 @@ Rationale: Why this change matters
 - **Cross-component type inference inconsistency**: Different components using incompatible type comparison methods
 - **Custom type compatibility implementations**: Components implementing type comparison instead of delegating to TypeOperations
 - **Scattered type operation logic**: Type validation, comparison, or unification logic not centralized through TypeOperations facade
+- **Incomplete centralization claims**: Claiming complete centralization while multiple components retain custom implementations
+- **Test-driven refactoring violations**: Making architectural changes without validating existing test behavior preservation
+- **Error aggregation behavior regression**: Centralization changes that alter expected error reporting patterns during refactoring
 
 **NO EXCEPTIONS POLICY**: Previous issues do not excuse new violations. All code must meet standards regardless of existing codebase state.
